@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 
 interface TeamMember {
   id: string;
@@ -31,14 +32,25 @@ export function TeamMap() {
   const [loading, setLoading] = useState(true);
   const [mapError, setMapError] = useState(false);
   const apiClient = new ApiClient();
+  const { selectedCampaign } = useCampaign();
 
   useEffect(() => {
-    fetchTeam();
-  }, []);
+    if (selectedCampaign) {
+      fetchTeam();
+    } else {
+      setTeam([]);
+      setLoading(false);
+    }
+  }, [selectedCampaign]);
 
   const fetchTeam = async () => {
+    if (!selectedCampaign) return;
+
+    setLoading(true);
     try {
-      const data = await apiClient.get<TeamMember[]>("/dashboard/my-team");
+      const data = await apiClient.get<TeamMember[]>(
+        `/dashboard/my-team?campaignId=${selectedCampaign.id}`
+      );
       setTeam(data.filter((member) => member.latitude && member.longitude));
     } catch (error) {
       console.error("Error fetching team:", error);
@@ -99,10 +111,24 @@ export function TeamMap() {
     TeamMember & { latitude: number; longitude: number }
   >;
 
+  if (!selectedCampaign) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Mapa del Equipo
+        </h3>
+        <p className="text-gray-500 text-center py-8">
+          Selecciona una campaña para ver el mapa
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Mapa del Equipo ({validMembers.length} ubicaciones)
+        Mapa del Equipo - {selectedCampaign.name} ({validMembers.length}{" "}
+        ubicaciones)
       </h3>
       {validMembers.length === 0 ? (
         <div className="bg-gray-100 rounded-lg p-8 text-center">

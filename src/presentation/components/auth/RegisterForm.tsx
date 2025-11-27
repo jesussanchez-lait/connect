@@ -35,9 +35,14 @@ function normalizePhoneNumber(value: string): string {
 interface RegisterFormProps {
   leaderId: string;
   leaderName: string;
+  campaignId: string;
 }
 
-export function RegisterForm({ leaderId, leaderName }: RegisterFormProps) {
+export function RegisterForm({
+  leaderId,
+  leaderName,
+  campaignId,
+}: RegisterFormProps) {
   const router = useRouter();
   const {
     departments,
@@ -163,6 +168,7 @@ export function RegisterForm({ leaderId, leaderName }: RegisterFormProps) {
         longitude,
         leaderId,
         leaderName,
+        campaignId,
       };
       await registerUseCase.execute(credentials);
       router.push("/dashboard");

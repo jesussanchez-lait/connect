@@ -9,7 +9,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Mock activities - In production, query database for registrations under current user's QR code
+    // Get campaignId from query parameters
+    const { searchParams } = new URL(request.url);
+    const campaignId = searchParams.get("campaignId");
+
+    if (!campaignId) {
+      return NextResponse.json(
+        { message: "campaignId es requerido" },
+        { status: 400 }
+      );
+    }
+
+    // Mock activities - In production, query database for registrations under current user's QR code AND campaignId
     const mockActivities = [
       {
         id: "act-1",

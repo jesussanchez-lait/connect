@@ -8,9 +8,10 @@ export default function RegisterPage() {
   const searchParams = useSearchParams();
   const leaderId = searchParams.get("leaderId") || "";
   const leaderName = searchParams.get("leaderName") || "";
+  const campaignId = searchParams.get("campaignId") || "";
 
   // Si no hay parámetros del QR, mostrar error
-  if (!leaderId || !leaderName) {
+  if (!leaderId || !leaderName || !campaignId) {
     return (
       <AuthGuard requireAuth={false}>
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -40,7 +41,11 @@ export default function RegisterPage() {
               Completa tus datos para registrarte
             </p>
           </div>
-          <RegisterForm leaderId={leaderId} leaderName={leaderName} />
+          <RegisterForm
+            leaderId={leaderId}
+            leaderName={leaderName}
+            campaignId={campaignId}
+          />
         </div>
       </div>
     </AuthGuard>

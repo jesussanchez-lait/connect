@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 
 interface TeamMember {
   id: string;
@@ -19,14 +20,25 @@ export function TeamList() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const apiClient = new ApiClient();
+  const { selectedCampaign } = useCampaign();
 
   useEffect(() => {
-    fetchTeam();
-  }, []);
+    if (selectedCampaign) {
+      fetchTeam();
+    } else {
+      setTeam([]);
+      setLoading(false);
+    }
+  }, [selectedCampaign]);
 
   const fetchTeam = async () => {
+    if (!selectedCampaign) return;
+
+    setLoading(true);
     try {
-      const data = await apiClient.get<TeamMember[]>("/dashboard/my-team");
+      const data = await apiClient.get<TeamMember[]>(
+        `/dashboard/my-team?campaignId=${selectedCampaign.id}`
+      );
       setTeam(data);
     } catch (error) {
       console.error("Error fetching team:", error);
@@ -50,10 +62,21 @@ export function TeamList() {
     );
   }
 
+  if (!selectedCampaign) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Mi Equipo</h3>
+        <p className="text-gray-500 text-center py-8">
+          Selecciona una campaña para ver tu equipo
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Mi Equipo ({team.length})
+        Mi Equipo - {selectedCampaign.name} ({team.length})
       </h3>
       {team.length === 0 ? (
         <p className="text-gray-500 text-center py-8">

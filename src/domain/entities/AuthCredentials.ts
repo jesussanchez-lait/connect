@@ -31,4 +31,7 @@ export interface RegisterCredentials {
   // Datos del multiplicador
   leaderId: string;
   leaderName: string;
+
+  // Datos de la campaña
+  campaignId: string;
 }

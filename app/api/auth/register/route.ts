@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
       !body.city ||
       !body.neighborhood ||
       !body.leaderId ||
-      !body.leaderName
+      !body.leaderName ||
+      !body.campaignId
     ) {
       return NextResponse.json(
         { message: "Todos los campos son requeridos" },
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // En producción, aquí crearías el usuario en la base de datos
-    // y asociarías el leaderId y leaderName
+    // y asociarías el leaderId, leaderName y campaignId
     const fullName = `${body.firstName} ${body.lastName}`;
     const mockUser = {
       id: Date.now().toString(),
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
       longitude: body.longitude,
       leaderId: body.leaderId,
       leaderName: body.leaderName,
+      campaignId: body.campaignId,
       createdAt: new Date(),
     };
 

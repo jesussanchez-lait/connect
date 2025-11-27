@@ -3,36 +3,47 @@
 import { useState, useEffect, useRef } from "react";
 import QRCodeSVG from "react-qr-code";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 
 interface QRCodeData {
   qrData: string;
   userId: string;
+  campaignId: string;
 }
 
 export function QRCodeSection() {
   const [qrData, setQrData] = useState<QRCodeData | null>(null);
   const [loading, setLoading] = useState(true);
   const apiClientRef = useRef(new ApiClient());
+  const { selectedCampaign } = useCampaign();
 
   useEffect(() => {
-    const fetchQRCode = async () => {
-      try {
-        const data = await apiClientRef.current.get<QRCodeData>(
-          "/dashboard/qr-code"
-        );
-        setQrData(data);
-      } catch (error) {
-        console.error("Error fetching QR code:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (selectedCampaign) {
+      fetchQRCode();
+    } else {
+      setQrData(null);
+      setLoading(false);
+    }
+  }, [selectedCampaign]);
 
-    fetchQRCode();
-  }, []);
+  const fetchQRCode = async () => {
+    if (!selectedCampaign) return;
+
+    setLoading(true);
+    try {
+      const data = await apiClientRef.current.get<QRCodeData>(
+        `/dashboard/qr-code?campaignId=${selectedCampaign.id}`
+      );
+      setQrData(data);
+    } catch (error) {
+      console.error("Error fetching QR code:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const downloadQR = () => {
-    if (!qrData) return;
+    if (!qrData || !selectedCampaign) return;
 
     const svg = document.getElementById("qr-code-svg");
     if (!svg) return;
@@ -49,7 +60,10 @@ export function QRCodeSection() {
       const pngFile = canvas.toDataURL("image/png");
 
       const downloadLink = document.createElement("a");
-      downloadLink.download = `qr-code-${qrData.userId}.png`;
+      downloadLink.download = `qr-code-${selectedCampaign.name.replace(
+        /\s+/g,
+        "-"
+      )}.png`;
       downloadLink.href = pngFile;
       downloadLink.click();
     };
@@ -58,10 +72,10 @@ export function QRCodeSection() {
   };
 
   const shareOnSocialMedia = (platform: string) => {
-    if (!qrData) return;
+    if (!qrData || !selectedCampaign) return;
 
     const text = encodeURIComponent(
-      "¡Únete a mi red! Escanea este código QR para registrarte."
+      `¡Únete a mi red en la campaña ${selectedCampaign.name}! Escanea este código QR para registrarte.`
     );
     const url = encodeURIComponent(qrData.qrData);
 
@@ -83,6 +97,19 @@ export function QRCodeSection() {
     window.open(shareUrl, "_blank");
   };
 
+  if (!selectedCampaign) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Mi Código QR
+        </h3>
+        <p className="text-gray-500 text-center py-4">
+          Selecciona una campaña para generar el código QR
+        </p>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
@@ -97,14 +124,21 @@ export function QRCodeSection() {
   if (!qrData) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-gray-500">Error al cargar código QR</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Mi Código QR - {selectedCampaign.name}
+        </h3>
+        <p className="text-gray-500 text-center py-4">
+          Error al cargar código QR
+        </p>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Mi Código QR</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        Mi Código QR - {selectedCampaign.name}
+      </h3>
       <div className="flex flex-col items-center space-y-4">
         <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
           <QRCodeSVG
@@ -112,7 +146,6 @@ export function QRCodeSection() {
             value={qrData.qrData}
             size={200}
             level="H"
-            includeMargin={true}
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full">

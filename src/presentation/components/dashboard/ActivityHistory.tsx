@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 
 interface Activity {
   id: string;
@@ -17,14 +18,25 @@ export function ActivityHistory() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const apiClient = new ApiClient();
+  const { selectedCampaign } = useCampaign();
 
   useEffect(() => {
-    fetchActivities();
-  }, []);
+    if (selectedCampaign) {
+      fetchActivities();
+    } else {
+      setActivities([]);
+      setLoading(false);
+    }
+  }, [selectedCampaign]);
 
   const fetchActivities = async () => {
+    if (!selectedCampaign) return;
+
+    setLoading(true);
     try {
-      const data = await apiClient.get<Activity[]>("/dashboard/activities");
+      const data = await apiClient.get<Activity[]>(
+        `/dashboard/activities?campaignId=${selectedCampaign.id}`
+      );
       setActivities(data);
     } catch (error) {
       console.error("Error fetching activities:", error);
@@ -48,10 +60,23 @@ export function ActivityHistory() {
     );
   }
 
+  if (!selectedCampaign) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Historial de Actividades
+        </h3>
+        <p className="text-gray-500 text-center py-8">
+          Selecciona una campaña para ver el historial
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Historial de Actividades
+        Historial de Actividades - {selectedCampaign.name}
       </h3>
       {activities.length === 0 ? (
         <p className="text-gray-500 text-center py-8">
