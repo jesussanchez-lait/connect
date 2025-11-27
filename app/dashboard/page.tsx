@@ -7,6 +7,7 @@ import { TeamList } from "@/src/presentation/components/dashboard/TeamList";
 import { MyLeader } from "@/src/presentation/components/dashboard/MyLeader";
 import { ActivityHistory } from "@/src/presentation/components/dashboard/ActivityHistory";
 import { TeamMap } from "@/src/presentation/components/dashboard/TeamMap";
+import { CampaignsList } from "@/src/presentation/components/dashboard/CampaignsList";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
@@ -64,6 +65,11 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Campañas Activas */}
+            <div className="mb-6">
+              <CampaignsList />
             </div>
 
             {/* Grid principal */}
