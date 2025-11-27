@@ -9,6 +9,9 @@ export async function POST(request: NextRequest) {
       !body.phoneNumber ||
       !body.firstName ||
       !body.lastName ||
+      !body.documentNumber ||
+      !body.country ||
+      !body.department ||
       !body.city ||
       !body.neighborhood ||
       !body.leaderId ||
@@ -34,11 +37,14 @@ export async function POST(request: NextRequest) {
       id: Date.now().toString(),
       email: `${body.phoneNumber}@phone.local`,
       name: fullName,
-      firstName: body.firstName,
-      lastName: body.lastName,
+      documentNumber: body.documentNumber,
       phoneNumber: body.phoneNumber,
+      country: body.country,
+      department: body.department,
       city: body.city,
       neighborhood: body.neighborhood,
+      latitude: body.latitude,
+      longitude: body.longitude,
       leaderId: body.leaderId,
       leaderName: body.leaderName,
       createdAt: new Date(),

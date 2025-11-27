@@ -14,11 +14,21 @@ export interface OtpResponse {
 }
 
 export interface RegisterCredentials {
-  phoneNumber: string;
+  // Datos personales
   firstName: string;
   lastName: string;
+  documentNumber: string; // Cédula
+  phoneNumber: string; // WhatsApp
+
+  // Datos territoriales
+  country: string;
+  department: string;
   city: string;
   neighborhood: string;
+  latitude?: number;
+  longitude?: number;
+
+  // Datos del multiplicador
   leaderId: string;
   leaderName: string;
 }

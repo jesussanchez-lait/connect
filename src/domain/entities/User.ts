@@ -3,10 +3,13 @@ export interface User {
   email?: string;
   phoneNumber?: string;
   name: string;
-  firstName?: string;
-  lastName?: string;
+  documentNumber?: string;
+  country?: string;
+  department?: string;
   city?: string;
   neighborhood?: string;
+  latitude?: number;
+  longitude?: number;
   leaderId?: string;
   leaderName?: string;
   createdAt: Date;
