@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
+import { AddTeamMemberForm } from "./AddTeamMemberForm";
 
 interface TeamMember {
   id: string;
@@ -20,6 +21,7 @@ interface TeamMember {
 export function TeamList() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
   const apiClientRef = useRef(new ApiClient());
   const { selectedCampaign } = useCampaign();
 
@@ -47,6 +49,31 @@ export function TeamList() {
       setLoading(false);
     }
   }, [selectedCampaign, fetchTeam]);
+
+  // Prevenir scroll del body cuando el modal está abierto
+  useEffect(() => {
+    if (showAddForm) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [showAddForm]);
+
+  // Cerrar modal con tecla Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showAddForm) {
+        setShowAddForm(false);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showAddForm]);
 
   if (loading) {
     return (
@@ -115,9 +142,70 @@ export function TeamList() {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Mi Equipo - {selectedCampaign.name} ({team.length})
-      </h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">
+          Mi Equipo - {selectedCampaign.name} ({team.length})
+        </h3>
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium"
+        >
+          + Agregar Miembro
+        </button>
+      </div>
+
+      {/* Modal */}
+      {showAddForm && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            // Cerrar modal al hacer clic fuera del contenido
+            if (e.target === e.currentTarget) {
+              setShowAddForm(false);
+            }
+          }}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Agregar Miembro al Equipo
+              </h3>
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition-colors"
+                aria-label="Cerrar"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <AddTeamMemberForm
+                onSuccess={() => {
+                  setShowAddForm(false);
+                  fetchTeam();
+                }}
+                onCancel={() => setShowAddForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {team.length === 0 ? (
         <p className="text-gray-500 text-center py-8">
           Aún no tienes personas registradas bajo tu código

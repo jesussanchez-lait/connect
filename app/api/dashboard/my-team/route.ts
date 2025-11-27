@@ -69,3 +69,64 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get("authorization");
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+
+    // Validar campos requeridos
+    if (
+      !body.campaignId ||
+      !body.firstName ||
+      !body.lastName ||
+      !body.phoneNumber ||
+      !body.department ||
+      !body.city ||
+      !body.neighborhood
+    ) {
+      return NextResponse.json(
+        { message: "Todos los campos son requeridos" },
+        { status: 400 }
+      );
+    }
+
+    if (body.phoneNumber.length < 10) {
+      return NextResponse.json(
+        { message: "Número de teléfono inválido" },
+        { status: 400 }
+      );
+    }
+
+    // Mock user ID - In production, extract from token
+    const userId = "1";
+
+    // En producción, aquí crearías el miembro del equipo en la base de datos
+    // asociado al currentUserId como leaderId y con el campaignId
+    const fullName = `${body.firstName} ${body.lastName}`;
+    const newMember = {
+      id: Date.now().toString(),
+      name: fullName,
+      phoneNumber: body.phoneNumber,
+      city: body.city,
+      department: body.department,
+      neighborhood: body.neighborhood,
+      latitude: undefined,
+      longitude: undefined,
+      createdAt: new Date(),
+      teamSize: 0, // Nuevo miembro sin equipo aún
+    };
+
+    return NextResponse.json(newMember, { status: 201 });
+  } catch (error) {
+    return NextResponse.json(
+      { message: "Error al agregar miembro al equipo" },
+      { status: 500 }
+    );
+  }
+}
