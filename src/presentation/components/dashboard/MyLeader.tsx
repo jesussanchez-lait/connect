@@ -10,6 +10,7 @@ interface Leader {
   phoneNumber: string;
   email?: string;
   photo?: string;
+  teamSize: number; // Cantidad de personas bajo su código QR en esta campaña
 }
 
 export function MyLeader() {
@@ -111,6 +112,18 @@ export function MyLeader() {
           {leader.email && (
             <p className="text-sm text-gray-500 mt-1">{leader.email}</p>
           )}
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-700">Equipo:</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                {leader.teamSize}{" "}
+                {leader.teamSize === 1 ? "persona" : "personas"}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Registradas bajo su código QR en esta campaña
+            </p>
+          </div>
         </div>
       </div>
     </div>

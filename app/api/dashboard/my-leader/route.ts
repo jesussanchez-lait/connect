@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
 
     // Mock leader - In production, query database where id = currentUser.leaderId AND campaignId = campaignId
     // Different campaigns might have different leaders
+    // Also include teamSize: count of people registered under leader's QR code for this campaign
     const mockLeaders: Record<string, any> = {
       "camp-1": {
         id: "leader-1",
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
         email: "ana.martinez@example.com",
         photo:
           "https://ui-avatars.com/api/?name=Ana+Martinez&background=6366f1&color=fff&size=128",
+        teamSize: 25, // 25 personas registradas bajo su código QR
       },
       "camp-2": {
         id: "leader-2",
@@ -38,6 +40,7 @@ export async function GET(request: NextRequest) {
         email: "pedro.gonzalez@example.com",
         photo:
           "https://ui-avatars.com/api/?name=Pedro+Gonzalez&background=10b981&color=fff&size=128",
+        teamSize: 18, // 18 personas registradas bajo su código QR
       },
       "camp-3": {
         id: "leader-3",
@@ -46,6 +49,7 @@ export async function GET(request: NextRequest) {
         email: "laura.sanchez@example.com",
         photo:
           "https://ui-avatars.com/api/?name=Laura+Sanchez&background=f59e0b&color=fff&size=128",
+        teamSize: 32, // 32 personas registradas bajo su código QR
       },
     };
 
