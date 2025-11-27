@@ -8,9 +8,35 @@ import {
   OtpVerification,
 } from "@/src/domain/entities/AuthCredentials";
 
+// Función para formatear número de teléfono al formato (xxx)-xxx-xxxx
+function formatPhoneNumber(value: string): string {
+  // Remover todos los caracteres no numéricos
+  const numbers = value.replace(/\D/g, "");
+
+  // Limitar a 10 dígitos
+  const limitedNumbers = numbers.slice(0, 10);
+
+  // Aplicar formato según la cantidad de dígitos
+  if (limitedNumbers.length === 0) return "";
+  if (limitedNumbers.length <= 3) return `(${limitedNumbers}`;
+  if (limitedNumbers.length <= 6) {
+    return `(${limitedNumbers.slice(0, 3)})-${limitedNumbers.slice(3)}`;
+  }
+  return `(${limitedNumbers.slice(0, 3)})-${limitedNumbers.slice(
+    3,
+    6
+  )}-${limitedNumbers.slice(6)}`;
+}
+
+// Función para normalizar número de teléfono (solo dígitos)
+function normalizePhoneNumber(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
 export function LoginForm() {
   const router = useRouter();
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumberDisplay, setPhoneNumberDisplay] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [devOtpCode, setDevOtpCode] = useState<string | null>(null);
@@ -23,7 +49,9 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const credentials: LoginCredentials = { phoneNumber };
+      // Usar el número normalizado (solo dígitos) para enviar al backend
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      const credentials: LoginCredentials = { phoneNumber: normalizedPhone };
       const response = await sendOtpUseCase.execute(credentials);
 
       if (response.success) {
@@ -48,7 +76,12 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const verification: OtpVerification = { phoneNumber, otpCode };
+      // Usar el número normalizado (solo dígitos) para enviar al backend
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      const verification: OtpVerification = {
+        phoneNumber: normalizedPhone,
+        otpCode,
+      };
       await verifyOtpUseCase.execute(verification);
       router.push("/dashboard");
     } catch (err) {
@@ -63,6 +96,15 @@ export function LoginForm() {
     setOtpCode("");
     setDevOtpCode(null);
     setError("");
+  };
+
+  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    const formatted = formatPhoneNumber(inputValue);
+    const normalized = normalizePhoneNumber(inputValue);
+
+    setPhoneNumberDisplay(formatted);
+    setPhoneNumber(normalized);
   };
 
   if (otpSent) {
@@ -144,14 +186,12 @@ export function LoginForm() {
         <input
           id="phoneNumber"
           type="tel"
-          value={phoneNumber}
-          onChange={(e) => {
-            const value = e.target.value.replace(/\D/g, "");
-            setPhoneNumber(value);
-          }}
+          value={phoneNumberDisplay}
+          onChange={handlePhoneNumberChange}
           required
+          maxLength={14} // (xxx)-xxx-xxxx = 14 caracteres
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="1234567890"
+          placeholder="(123)-456-7890"
         />
         <p className="mt-2 text-sm text-gray-500">
           Te enviaremos un código de 6 dígitos por SMS
@@ -160,7 +200,7 @@ export function LoginForm() {
 
       <button
         type="submit"
-        disabled={loading || phoneNumber.length < 10}
+        disabled={loading || normalizePhoneNumber(phoneNumber).length < 10}
         className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? "Enviando código..." : "Enviar Código OTP"}

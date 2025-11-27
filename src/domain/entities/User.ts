@@ -3,6 +3,12 @@ export interface User {
   email?: string;
   phoneNumber?: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
+  city?: string;
+  neighborhood?: string;
+  leaderId?: string;
+  leaderName?: string;
   createdAt: Date;
 }
 

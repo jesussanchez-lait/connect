@@ -1,0 +1,60 @@
+import { NextRequest, NextResponse } from "next/server";
+import { RegisterCredentials } from "@/src/domain/entities/AuthCredentials";
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: RegisterCredentials = await request.json();
+
+    if (
+      !body.phoneNumber ||
+      !body.firstName ||
+      !body.lastName ||
+      !body.city ||
+      !body.neighborhood ||
+      !body.leaderId ||
+      !body.leaderName
+    ) {
+      return NextResponse.json(
+        { message: "Todos los campos son requeridos" },
+        { status: 400 }
+      );
+    }
+
+    if (body.phoneNumber.length < 10) {
+      return NextResponse.json(
+        { message: "Número de celular inválido" },
+        { status: 400 }
+      );
+    }
+
+    // En producción, aquí crearías el usuario en la base de datos
+    // y asociarías el leaderId y leaderName
+    const fullName = `${body.firstName} ${body.lastName}`;
+    const mockUser = {
+      id: Date.now().toString(),
+      email: `${body.phoneNumber}@phone.local`,
+      name: fullName,
+      firstName: body.firstName,
+      lastName: body.lastName,
+      phoneNumber: body.phoneNumber,
+      city: body.city,
+      neighborhood: body.neighborhood,
+      leaderId: body.leaderId,
+      leaderName: body.leaderName,
+      createdAt: new Date(),
+    };
+
+    return NextResponse.json({
+      user: mockUser,
+      tokens: {
+        accessToken: "mock-access-token-" + Date.now(),
+        refreshToken: "mock-refresh-token-" + Date.now(),
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { message: "Error al registrar usuario" },
+      { status: 500 }
+    );
+  }
+}

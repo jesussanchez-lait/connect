@@ -3,6 +3,7 @@ import {
   LoginCredentials,
   OtpVerification,
   OtpResponse,
+  RegisterCredentials,
 } from "@/src/domain/entities/AuthCredentials";
 import { AuthUser, User } from "@/src/domain/entities/User";
 import { IApiClient } from "../api/ApiClient";
@@ -25,6 +26,18 @@ export class AuthRepository implements IAuthRepository {
     const response = await this.apiClient.post<AuthUser>(
       "/auth/verify-otp",
       verification
+    );
+    this.storageService.setItem("accessToken", response.tokens.accessToken);
+    if (response.tokens.refreshToken) {
+      this.storageService.setItem("refreshToken", response.tokens.refreshToken);
+    }
+    return response;
+  }
+
+  async register(credentials: RegisterCredentials): Promise<AuthUser> {
+    const response = await this.apiClient.post<AuthUser>(
+      "/auth/register",
+      credentials
     );
     this.storageService.setItem("accessToken", response.tokens.accessToken);
     if (response.tokens.refreshToken) {

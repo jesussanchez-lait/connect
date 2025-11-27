@@ -12,3 +12,13 @@ export interface OtpResponse {
   message: string;
   otpCode?: string; // Solo en desarrollo
 }
+
+export interface RegisterCredentials {
+  phoneNumber: string;
+  firstName: string;
+  lastName: string;
+  city: string;
+  neighborhood: string;
+  leaderId: string;
+  leaderName: string;
+}

@@ -7,6 +7,7 @@ import {
 } from "@/src/infrastructure/storage/StorageService";
 import { SendOtpUseCase } from "@/src/application/use-cases/auth/LoginUseCase";
 import { VerifyOtpUseCase } from "@/src/application/use-cases/auth/VerifyOtpUseCase";
+import { RegisterUseCase } from "@/src/application/use-cases/auth/RegisterUseCase";
 import { LogoutUseCase } from "@/src/application/use-cases/auth/LogoutUseCase";
 import { GetCurrentUserUseCase } from "@/src/application/use-cases/auth/GetCurrentUserUseCase";
 
@@ -21,6 +22,7 @@ const authRepository: IAuthRepository = new AuthRepository(
 // Use cases
 export const sendOtpUseCase = new SendOtpUseCase(authRepository);
 export const verifyOtpUseCase = new VerifyOtpUseCase(authRepository);
+export const registerUseCase = new RegisterUseCase(authRepository);
 export const logoutUseCase = new LogoutUseCase(authRepository);
 export const getCurrentUserUseCase = new GetCurrentUserUseCase(authRepository);
 
