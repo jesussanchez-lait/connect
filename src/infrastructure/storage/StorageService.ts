@@ -6,22 +6,21 @@ export interface IStorageService {
 
 export class LocalStorageService implements IStorageService {
   setItem(key: string, value: string): void {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem(key, value);
     }
   }
 
   getItem(key: string): string | null {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       return localStorage.getItem(key);
     }
     return null;
   }
 
   removeItem(key: string): void {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.removeItem(key);
     }
   }
 }
-

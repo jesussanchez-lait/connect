@@ -1,11 +1,14 @@
 export interface LoginCredentials {
-  email: string;
-  password: string;
+  phoneNumber: string;
 }
 
-export interface RegisterCredentials {
-  email: string;
-  password: string;
-  name: string;
+export interface OtpVerification {
+  phoneNumber: string;
+  otpCode: string;
 }
 
+export interface OtpResponse {
+  success: boolean;
+  message: string;
+  otpCode?: string; // Solo en desarrollo
+}

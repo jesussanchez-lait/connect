@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { AuthGuard } from '@/src/presentation/components/layout/AuthGuard';
-import { useAuth } from '@/src/presentation/hooks/useAuth';
+import { AuthGuard } from "@/src/presentation/components/layout/AuthGuard";
+import { useAuth } from "@/src/presentation/hooks/useAuth";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
@@ -17,7 +17,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-700">
-                  {user?.name || user?.email}
+                  {user?.name || user?.phoneNumber || user?.email}
                 </span>
                 <button
                   onClick={logout}
@@ -40,15 +40,23 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   <div className="border-l-4 border-blue-500 bg-blue-50 p-4">
                     <p className="text-sm text-blue-700">
-                      <strong>Email:</strong> {user?.email}
+                      <strong>Nombre:</strong> {user?.name}
                     </p>
-                    <p className="text-sm text-blue-700 mt-1">
-                      <strong>Name:</strong> {user?.name}
-                    </p>
+                    {user?.phoneNumber && (
+                      <p className="text-sm text-blue-700 mt-1">
+                        <strong>Celular:</strong> {user.phoneNumber}
+                      </p>
+                    )}
+                    {user?.email && (
+                      <p className="text-sm text-blue-700 mt-1">
+                        <strong>Email:</strong> {user.email}
+                      </p>
+                    )}
                   </div>
                   <div className="mt-6">
                     <p className="text-gray-600">
-                      This is your dashboard. You can start building your application features here.
+                      This is your dashboard. You can start building your
+                      application features here.
                     </p>
                   </div>
                 </div>
@@ -60,4 +68,3 @@ export default function DashboardPage() {
     </AuthGuard>
   );
 }
-

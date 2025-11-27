@@ -1,5 +1,5 @@
-import { AuthGuard } from '@/src/presentation/components/layout/AuthGuard';
-import { LoginForm } from '@/src/presentation/components/auth/LoginForm';
+import { AuthGuard } from "@/src/presentation/components/layout/AuthGuard";
+import { LoginForm } from "@/src/presentation/components/auth/LoginForm";
 
 export default function LoginPage() {
   return (
@@ -8,10 +8,11 @@ export default function LoginPage() {
         <div className="max-w-md w-full space-y-8">
           <div>
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Sign in to your account
+              Iniciar Sesión
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
-              Welcome back! Please sign in to continue.
+              Ingresa tu número de celular para recibir un código de
+              verificación
             </p>
           </div>
           <LoginForm />
@@ -20,4 +21,3 @@ export default function LoginPage() {
     </AuthGuard>
   );
 }
-

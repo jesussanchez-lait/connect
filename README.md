@@ -7,10 +7,12 @@ A Next.js application built with clean architecture principles, featuring authen
 This project follows clean architecture principles with clear separation of concerns:
 
 ### Domain Layer (`src/domain/`)
+
 - **Entities**: Core business objects (User, AuthCredentials)
 - **Repositories**: Interfaces defining data access contracts (IAuthRepository)
 
 ### Application Layer (`src/application/`)
+
 - **Use Cases**: Business logic implementations
   - LoginUseCase
   - RegisterUseCase
@@ -18,11 +20,13 @@ This project follows clean architecture principles with clear separation of conc
   - GetCurrentUserUseCase
 
 ### Infrastructure Layer (`src/infrastructure/`)
+
 - **API Client**: HTTP client for API communication
 - **Storage Service**: Local storage abstraction
 - **Repositories**: Concrete implementations of domain repositories
 
 ### Presentation Layer (`src/presentation/`)
+
 - **Components**: React components (forms, layouts)
 - **Hooks**: Custom React hooks (useAuth)
 - **Pages**: Next.js pages (login, register, dashboard)
@@ -57,11 +61,13 @@ This project follows clean architecture principles with clear separation of conc
 ## Getting Started
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Run the development server:
+
 ```bash
 npm run dev
 ```
@@ -71,20 +77,25 @@ npm run dev
 ## Features
 
 ### Authentication
+
 - **Login**: Sign in with email and password
 - **Register**: Create a new account
 - **Logout**: Sign out from the application
 - **Protected Routes**: Dashboard requires authentication
 
 ### Mock API
+
 The project includes mock API endpoints for development. Replace these with actual backend integration:
+
 - `POST /api/auth/login`
 - `POST /api/auth/register`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
 
 ### Demo Credentials
+
 For testing the login flow:
+
 - Email: `demo@example.com`
 - Password: `password123`
 
@@ -110,4 +121,3 @@ For testing the login flow:
 - **TypeScript**: Type-safe development
 - **Tailwind CSS**: Utility-first CSS framework
 - **Clean Architecture**: Separation of concerns and dependency inversion
-

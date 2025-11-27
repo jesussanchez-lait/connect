@@ -1,4 +1,4 @@
-import { IAuthRepository } from '@/src/domain/repositories/IAuthRepository';
+import { IAuthRepository } from "@/src/domain/repositories/IAuthRepository";
 
 export class LogoutUseCase {
   constructor(private authRepository: IAuthRepository) {}
@@ -7,4 +7,3 @@ export class LogoutUseCase {
     return this.authRepository.logout();
   }
 }
-

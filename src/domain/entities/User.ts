@@ -1,6 +1,7 @@
 export interface User {
   id: string;
-  email: string;
+  email?: string;
+  phoneNumber?: string;
   name: string;
   createdAt: Date;
 }
@@ -14,4 +15,3 @@ export interface AuthUser {
   user: User;
   tokens: AuthTokens;
 }
-

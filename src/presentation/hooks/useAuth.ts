@@ -1,9 +1,12 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { User } from '@/src/domain/entities/User';
-import { getCurrentUserUseCase, logoutUseCase } from '@/src/shared/di/container';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from "react";
+import { User } from "@/src/domain/entities/User";
+import {
+  getCurrentUserUseCase,
+  logoutUseCase,
+} from "@/src/shared/di/container";
+import { useRouter } from "next/navigation";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -29,9 +32,9 @@ export function useAuth() {
     try {
       await logoutUseCase.execute();
       setUser(null);
-      router.push('/login');
+      router.push("/login");
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
     }
   }, [router]);
 
@@ -43,4 +46,3 @@ export function useAuth() {
     refreshUser: checkAuth,
   };
 }
-

@@ -1,12 +1,13 @@
-import { IAuthRepository } from '@/src/domain/repositories/IAuthRepository';
-import { LoginCredentials } from '@/src/domain/entities/AuthCredentials';
-import { AuthUser } from '@/src/domain/entities/User';
+import { IAuthRepository } from "@/src/domain/repositories/IAuthRepository";
+import {
+  LoginCredentials,
+  OtpResponse,
+} from "@/src/domain/entities/AuthCredentials";
 
-export class LoginUseCase {
+export class SendOtpUseCase {
   constructor(private authRepository: IAuthRepository) {}
 
-  async execute(credentials: LoginCredentials): Promise<AuthUser> {
-    return this.authRepository.login(credentials);
+  async execute(credentials: LoginCredentials): Promise<OtpResponse> {
+    return this.authRepository.sendOtp(credentials);
   }
 }
-
