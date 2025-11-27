@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ColombiaApiClient,
   Department,
@@ -16,11 +16,7 @@ export function useColombiaData() {
   const [loadingCities, setLoadingCities] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadDepartments();
-  }, []);
-
-  const loadDepartments = async () => {
+  const loadDepartments = useCallback(async () => {
     setLoadingDepartments(true);
     setError(null);
     try {
@@ -34,9 +30,9 @@ export function useColombiaData() {
     } finally {
       setLoadingDepartments(false);
     }
-  };
+  }, []);
 
-  const loadCitiesByDepartment = async (departmentId: number) => {
+  const loadCitiesByDepartment = useCallback(async (departmentId: number) => {
     setLoadingCities(true);
     setError(null);
     setCities([]);
@@ -51,7 +47,11 @@ export function useColombiaData() {
     } finally {
       setLoadingCities(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadDepartments();
+  }, [loadDepartments]);
 
   return {
     departments,

@@ -77,7 +77,8 @@ export function RegisterForm({ leaderId, leaderName }: RegisterFormProps) {
       loadCitiesByDepartment(Number(departmentId));
       setCityId(""); // Resetear ciudad cuando cambia el departamento
     }
-  }, [departmentId, loadCitiesByDepartment]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [departmentId]);
 
   // Obtener geolocalización
   const getCurrentLocation = () => {
