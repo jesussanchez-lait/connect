@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import QRCodeSVG from "react-qr-code";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
 
@@ -12,22 +12,24 @@ interface QRCodeData {
 export function QRCodeSection() {
   const [qrData, setQrData] = useState<QRCodeData | null>(null);
   const [loading, setLoading] = useState(true);
-  const apiClient = new ApiClient();
-
-  const fetchQRCode = useCallback(async () => {
-    try {
-      const data = await apiClient.get<QRCodeData>("/dashboard/qr-code");
-      setQrData(data);
-    } catch (error) {
-      console.error("Error fetching QR code:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [apiClient]);
+  const apiClientRef = useRef(new ApiClient());
 
   useEffect(() => {
+    const fetchQRCode = async () => {
+      try {
+        const data = await apiClientRef.current.get<QRCodeData>(
+          "/dashboard/qr-code"
+        );
+        setQrData(data);
+      } catch (error) {
+        console.error("Error fetching QR code:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchQRCode();
-  }, [fetchQRCode]);
+  }, []);
 
   const downloadQR = () => {
     if (!qrData) return;
