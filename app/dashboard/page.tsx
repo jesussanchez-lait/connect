@@ -77,9 +77,8 @@ export default function DashboardPage() {
                 <MyLeader />
               </div>
 
-              {/* Grid principal */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {/* Código QR */}
+              {/* Código QR */}
+              <div className="mb-6">
                 <QRCodeSection />
               </div>
 
