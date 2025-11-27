@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Mock team members - In production, query database where leaderId = currentUserId AND campaignId = campaignId
+    // Also include teamSize: count of people registered under each member's QR code for this campaign
     const mockTeam = [
       {
         id: "2",
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
         latitude: 4.6533,
         longitude: -74.0836,
         createdAt: new Date("2024-01-15"),
+        teamSize: 5, // 5 personas registradas bajo su código QR
       },
       {
         id: "3",
@@ -43,6 +45,7 @@ export async function GET(request: NextRequest) {
         latitude: 6.2476,
         longitude: -75.5658,
         createdAt: new Date("2024-01-20"),
+        teamSize: 12, // 12 personas registradas bajo su código QR
       },
       {
         id: "4",
@@ -54,6 +57,7 @@ export async function GET(request: NextRequest) {
         latitude: 3.4516,
         longitude: -76.532,
         createdAt: new Date("2024-02-01"),
+        teamSize: 0, // Sin personas registradas aún
       },
     ];
 

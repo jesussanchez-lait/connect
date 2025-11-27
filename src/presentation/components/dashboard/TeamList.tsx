@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 
@@ -14,29 +14,21 @@ interface TeamMember {
   latitude?: number;
   longitude?: number;
   createdAt: Date;
+  teamSize: number; // Cantidad de personas bajo su perfil
 }
 
 export function TeamList() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const apiClient = new ApiClient();
+  const apiClientRef = useRef(new ApiClient());
   const { selectedCampaign } = useCampaign();
 
-  useEffect(() => {
-    if (selectedCampaign) {
-      fetchTeam();
-    } else {
-      setTeam([]);
-      setLoading(false);
-    }
-  }, [selectedCampaign]);
-
-  const fetchTeam = async () => {
+  const fetchTeam = useCallback(async () => {
     if (!selectedCampaign) return;
 
     setLoading(true);
     try {
-      const data = await apiClient.get<TeamMember[]>(
+      const data = await apiClientRef.current.get<TeamMember[]>(
         `/dashboard/my-team?campaignId=${selectedCampaign.id}`
       );
       setTeam(data);
@@ -45,17 +37,65 @@ export function TeamList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCampaign]);
+
+  useEffect(() => {
+    if (selectedCampaign) {
+      fetchTeam();
+    } else {
+      setTeam([]);
+      setLoading(false);
+    }
+  }, [selectedCampaign, fetchTeam]);
 
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="animate-pulse">
           <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="space-y-3">
-            <div className="h-16 bg-gray-200 rounded"></div>
-            <div className="h-16 bg-gray-200 rounded"></div>
-            <div className="h-16 bg-gray-200 rounded"></div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nombre
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Teléfono
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ubicación
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fecha Registro
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Equipo
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {[1, 2, 3].map((i) => (
+                  <tr key={i}>
+                    <td className="px-6 py-4">
+                      <div className="h-4 bg-gray-200 rounded w-32"></div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-4 bg-gray-200 rounded w-24"></div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-4 bg-gray-200 rounded w-40"></div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-4 bg-gray-200 rounded w-20"></div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -83,37 +123,72 @@ export function TeamList() {
           Aún no tienes personas registradas bajo tu código
         </p>
       ) : (
-        <div className="space-y-3">
-          {team.map((member) => (
-            <div
-              key={member.id}
-              className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-900">{member.name}</h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {member.phoneNumber}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {member.city}, {member.department}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {member.neighborhood}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-400">
-                    {new Date(member.createdAt).toLocaleDateString("es-CO", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nombre
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Teléfono
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ubicación
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Fecha Registro
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Equipo
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {team.map((member) => (
+                <tr
+                  key={member.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {member.name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {member.neighborhood}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {member.phoneNumber}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {member.city}, {member.department}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {new Date(member.createdAt).toLocaleDateString("es-CO", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {member.teamSize}{" "}
+                        {member.teamSize === 1 ? "persona" : "personas"}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

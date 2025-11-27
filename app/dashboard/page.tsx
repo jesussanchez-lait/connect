@@ -71,18 +71,16 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Selector de Campaña */}
-              <div className="mb-6">
+              {/* Selector de Campaña y Multiplicador */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <CampaignSelector />
+                <MyLeader />
               </div>
 
               {/* Grid principal */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 {/* Código QR */}
                 <QRCodeSection />
-
-                {/* Mi Multiplicador */}
-                <MyLeader />
               </div>
 
               {/* Lista de equipo */}

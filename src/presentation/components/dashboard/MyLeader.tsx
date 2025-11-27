@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 
 interface Leader {
   id: string;
@@ -14,22 +15,46 @@ interface Leader {
 export function MyLeader() {
   const [leader, setLeader] = useState<Leader | null>(null);
   const [loading, setLoading] = useState(true);
-  const apiClient = new ApiClient();
+  const apiClientRef = useRef(new ApiClient());
+  const { selectedCampaign } = useCampaign();
 
-  useEffect(() => {
-    fetchLeader();
-  }, []);
+  const fetchLeader = useCallback(async () => {
+    if (!selectedCampaign) {
+      setLeader(null);
+      setLoading(false);
+      return;
+    }
 
-  const fetchLeader = async () => {
+    setLoading(true);
     try {
-      const data = await apiClient.get<Leader>("/dashboard/my-leader");
+      const data = await apiClientRef.current.get<Leader>(
+        `/dashboard/my-leader?campaignId=${selectedCampaign.id}`
+      );
       setLeader(data);
     } catch (error) {
       console.error("Error fetching leader:", error);
+      setLeader(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCampaign]);
+
+  useEffect(() => {
+    fetchLeader();
+  }, [fetchLeader]);
+
+  if (!selectedCampaign) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Mi Multiplicador
+        </h3>
+        <p className="text-gray-500">
+          Selecciona una campaña para ver tu multiplicador
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -52,9 +77,11 @@ export function MyLeader() {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Mi Multiplicador
+          Mi Multiplicador - {selectedCampaign.name}
         </h3>
-        <p className="text-gray-500">No tienes multiplicador asignado</p>
+        <p className="text-gray-500">
+          No tienes multiplicador asignado para esta campaña
+        </p>
       </div>
     );
   }
@@ -62,7 +89,7 @@ export function MyLeader() {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Mi Multiplicador
+        Mi Multiplicador - {selectedCampaign.name}
       </h3>
       <div className="flex items-center space-x-4">
         <div className="flex-shrink-0">
