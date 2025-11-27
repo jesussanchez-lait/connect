@@ -13,7 +13,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (body.otpCode.length !== 6) {
+    // Normalizar código OTP antes de validar longitud
+    const normalizedOtpCode = body.otpCode.replace(/\D/g, "");
+
+    if (normalizedOtpCode.length !== 6) {
       return NextResponse.json(
         { message: "El código OTP debe tener 6 dígitos" },
         { status: 400 }
@@ -21,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar el código OTP
-    const isValid = verifyOtpCode(body.phoneNumber, body.otpCode);
+    const isValid = verifyOtpCode(body.phoneNumber, normalizedOtpCode);
 
     if (!isValid) {
       return NextResponse.json(

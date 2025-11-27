@@ -66,13 +66,24 @@ This project follows clean architecture principles with clear separation of conc
 npm install
 ```
 
-2. Run the development server:
+2. Create a `.env.local` file in the root directory with the following variables:
+
+```env
+# Google Maps API Key (required for map functionality)
+# Get your API key at: https://console.cloud.google.com/google/maps-apis
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+
+# Application URL (optional, defaults to http://localhost:3000)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+3. Run the development server:
 
 ```bash
 npm run dev
 ```
 
-3. Open [http://localhost:3000](http://localhost:3000) in your browser.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Features
 
@@ -83,14 +94,31 @@ npm run dev
 - **Logout**: Sign out from the application
 - **Protected Routes**: Dashboard requires authentication
 
+### Dashboard Features
+
+- **Team Management**: View list of people registered under your QR code
+- **QR Code**: Generate, download, and share your QR code on social media
+- **Leader Information**: View your multiplier's name and photo
+- **Activity History**: Track all registrations under your code
+- **Team Map**: Visualize team members' locations on Google Maps
+
 ### Mock API
 
 The project includes mock API endpoints for development. Replace these with actual backend integration:
+
+**Authentication:**
 
 - `POST /api/auth/login`
 - `POST /api/auth/register`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+
+**Dashboard:**
+
+- `GET /api/dashboard/my-team` - Get list of team members
+- `GET /api/dashboard/my-leader` - Get leader/multiplier information
+- `GET /api/dashboard/activities` - Get activity history
+- `GET /api/dashboard/qr-code` - Generate QR code data
 
 ### Demo Credentials
 
@@ -121,3 +149,12 @@ For testing the login flow:
 - **TypeScript**: Type-safe development
 - **Tailwind CSS**: Utility-first CSS framework
 - **Clean Architecture**: Separation of concerns and dependency inversion
+- **react-qr-code**: QR code generation
+- **@react-google-maps/api**: Google Maps integration
+
+## Environment Variables
+
+Create a `.env.local` file with the following variables:
+
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: Your Google Maps API key (required for map functionality)
+- `NEXT_PUBLIC_APP_URL`: Your application URL (optional, defaults to http://localhost:3000)
