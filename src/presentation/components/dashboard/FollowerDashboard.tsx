@@ -1,0 +1,214 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
+import { MyLeader } from "./MyLeader";
+import { CampaignSelector } from "./CampaignSelector";
+import { useAuth } from "@/src/presentation/hooks/useAuth";
+
+function UserMenu() {
+  const { user, logout } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".user-menu-container")) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="relative user-menu-container">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+      >
+        <div className="flex flex-col items-end">
+          <span className="text-sm font-medium text-gray-900">
+            {user?.name || "Usuario"}
+          </span>
+          {user?.phoneNumber && (
+            <span className="text-xs text-gray-500">{user.phoneNumber}</span>
+          )}
+        </div>
+        <svg
+          className={`w-4 h-4 text-gray-500 transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+          <div className="py-1">
+            <div className="px-4 py-2 border-b border-gray-200">
+              <p className="text-sm font-medium text-gray-900">
+                {user?.name || "Usuario"}
+              </p>
+              {user?.phoneNumber && (
+                <p className="text-xs text-gray-500">{user.phoneNumber}</p>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                logout();
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:bg-red-50 transition-colors flex items-center space-x-2"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function FollowerDashboard() {
+  const { user } = useAuth();
+  const { selectedCampaign } = useCampaign();
+
+  return (
+    <>
+      <nav className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-semibold text-gray-900">Connect</h1>
+              <span className="ml-3 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
+                Seguidor
+              </span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <UserMenu />
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          {/* Información de solo lectura para Seguidores */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <svg
+                className="w-5 h-5 text-blue-600 mt-0.5 mr-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div>
+                <h3 className="text-sm font-medium text-blue-800">
+                  Vista de Solo Lectura
+                </h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  Como seguidor, puedes ver tu información y la de tu
+                  multiplicador, pero no tienes capacidad de reclutar nuevos
+                  miembros.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Selector de Campaña */}
+          <div className="mb-6">
+            <CampaignSelector />
+          </div>
+
+          {/* Información del Multiplicador */}
+          {selectedCampaign && (
+            <div className="mb-6">
+              <MyLeader />
+            </div>
+          )}
+
+          {/* Información Personal */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Mi Información
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  Nombre Completo
+                </label>
+                <p className="text-sm text-gray-900 mt-1">{user?.name}</p>
+              </div>
+              {user?.phoneNumber && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Teléfono
+                  </label>
+                  <p className="text-sm text-gray-900 mt-1">
+                    {user.phoneNumber}
+                  </p>
+                </div>
+              )}
+              {user?.documentNumber && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Documento
+                  </label>
+                  <p className="text-sm text-gray-900 mt-1">
+                    {user.documentNumber}
+                  </p>
+                </div>
+              )}
+              {user?.city && user?.department && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Ubicación
+                  </label>
+                  <p className="text-sm text-gray-900 mt-1">
+                    {user.city}, {user.department}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+    </>
+  );
+}

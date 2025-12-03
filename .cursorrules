@@ -1,0 +1,241 @@
+# CONNECT - Cursor Rules
+
+## Arquitectura del Proyecto
+
+Este proyecto sigue Clean Architecture con las siguientes capas:
+
+### Domain Layer (`src/domain/`)
+
+- **Entities**: Objetos de negocio puros (User, Campaign, etc.)
+- **Repositories**: Interfaces que definen contratos de acceso a datos (IAuthRepository, etc.)
+- **NO debe** depender de ninguna otra capa
+
+### Application Layer (`src/application/`)
+
+- **Use Cases**: Lógica de negocio pura
+- Implementa casos de uso específicos del dominio
+- **NO debe** depender de Infrastructure ni Presentation
+
+### Infrastructure Layer (`src/infrastructure/`)
+
+- **API Client**: Cliente HTTP para comunicación con APIs
+- **Repositories**: Implementaciones concretas de los repositorios del dominio
+- **Storage**: Servicios de almacenamiento (localStorage, etc.)
+- **Mocks**: Sistema de mocking para desarrollo
+
+### Presentation Layer (`src/presentation/`)
+
+- **Components**: Componentes React
+- **Hooks**: Custom hooks de React
+- **Contexts**: Contextos de React para estado global
+- **NO debe** acceder directamente a Infrastructure, solo a través de Use Cases
+
+## Sistema de Roles
+
+### Roles del Sistema (Source of Truth)
+
+Los roles se definen en inglés para lógica de negocio y base de datos:
+
+- `SUPER_ADMIN`: Soporte técnico, gestión global del sistema
+- `ADMIN`: Dirección de campaña, máximo eslabón de la campaña
+- `COORDINATOR`: Coordinación estratégica, "El Auditor"
+- `LINK`: Enlace municipal, "El Activador"
+- `MULTIPLIER`: Multiplicador/Líder, recluta activamente
+- `FOLLOWER`: Seguidor, base electoral, sin capacidad de reclutar
+
+**IMPORTANTE**:
+
+- En código y base de datos usar siempre las constantes en inglés
+- En UI (labels, textos) usar español: "Enlace", "Líder", "Coordinador", etc.
+- Los roles `SUPER_ADMIN` y `ADMIN` son roles de sistema (colección `users`)
+- Los roles `COORDINATOR`, `LINK`, `MULTIPLIER`, `FOLLOWER` son roles contextuales a campaña (array `memberships`)
+
+### Jerarquía del Sistema
+
+```
+SUPER_ADMIN (Sistema)
+  └── ADMIN (Campaña)
+      └── COORDINATOR (Zona: Departamento/Municipio)
+          └── LINK (Zona: Comuna/Vereda)
+              └── MULTIPLIER (Red propia)
+                  └── FOLLOWER (Sin hijos)
+```
+
+## Convenciones de Código
+
+### TypeScript
+
+- Usar tipos estrictos siempre
+- Evitar `any`, usar `unknown` si es necesario
+- Preferir interfaces sobre types para objetos extensibles
+- Usar enums para constantes relacionadas
+
+### React
+
+- Usar componentes funcionales con hooks
+- Prefijos para componentes:
+  - Componentes de presentación: sin prefijo
+  - Componentes de layout: `Layout*`
+  - Componentes de UI: `*Button`, `*Input`, `*Card`
+  - Componentes de dashboard: `*Dashboard`
+- Usar `"use client"` solo cuando sea necesario (interactividad, hooks)
+- Preferir Server Components cuando sea posible
+
+### Nombres de Archivos
+
+- Componentes: PascalCase (`UserProfile.tsx`)
+- Hooks: camelCase con prefijo `use` (`useAuth.ts`)
+- Utilidades: camelCase (`validation.ts`)
+- Tipos/Interfaces: PascalCase (`User.ts`, `IAuthRepository.ts`)
+
+### Estructura de Componentes
+
+```typescript
+// 1. Imports de librerías externas
+import { useState } from "react";
+
+// 2. Imports de componentes internos
+import { Button } from "@/src/presentation/components/ui/Button";
+
+// 3. Imports de hooks
+import { useAuth } from "@/src/presentation/hooks/useAuth";
+
+// 4. Imports de tipos/entidades
+import { User } from "@/src/domain/entities/User";
+
+// 5. Interfaces/Tipos locales
+interface ComponentProps {
+  // ...
+}
+
+// 6. Componente
+export function Component({ ... }: ComponentProps) {
+  // Hooks
+  // Estado local
+  // Efectos
+  // Handlers
+  // Render
+}
+```
+
+## PWA y Offline-First
+
+- Todos los formularios deben funcionar offline
+- Usar Service Worker para cacheo
+- Implementar sincronización "First-to-Sync" al reconectar
+- Mostrar indicadores de estado offline/online
+- Almacenar datos localmente antes de enviar
+
+## Responsive Design
+
+- Mobile-first approach
+- Usar Tailwind CSS breakpoints: `sm:`, `md:`, `lg:`, `xl:`, `2xl:`
+- El rol LINK opera 90% desde móvil, optimizar para móvil
+- COORDINATOR opera principalmente Desktop/Tablet
+
+## Accesibilidad
+
+- Usar ARIA labels en todos los elementos interactivos
+- Navegación por teclado funcional
+- Contraste adecuado (WCAG AA mínimo)
+- Textos alternativos en imágenes
+- Focus visible en todos los elementos interactivos
+
+## Manejo de Errores
+
+- Mostrar mensajes de error claros al usuario
+- Logging de errores en consola para desarrollo
+- Manejar estados de carga (loading states)
+- Validaciones en tiempo real cuando sea posible
+- Feedback visual de acciones (éxito/error)
+
+## Datos Colombianos
+
+- Usar datos realistas de Colombia:
+  - Departamentos y ciudades reales
+  - Formatos de cédula colombiana (7-10 dígitos)
+  - Números de teléfono colombianos (10 dígitos)
+  - Coordenadas geográficas de Colombia
+
+## Visual Sterilization
+
+- **NO mostrar** elementos relacionados con "Día D" en Fase 1:
+  - Reporte de Votos en Urna
+  - Carga de E-14
+  - Asignación de Testigos
+  - Estado de Transporte
+- Usar `featureFlags.enableDayDModule = false` para ocultar estos elementos
+
+## Testing
+
+- Unit tests para lógica de negocio (Use Cases)
+- Component tests para componentes críticos
+- E2E tests para flujos principales
+- Validar Matriz de Fusión y reglas de jerarquía
+
+## Performance
+
+- Lazy loading de componentes pesados
+- Optimización de mapas (Google Maps)
+- Code splitting por rutas
+- Imágenes optimizadas (Next.js Image)
+
+## Mocking
+
+- Usar sistema de mocks centralizado en `src/infrastructure/mocks/`
+- Los mocks deben mantener consistencia entre endpoints
+- Simular delays de red realistas (100-500ms)
+- Manejar casos de error (401, 404, 500)
+- Datos mock deben reflejar la jerarquía del sistema
+
+## Consentimientos Legales
+
+- Implementar checkboxes de consentimiento Ley 1581
+- Implementar checkbox de consentimiento WhatsApp
+- Modal con política completa de tratamiento de datos
+- Validar consentimientos antes de registro
+- Textos legales según Anexos A y B del PDF
+
+## Validación de Identidad
+
+- Componente de "Prueba de Vida" (selfie)
+- Validación de documento de identidad
+- Sistema de alertas de fraude/duplicidad
+- UI de gestión de alertas solo para COORDINATOR
+
+## Gestión de Jerarquías
+
+- Visualizar árbol jerárquico (multiplicador > seguidores)
+- Sistema de "Divorcios" (reasignación)
+- UI de aprobación de divorcios (COORDINATOR)
+- Visualización de red descendente
+- Contadores de equipo por nivel
+
+## Dashboards por Rol
+
+Cada rol tiene un dashboard específico con funcionalidades únicas:
+
+- **SUPER_ADMIN**: Gestión del sistema, configuración global
+- **ADMIN**: Vista completa de campañas, exportación de datos
+- **COORDINATOR**: Auditoría, resolución de conflictos, aprobación de divorcios
+- **LINK**: Gestión de zonas, validación de líderes, prueba de vida
+- **MULTIPLIER**: Reclutamiento activo, QR propio, lista de seguidores
+- **FOLLOWER**: Vista de solo lectura, información personal
+
+## Compresión de Roles
+
+Para campañas locales (Concejo/Edilato), el sistema debe comprimir niveles jerárquicos según `maxScopeLevel` de la campaña activa, inhabilitando niveles superiores innecesarios.
+
+## Integración con Google Maps
+
+- Fallback automático a Leaflet si Google Maps falla
+- Fallback a Geocoding server-side si no hay GPS
+- Optimizar carga de mapas (lazy loading)
+- Usar clusters para muchos marcadores
+
+## Seguridad
+
+- Validar tokens en cada request
+- Sanitizar inputs del usuario
+- Proteger rutas según roles
+- Exportación de datos solo para ADMIN con máscaras DLP

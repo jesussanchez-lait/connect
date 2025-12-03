@@ -1,0 +1,382 @@
+// Mock Handlers - Simulan respuestas de API
+
+import {
+  MOCK_USERS,
+  MOCK_CAMPAIGNS,
+  MOCK_TEAM_MEMBERS,
+  MOCK_LEADER,
+  MOCK_ACTIVITIES,
+  MOCK_FRAUD_ALERTS,
+  MOCK_DIVORCE_REQUESTS,
+  getUserByPhone,
+  getOtpByPhone,
+  generateQRData,
+} from "./mockData";
+
+// Simular delay de red
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Helper para extraer token de headers
+function getTokenFromHeaders(headers: Headers): string | null {
+  const authHeader = headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+  return authHeader.substring(7);
+}
+
+// Almacenar mapeo de token a usuario (simulación de sesión)
+const tokenToUserMap = new Map<string, any>();
+
+// Helper para obtener usuario actual desde token
+function getCurrentUserFromToken(token: string | null) {
+  if (!token) return null;
+
+  // Buscar en el mapa de tokens
+  if (tokenToUserMap.has(token)) {
+    return tokenToUserMap.get(token);
+  }
+
+  // Si no está en el mapa, intentar extraer del formato mock-token-userId-timestamp
+  const match = token.match(/mock-token-(.+?)-/);
+  if (match) {
+    const userId = match[1];
+    // Buscar usuario por ID en los mocks
+    const user = Object.values(MOCK_USERS).find((u: any) => u.id === userId);
+    if (user) {
+      tokenToUserMap.set(token, user);
+      return user;
+    }
+  }
+
+  // Fallback: retornar MULTIPLIER por defecto
+  return MOCK_USERS.MULTIPLIER;
+}
+
+// Auth Handlers
+export const authHandlers = {
+  async sendOtp(phoneNumber: string) {
+    await delay(200);
+    const user = getUserByPhone(phoneNumber);
+    const otp = getOtpByPhone(phoneNumber);
+
+    if (!user || !otp) {
+      throw new Error("Número de teléfono no encontrado");
+    }
+
+    return {
+      success: true,
+      message: "Código OTP enviado exitosamente",
+      otpCode: otp, // Solo en desarrollo
+    };
+  },
+
+  async verifyOtp(phoneNumber: string, otpCode: string) {
+    await delay(300);
+    const user = getUserByPhone(phoneNumber);
+    const expectedOtp = getOtpByPhone(phoneNumber);
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (otpCode !== expectedOtp) {
+      throw new Error("Código OTP inválido");
+    }
+
+    // Generar token mock (en producción sería JWT)
+    const token = `mock-token-${user.id}-${Date.now()}`;
+
+    // Almacenar mapeo token -> usuario
+    tokenToUserMap.set(token, user);
+
+    return {
+      user: {
+        ...user,
+        role: user.role,
+      },
+      tokens: {
+        accessToken: token,
+        refreshToken: `mock-refresh-${user.id}`,
+      },
+    };
+  },
+
+  async register(credentials: any) {
+    await delay(400);
+    // Crear nuevo usuario FOLLOWER
+    const newUser = {
+      id: `user-${Date.now()}`,
+      name: `${credentials.firstName} ${credentials.lastName}`,
+      phoneNumber: credentials.phoneNumber,
+      email: undefined,
+      role: "FOLLOWER" as const,
+      documentNumber: credentials.documentNumber,
+      country: credentials.country,
+      department: credentials.department,
+      city: credentials.city,
+      neighborhood: credentials.neighborhood,
+      latitude: credentials.latitude,
+      longitude: credentials.longitude,
+      leaderId: credentials.leaderId,
+      leaderName: credentials.leaderName,
+      createdAt: new Date(),
+    };
+
+    const token = `mock-token-${newUser.id}-${Date.now()}`;
+
+    // Almacenar mapeo token -> usuario
+    tokenToUserMap.set(token, newUser);
+
+    return {
+      user: newUser,
+      tokens: {
+        accessToken: token,
+        refreshToken: `mock-refresh-${newUser.id}`,
+      },
+    };
+  },
+
+  async logout() {
+    await delay(100);
+    return { success: true };
+  },
+
+  async getCurrentUser(token: string | null) {
+    await delay(150);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    // En mock, retornamos el usuario según el token
+    // En producción, decodificaríamos el JWT
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    return user;
+  },
+};
+
+// Dashboard Handlers
+export const dashboardHandlers = {
+  async getCampaigns(token: string | null) {
+    await delay(200);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Todos los usuarios pueden ver campañas
+    return MOCK_CAMPAIGNS.map((campaign) => ({
+      ...campaign,
+      startDate: campaign.startDate.toISOString(),
+      endDate: campaign.endDate.toISOString(),
+      createdAt: campaign.createdAt.toISOString(),
+    }));
+  },
+
+  async getMyTeam(campaignId: string, token: string | null) {
+    await delay(250);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // MULTIPLIER ve su equipo (seguidores)
+    if (user.role === "MULTIPLIER") {
+      return MOCK_TEAM_MEMBERS.multiplierTeam.map((member) => ({
+        ...member,
+        createdAt: member.createdAt.toISOString(),
+      }));
+    }
+
+    // LINK ve multiplicadores bajo su gestión
+    if (user.role === "LINK") {
+      return MOCK_TEAM_MEMBERS.linkMultipliers;
+    }
+
+    // FOLLOWER no tiene equipo
+    if (user.role === "FOLLOWER") {
+      return [];
+    }
+
+    // COORDINATOR y ADMIN ven estructura completa según su nivel
+    return [];
+  },
+
+  async addTeamMember(data: any, token: string | null) {
+    await delay(300);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Solo MULTIPLIER puede agregar miembros directamente
+    if (user.role !== "MULTIPLIER") {
+      throw new Error("No tienes permisos para agregar miembros");
+    }
+
+    return {
+      success: true,
+      message: "Miembro agregado exitosamente",
+    };
+  },
+
+  async getMyLeader(campaignId: string, token: string | null) {
+    await delay(200);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // MULTIPLIER ve su LINK
+    if (user.role === "MULTIPLIER") {
+      return MOCK_LEADER;
+    }
+
+    // FOLLOWER ve su MULTIPLIER
+    if (user.role === "FOLLOWER") {
+      return {
+        id: MOCK_USERS.MULTIPLIER.id,
+        name: MOCK_USERS.MULTIPLIER.name,
+        phoneNumber: MOCK_USERS.MULTIPLIER.phoneNumber,
+        email: MOCK_USERS.MULTIPLIER.email,
+        photo: undefined,
+        teamSize: MOCK_TEAM_MEMBERS.multiplierTeam.length,
+      };
+    }
+
+    // Otros roles no tienen líder
+    return null;
+  },
+
+  async getQRCode(campaignId: string, token: string | null) {
+    await delay(150);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Solo MULTIPLIER tiene QR code
+    if (user.role !== "MULTIPLIER") {
+      throw new Error("Solo los multiplicadores tienen código QR");
+    }
+
+    const qrData = generateQRData(user.id, campaignId);
+
+    return {
+      qrData,
+      userId: user.id,
+      campaignId,
+    };
+  },
+
+  async getActivities(campaignId: string, token: string | null) {
+    await delay(200);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    return MOCK_ACTIVITIES.map((activity) => ({
+      ...activity,
+      createdAt: activity.createdAt.toISOString(),
+    }));
+  },
+
+  async getCampaignProposal(campaignId: string, token: string | null) {
+    await delay(300);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Simular PDF mock (en producción sería un blob real)
+    const mockPdfContent = `Mock PDF Content for Campaign ${campaignId}`;
+    return new Blob([mockPdfContent], { type: "application/pdf" });
+  },
+
+  // Handlers específicos para COORDINATOR
+  async getFraudAlerts(token: string | null) {
+    await delay(200);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user || user.role !== "COORDINATOR") {
+      throw new Error("Solo los coordinadores pueden ver alertas de fraude");
+    }
+
+    return MOCK_FRAUD_ALERTS.map((alert) => ({
+      ...alert,
+      createdAt: alert.createdAt.toISOString(),
+    }));
+  },
+
+  async getDivorceRequests(token: string | null) {
+    await delay(200);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user || user.role !== "COORDINATOR") {
+      throw new Error(
+        "Solo los coordinadores pueden ver solicitudes de divorcio"
+      );
+    }
+
+    return MOCK_DIVORCE_REQUESTS.map((request) => ({
+      ...request,
+      createdAt: request.createdAt.toISOString(),
+    }));
+  },
+
+  async approveDivorce(divorceId: string, token: string | null) {
+    await delay(300);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user || user.role !== "COORDINATOR") {
+      throw new Error("Solo los coordinadores pueden aprobar divorcios");
+    }
+
+    return {
+      success: true,
+      message: "Divorcio aprobado exitosamente",
+    };
+  },
+};

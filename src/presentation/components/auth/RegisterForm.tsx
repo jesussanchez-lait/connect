@@ -10,6 +10,8 @@ import {
   formatColombianId,
 } from "@/src/shared/utils/validation";
 import { Stepper } from "@/src/presentation/components/ui/Stepper";
+import { HabeasDataCheckbox } from "@/src/presentation/components/legal/HabeasDataCheckbox";
+import { WhatsAppConsentCheckbox } from "@/src/presentation/components/legal/WhatsAppConsentCheckbox";
 
 // Función para formatear número de teléfono al formato (xxx)-xxx-xxxx
 function formatPhoneNumber(value: string): string {
@@ -69,6 +71,12 @@ export function RegisterForm({
   const [longitude, setLongitude] = useState<number | undefined>();
   const [mapError, setMapError] = useState<string>("");
 
+  // Consentimientos legales
+  const [habeasDataConsent, setHabeasDataConsent] = useState(false);
+  const [whatsAppConsent, setWhatsAppConsent] = useState(false);
+  const [habeasDataError, setHabeasDataError] = useState("");
+  const [whatsAppError, setWhatsAppError] = useState("");
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -116,7 +124,13 @@ export function RegisterForm({
 
   // Validar paso 2
   const validateStep2 = (): boolean => {
-    return departmentId !== "" && cityId !== "" && neighborhood.trim() !== "";
+    return (
+      departmentId !== "" &&
+      cityId !== "" &&
+      neighborhood.trim() !== "" &&
+      habeasDataConsent &&
+      whatsAppConsent
+    );
   };
 
   // Avanzar al siguiente paso
@@ -143,7 +157,15 @@ export function RegisterForm({
 
     // Validar todos los campos antes de enviar
     if (!validateStep1() || !validateStep2()) {
-      setError("Por favor completa todos los campos requeridos");
+      if (!habeasDataConsent) {
+        setHabeasDataError("Debes aceptar la política de tratamiento de datos");
+      }
+      if (!whatsAppConsent) {
+        setWhatsAppError("Debes aceptar el consentimiento de WhatsApp");
+      }
+      setError(
+        "Por favor completa todos los campos requeridos y acepta los consentimientos"
+      );
       setLoading(false);
       return;
     }
@@ -468,6 +490,29 @@ export function RegisterForm({
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Consentimientos Legales */}
+              <div className="space-y-4 border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-semibold text-gray-900">
+                  Consentimientos Legales
+                </h4>
+                <HabeasDataCheckbox
+                  value={habeasDataConsent}
+                  onChange={(checked) => {
+                    setHabeasDataConsent(checked);
+                    setHabeasDataError("");
+                  }}
+                  error={habeasDataError}
+                />
+                <WhatsAppConsentCheckbox
+                  value={whatsAppConsent}
+                  onChange={(checked) => {
+                    setWhatsAppConsent(checked);
+                    setWhatsAppError("");
+                  }}
+                  error={whatsAppError}
+                />
               </div>
 
               <div className="flex gap-4">

@@ -120,12 +120,37 @@ The project includes mock API endpoints for development. Replace these with actu
 - `GET /api/dashboard/activities` - Get activity history
 - `GET /api/dashboard/qr-code` - Generate QR code data
 
-### Demo Credentials
+### Credenciales de Prueba
 
-For testing the login flow:
+El sistema incluye credenciales de prueba para cada tipo de rol. Ver [CREDENTIALS.md](./CREDENTIALS.md) para la lista completa.
 
-- Email: `demo@example.com`
-- Password: `password123`
+**Ejemplo rápido:**
+
+- **Multiplicador**: Teléfono `3000000005`, OTP `000005`
+- **Coordinador**: Teléfono `3000000003`, OTP `000003`
+- **Seguidor**: Teléfono `3000000006`, OTP `000006`
+
+### Sistema de Mocking
+
+El proyecto incluye un sistema completo de mocking para desarrollo. Ver [MOCKING.md](./MOCKING.md) para más detalles.
+
+**Características:**
+
+- Datos mock realistas y consistentes
+- Simulación de delays de red
+- Validación de permisos por rol
+- Identificación de usuarios por token
+- Fácil de extender y mantener
+
+### Dashboards por Rol
+
+Cada rol tiene un dashboard específico con funcionalidades únicas:
+
+- **SUPER_ADMIN / ADMIN**: Gestión completa del sistema y campañas
+- **COORDINATOR**: Auditoría, resolución de conflictos, aprobación de divorcios
+- **LINK**: Gestión de zonas, validación de líderes, activación
+- **MULTIPLIER**: Reclutamiento activo, QR propio, gestión de seguidores
+- **FOLLOWER**: Vista de solo lectura, información personal
 
 ## Clean Architecture Benefits
 

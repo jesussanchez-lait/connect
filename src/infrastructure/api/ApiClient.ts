@@ -1,3 +1,5 @@
+import { mockServer } from "../mocks/mockServer";
+
 export interface IApiClient {
   post<T>(url: string, data: unknown): Promise<T>;
   get<T>(url: string): Promise<T>;
@@ -13,6 +15,46 @@ export class ApiClient implements IApiClient {
   }
 
   private async request<T>(url: string, options: RequestInit = {}): Promise<T> {
+    // Si el mock server está habilitado, usar mocks
+    if (mockServer.isEnabled()) {
+      try {
+        const headers = new Headers(options.headers as HeadersInit);
+        const body = options.body
+          ? JSON.parse(options.body as string)
+          : undefined;
+
+        const response = await mockServer.handleRequest(
+          options.method || "GET",
+          `${this.baseUrl}${url}`,
+          body,
+          headers
+        );
+
+        if (!response.ok) {
+          const error = await response
+            .json()
+            .catch(() => ({ message: "An error occurred" }));
+          throw new Error(error.message || "Request failed");
+        }
+
+        // Si es un blob (PDF, etc.), retornar directamente
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/pdf")) {
+          return (await response.blob()) as unknown as T;
+        }
+
+        return response.json();
+      } catch (error: any) {
+        // Si el mock server falla, continuar con request real
+        if (error.message === "Mock server is disabled") {
+          // Continuar con request normal
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // Request normal (sin mocks o si mock falló)
     const token = this.getToken();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -33,6 +75,12 @@ export class ApiClient implements IApiClient {
         .json()
         .catch(() => ({ message: "An error occurred" }));
       throw new Error(error.message || "Request failed");
+    }
+
+    // Manejar diferentes tipos de respuesta
+    const contentType = response.headers.get("content-type");
+    if (contentType?.includes("application/pdf")) {
+      return (await response.blob()) as unknown as T;
     }
 
     return response.json();
