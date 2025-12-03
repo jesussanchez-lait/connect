@@ -216,7 +216,7 @@ export function TeamList() {
               onChange={(e) =>
                 handleLimitChange(Number(e.target.value) as 10 | 20 | 50)
               }
-              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
             >
               <option value={10}>10</option>
               <option value={20}>20</option>

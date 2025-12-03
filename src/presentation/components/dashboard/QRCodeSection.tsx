@@ -177,7 +177,7 @@ export function QRCodeSection() {
               value={shareMessage}
               onChange={(e) => setShareMessage(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-900 placeholder:text-gray-400"
               placeholder="Escribe tu mensaje personalizado..."
             />
             <p className="mt-1 text-xs text-gray-500">

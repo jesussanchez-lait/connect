@@ -174,7 +174,7 @@ export function AddTeamMemberForm({
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, firstName: e.target.value }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
             required
           />
         </div>
@@ -193,7 +193,7 @@ export function AddTeamMemberForm({
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, lastName: e.target.value }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
             required
           />
         </div>
@@ -212,7 +212,7 @@ export function AddTeamMemberForm({
           value={formData.phoneNumberDisplay}
           onChange={handlePhoneNumberChange}
           placeholder="(300) 123-4567"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
           required
         />
       </div>
@@ -234,7 +234,7 @@ export function AddTeamMemberForm({
                 departmentId: e.target.value,
               }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
             required
             disabled={loadingDepartments}
           >
@@ -260,7 +260,7 @@ export function AddTeamMemberForm({
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, cityId: e.target.value }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
             required
             disabled={loadingCities || !formData.departmentId}
           >
@@ -295,7 +295,7 @@ export function AddTeamMemberForm({
               neighborhood: e.target.value,
             }))
           }
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
           required
         />
       </div>

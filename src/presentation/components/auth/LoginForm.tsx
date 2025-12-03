@@ -145,7 +145,7 @@ export function LoginForm() {
             }}
             required
             maxLength={6}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl font-mono tracking-widest"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl font-mono tracking-widest text-gray-900 placeholder:text-gray-400"
             placeholder="000000"
             autoFocus
           />
@@ -195,7 +195,7 @@ export function LoginForm() {
           onChange={handlePhoneNumberChange}
           required
           maxLength={14} // (xxx)-xxx-xxxx = 14 caracteres
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
           placeholder="(123)-456-7890"
         />
         <p className="mt-2 text-sm text-gray-500">

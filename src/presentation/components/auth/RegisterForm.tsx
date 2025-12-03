@@ -271,7 +271,7 @@ export function RegisterForm({
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                     placeholder="Juan"
                   />
                 </div>
@@ -288,7 +288,7 @@ export function RegisterForm({
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                     placeholder="Pérez"
                   />
                 </div>
@@ -308,7 +308,7 @@ export function RegisterForm({
                   onChange={handleDocumentNumberChange}
                   required
                   maxLength={17}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   placeholder="123.456.789-0"
                 />
                 {documentNumber &&
@@ -334,7 +334,7 @@ export function RegisterForm({
                   onChange={handlePhoneNumberChange}
                   required
                   maxLength={14}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   placeholder="(123)-456-7890"
                 />
                 <p className="mt-2 text-sm text-gray-500">
@@ -392,7 +392,7 @@ export function RegisterForm({
                   onChange={(e) => setDepartmentId(e.target.value)}
                   required
                   disabled={loadingDepartments}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed bg-white text-gray-900"
                 >
                   <option value="">
                     {loadingDepartments
@@ -420,7 +420,7 @@ export function RegisterForm({
                   onChange={(e) => setCityId(e.target.value)}
                   required
                   disabled={!departmentId || loadingCities}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed bg-white text-gray-900"
                 >
                   <option value="">
                     {!departmentId
@@ -450,7 +450,7 @@ export function RegisterForm({
                   value={neighborhood}
                   onChange={(e) => setNeighborhood(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   placeholder="Centro, La Candelaria, etc."
                 />
               </div>
