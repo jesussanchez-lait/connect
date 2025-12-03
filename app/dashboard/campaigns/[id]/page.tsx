@@ -135,12 +135,15 @@ function CampaignDetailContent() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const { role } = useRole();
+  const { role, loading: roleLoading } = useRole();
   const campaignId = params.id as string;
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const apiClientRef = useRef(new ApiClient());
+
+  // Mostrar skeleton mientras se verifica el rol
+  const isLoadingRole = roleLoading;
 
   const fetchCampaignDetail = useCallback(async () => {
     if (!campaignId) return;
@@ -168,95 +171,178 @@ function CampaignDetailContent() {
     }
   }, [campaignId, fetchCampaignDetail]);
 
-  // Verificar que solo ADMIN y SUPER_ADMIN puedan ver esta página
-  if (role !== ROLES.ADMIN && role !== ROLES.SUPER_ADMIN) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Acceso Denegado
-          </h2>
-          <p className="text-gray-600 mb-4">
-            Solo los administradores pueden ver los detalles de las campañas.
-          </p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Volver al Dashboard
-          </button>
+  // Renderizar siempre la navegación para transición suave
+  const renderNav = () => (
+    <nav className="bg-white shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+              aria-label="Volver"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            {isLoadingRole || loading ? (
+              <div className="h-6 w-48 bg-gray-200 rounded animate-pulse"></div>
+            ) : campaign ? (
+              <>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  {campaign.name}
+                </h1>
+                {role && (
+                  <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded">
+                    {role === ROLES.SUPER_ADMIN
+                      ? "Soporte Técnico"
+                      : "Dirección"}
+                  </span>
+                )}
+              </>
+            ) : (
+              <h1 className="text-xl font-semibold text-gray-900">Connect</h1>
+            )}
+          </div>
+          <div className="flex items-center space-x-4">
+            <UserMenu />
+          </div>
         </div>
       </div>
+    </nav>
+  );
+
+  // Verificar permisos solo cuando el rol esté cargado
+  if (
+    !isLoadingRole &&
+    role &&
+    role !== ROLES.ADMIN &&
+    role !== ROLES.SUPER_ADMIN
+  ) {
+    return (
+      <>
+        {renderNav()}
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Acceso Denegado
+              </h2>
+              <p className="text-gray-600 mb-4">
+                Solo los administradores pueden ver los detalles de las
+                campañas.
+              </p>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Volver al Dashboard
+              </button>
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
-  if (loading) {
+  // Mostrar skeleton mientras carga
+  if (isLoadingRole || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <>
+        {renderNav()}
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="animate-pulse space-y-6">
+              {/* Información General Skeleton */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  </div>
+                </div>
+              </div>
+              {/* Métricas Skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-white rounded-lg shadow p-6">
+                    <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                    <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+                  </div>
+                ))}
+              </div>
+              {/* Presupuesto Skeleton */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i}>
+                      <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
+                      <div className="h-8 bg-gray-200 rounded w-2/3"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
   if (error || !campaign) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Error al cargar la campaña
-          </h2>
-          <p className="text-gray-600 mb-4">
-            {error || "Campaña no encontrada"}
-          </p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Volver al Dashboard
-          </button>
-        </div>
-      </div>
+      <>
+        {renderNav()}
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Error al cargar la campaña
+              </h2>
+              <p className="text-gray-600 mb-4">
+                {error || "Campaña no encontrada"}
+              </p>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Volver al Dashboard
+              </button>
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
   return (
     <>
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="text-gray-600 hover:text-gray-900"
-                aria-label="Volver"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-              <h1 className="text-xl font-semibold text-gray-900">
-                {campaign.name}
-              </h1>
-              <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded">
-                {role === ROLES.SUPER_ADMIN ? "Soporte Técnico" : "Dirección"}
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <UserMenu />
-            </div>
-          </div>
-        </div>
-      </nav>
+      {renderNav()}
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
@@ -486,12 +572,12 @@ function CampaignDetailContent() {
 
 export default function CampaignDetailPage() {
   return (
-    <AuthGuard requireAuth={true}>
-      <RoleProvider>
-        <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
+      <AuthGuard requireAuth={true}>
+        <RoleProvider>
           <CampaignDetailContent />
-        </div>
-      </RoleProvider>
-    </AuthGuard>
+        </RoleProvider>
+      </AuthGuard>
+    </div>
   );
 }
