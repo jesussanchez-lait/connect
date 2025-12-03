@@ -142,7 +142,17 @@ export class MockServer {
             }
           );
         }
-        const result = await dashboardHandlers.getMyTeam(campaignId, token);
+        const limit = searchParams.get("limit")
+          ? parseInt(searchParams.get("limit")!, 10)
+          : undefined;
+        const sortBy = searchParams.get("sortBy") || undefined;
+        const sortOrder =
+          (searchParams.get("sortOrder") as "asc" | "desc") || undefined;
+        const result = await dashboardHandlers.getMyTeam(campaignId, token, {
+          limit,
+          sortBy,
+          sortOrder,
+        });
         return new Response(JSON.stringify(result), {
           status: 200,
           headers: { "Content-Type": "application/json" },

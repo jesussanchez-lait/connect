@@ -282,7 +282,15 @@ export const dashboardHandlers = {
     };
   },
 
-  async getMyTeam(campaignId: string, token: string | null) {
+  async getMyTeam(
+    campaignId: string,
+    token: string | null,
+    options?: {
+      limit?: number;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+    }
+  ) {
     await delay(250);
     if (!token) {
       throw new Error("No autorizado");
@@ -293,26 +301,74 @@ export const dashboardHandlers = {
       throw new Error("Usuario no encontrado");
     }
 
+    let teamData: any[] = [];
+
     // MULTIPLIER ve su equipo (seguidores)
     if (user.role === "MULTIPLIER") {
-      return MOCK_TEAM_MEMBERS.multiplierTeam.map((member) => ({
+      teamData = MOCK_TEAM_MEMBERS.multiplierTeam.map((member) => ({
         ...member,
         createdAt: member.createdAt.toISOString(),
       }));
-    }
-
-    // LINK ve multiplicadores bajo su gestión
-    if (user.role === "LINK") {
-      return MOCK_TEAM_MEMBERS.linkMultipliers;
-    }
-
-    // FOLLOWER no tiene equipo
-    if (user.role === "FOLLOWER") {
+    } else if (user.role === "LINK") {
+      // LINK ve multiplicadores bajo su gestión
+      teamData = MOCK_TEAM_MEMBERS.linkMultipliers;
+    } else if (user.role === "FOLLOWER") {
+      // FOLLOWER no tiene equipo
+      return [];
+    } else {
+      // COORDINATOR y ADMIN ven estructura completa según su nivel
       return [];
     }
 
-    // COORDINATOR y ADMIN ven estructura completa según su nivel
-    return [];
+    // Aplicar ordenamiento
+    if (options?.sortBy) {
+      const sortField = options.sortBy as keyof (typeof teamData)[0];
+      const sortOrder = options.sortOrder || "asc";
+
+      teamData.sort((a, b) => {
+        let aValue: any = a[sortField];
+        let bValue: any = b[sortField];
+
+        // Manejar fechas
+        if (sortField === "createdAt") {
+          aValue = new Date(aValue).getTime();
+          bValue = new Date(bValue).getTime();
+        }
+
+        // Manejar números
+        if (sortField === "teamSize") {
+          aValue = Number(aValue) || 0;
+          bValue = Number(bValue) || 0;
+        }
+
+        // Manejar strings (incluyendo phoneNumber)
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          aValue = aValue.toLowerCase();
+          bValue = bValue.toLowerCase();
+        }
+
+        // Manejar valores null/undefined
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return sortOrder === "asc" ? 1 : -1;
+        if (bValue == null) return sortOrder === "asc" ? -1 : 1;
+
+        // Comparar
+        if (aValue < bValue) {
+          return sortOrder === "asc" ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortOrder === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    // Aplicar límite
+    if (options?.limit) {
+      teamData = teamData.slice(0, options.limit);
+    }
+
+    return teamData;
   },
 
   async addTeamMember(data: any, token: string | null) {

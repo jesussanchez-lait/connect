@@ -18,37 +18,86 @@ interface TeamMember {
   teamSize: number; // Cantidad de personas bajo su perfil
 }
 
+type SortField = "name" | "phoneNumber" | "city" | "createdAt" | "teamSize";
+type SortOrder = "asc" | "desc";
+
 export function TeamList() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [limit, setLimit] = useState<10 | 20 | 50>(10);
+  const [sortBy, setSortBy] = useState<SortField>("createdAt");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const apiClientRef = useRef(new ApiClient());
+  const hasDataRef = useRef(false);
   const { selectedCampaign } = useCampaign();
 
-  const fetchTeam = useCallback(async () => {
-    if (!selectedCampaign) return;
+  const fetchTeam = useCallback(
+    async (showLoading: boolean = false) => {
+      if (!selectedCampaign) return;
 
-    setLoading(true);
-    try {
-      const data = await apiClientRef.current.get<TeamMember[]>(
-        `/dashboard/my-team?campaignId=${selectedCampaign.id}`
-      );
-      setTeam(data);
-    } catch (error) {
-      console.error("Error fetching team:", error);
-    } finally {
-      setLoading(false);
+      // Solo mostrar skeleton si se solicita explícitamente
+      if (showLoading) {
+        setLoading(true);
+      }
+
+      try {
+        const params = new URLSearchParams({
+          campaignId: selectedCampaign.id,
+          limit: limit.toString(),
+          sortBy,
+          sortOrder,
+        });
+        const data = await apiClientRef.current.get<TeamMember[]>(
+          `/dashboard/my-team?${params.toString()}`
+        );
+        setTeam(data);
+        hasDataRef.current = true;
+      } catch (error) {
+        console.error("Error fetching team:", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selectedCampaign, limit, sortBy, sortOrder]
+  );
+
+  const handleSort = (field: SortField) => {
+    if (sortBy === field) {
+      // Si ya está ordenando por este campo, cambiar el orden
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      // Si es un campo nuevo, ordenar ascendente por defecto
+      setSortBy(field);
+      setSortOrder("asc");
     }
-  }, [selectedCampaign]);
+  };
 
+  const handleLimitChange = (newLimit: 10 | 20 | 50) => {
+    setLimit(newLimit);
+  };
+
+  // Carga inicial cuando cambia la campaña - mostrar skeleton
   useEffect(() => {
     if (selectedCampaign) {
-      fetchTeam();
+      hasDataRef.current = false;
+      fetchTeam(true);
     } else {
       setTeam([]);
       setLoading(false);
+      hasDataRef.current = false;
     }
-  }, [selectedCampaign, fetchTeam]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCampaign]);
+
+  // Actualización sin skeleton cuando cambian filtros/ordenamiento
+  useEffect(() => {
+    // Solo hacer fetch si ya hay datos cargados (no es carga inicial)
+    if (selectedCampaign && hasDataRef.current) {
+      fetchTeam(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [limit, sortBy, sortOrder]);
 
   // Prevenir scroll del body cuando el modal está abierto
   useEffect(() => {
@@ -79,7 +128,16 @@ export function TeamList() {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="flex justify-between items-center mb-4">
+            <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="h-4 bg-gray-200 rounded w-12"></div>
+                <div className="h-8 bg-gray-200 rounded w-16"></div>
+              </div>
+              <div className="h-9 bg-gray-200 rounded w-32"></div>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -102,10 +160,13 @@ export function TeamList() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {[1, 2, 3].map((i) => (
+                {Array.from({ length: 10 }).map((_, i) => (
                   <tr key={i}>
                     <td className="px-6 py-4">
-                      <div className="h-4 bg-gray-200 rounded w-32"></div>
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-32"></div>
+                        <div className="h-3 bg-gray-200 rounded w-24"></div>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="h-4 bg-gray-200 rounded w-24"></div>
@@ -117,7 +178,7 @@ export function TeamList() {
                       <div className="h-4 bg-gray-200 rounded w-20"></div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                      <div className="h-6 bg-gray-200 rounded w-16"></div>
                     </td>
                   </tr>
                 ))}
@@ -146,12 +207,29 @@ export function TeamList() {
         <h3 className="text-lg font-semibold text-gray-900">
           Mi Equipo - {selectedCampaign.name} ({team.length})
         </h3>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium"
-        >
-          + Agregar Miembro
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Selector de límite */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">Mostrar:</label>
+            <select
+              value={limit}
+              onChange={(e) =>
+                handleLimitChange(Number(e.target.value) as 10 | 20 | 50)
+              }
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium"
+          >
+            + Agregar Miembro
+          </button>
+        </div>
       </div>
 
       {/* Modal */}
@@ -215,20 +293,130 @@ export function TeamList() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Nombre
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort("name")}
+                >
+                  <div className="flex items-center gap-2">
+                    Nombre
+                    {sortBy === "name" && (
+                      <svg
+                        className={`w-4 h-4 ${
+                          sortOrder === "asc" ? "" : "rotate-180"
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 15l7-7 7 7"
+                        />
+                      </svg>
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Teléfono
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort("phoneNumber")}
+                >
+                  <div className="flex items-center gap-2">
+                    Teléfono
+                    {sortBy === "phoneNumber" && (
+                      <svg
+                        className={`w-4 h-4 ${
+                          sortOrder === "asc" ? "" : "rotate-180"
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 15l7-7 7 7"
+                        />
+                      </svg>
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ubicación
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort("city")}
+                >
+                  <div className="flex items-center gap-2">
+                    Ubicación
+                    {sortBy === "city" && (
+                      <svg
+                        className={`w-4 h-4 ${
+                          sortOrder === "asc" ? "" : "rotate-180"
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 15l7-7 7 7"
+                        />
+                      </svg>
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha Registro
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort("createdAt")}
+                >
+                  <div className="flex items-center gap-2">
+                    Fecha Registro
+                    {sortBy === "createdAt" && (
+                      <svg
+                        className={`w-4 h-4 ${
+                          sortOrder === "asc" ? "" : "rotate-180"
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 15l7-7 7 7"
+                        />
+                      </svg>
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Equipo
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort("teamSize")}
+                >
+                  <div className="flex items-center gap-2">
+                    Equipo
+                    {sortBy === "teamSize" && (
+                      <svg
+                        className={`w-4 h-4 ${
+                          sortOrder === "asc" ? "" : "rotate-180"
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 15l7-7 7 7"
+                        />
+                      </svg>
+                    )}
+                  </div>
                 </th>
               </tr>
             </thead>
