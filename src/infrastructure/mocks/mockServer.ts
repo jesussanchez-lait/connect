@@ -41,7 +41,12 @@ export class MockServer {
       throw new Error("Mock server is disabled");
     }
 
-    const token = headers?.get("authorization")?.substring(7) || null;
+    // Extraer token del header Authorization (case-insensitive)
+    const authHeader =
+      headers?.get("authorization") || headers?.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : null;
 
     try {
       // Parse URL

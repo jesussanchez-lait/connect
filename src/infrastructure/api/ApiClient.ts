@@ -18,7 +18,14 @@ export class ApiClient implements IApiClient {
     // Si el mock server está habilitado, usar mocks
     if (mockServer.isEnabled()) {
       try {
+        const token = this.getToken();
         const headers = new Headers(options.headers as HeadersInit);
+
+        // Agregar token a los headers si existe
+        if (token) {
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+
         const body = options.body
           ? JSON.parse(options.body as string)
           : undefined;
@@ -88,7 +95,16 @@ export class ApiClient implements IApiClient {
 
   private getToken(): string | null {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("accessToken");
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        console.log(
+          "[ApiClient] Token encontrado en localStorage:",
+          token.substring(0, 20) + "..."
+        );
+      } else {
+        console.log("[ApiClient] No hay token en localStorage");
+      }
+      return token;
     }
     return null;
   }

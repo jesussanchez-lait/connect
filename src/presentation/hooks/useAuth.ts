@@ -20,8 +20,21 @@ export function useAuth() {
   const checkAuth = useCallback(async () => {
     try {
       const currentUser = await getCurrentUserUseCase.execute();
-      setUser(currentUser);
+      if (currentUser) {
+        // Convertir createdAt de string a Date si es necesario
+        const userWithDate = {
+          ...currentUser,
+          createdAt:
+            currentUser.createdAt instanceof Date
+              ? currentUser.createdAt
+              : new Date(currentUser.createdAt),
+        };
+        setUser(userWithDate);
+      } else {
+        setUser(null);
+      }
     } catch (error) {
+      console.error("Error checking auth:", error);
       setUser(null);
     } finally {
       setLoading(false);

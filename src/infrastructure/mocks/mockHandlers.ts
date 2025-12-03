@@ -32,25 +32,47 @@ const tokenToUserMap = new Map<string, any>();
 function getCurrentUserFromToken(token: string | null) {
   if (!token) return null;
 
-  // Buscar en el mapa de tokens
+  // Primero intentar buscar en el mapa de tokens (para sesiones activas)
   if (tokenToUserMap.has(token)) {
     return tokenToUserMap.get(token);
   }
 
-  // Si no está en el mapa, intentar extraer del formato mock-token-userId-timestamp
+  // Si no está en el mapa, extraer el userId del token y buscar en MOCK_USERS
+  // Formato del token: mock-token-{userId}-{timestamp}
   const match = token.match(/mock-token-(.+?)-/);
   if (match) {
     const userId = match[1];
+    console.log(
+      "[Mock] getCurrentUserFromToken: Buscando usuario con ID:",
+      userId
+    );
+
     // Buscar usuario por ID en los mocks
     const user = Object.values(MOCK_USERS).find((u: any) => u.id === userId);
     if (user) {
+      // Guardar en el mapa para futuras referencias
       tokenToUserMap.set(token, user);
+      console.log(
+        "[Mock] getCurrentUserFromToken: Usuario encontrado:",
+        user.name
+      );
       return user;
+    } else {
+      console.error(
+        "[Mock] getCurrentUserFromToken: Usuario no encontrado con ID:",
+        userId
+      );
     }
+  } else {
+    console.error(
+      "[Mock] getCurrentUserFromToken: Formato de token inválido:",
+      token.substring(0, 30)
+    );
   }
 
-  // Fallback: retornar MULTIPLIER por defecto
-  return MOCK_USERS.MULTIPLIER;
+  // No retornar fallback - si no encontramos el usuario, retornar null
+  // Esto forzará un error de autenticación apropiado
+  return null;
 }
 
 // Auth Handlers
@@ -89,6 +111,10 @@ export const authHandlers = {
 
     // Almacenar mapeo token -> usuario
     tokenToUserMap.set(token, user);
+
+    console.log("[Mock] verifyOtp: Token generado:", token);
+    console.log("[Mock] verifyOtp: Usuario:", user.name, "Rol:", user.role);
+    console.log("[Mock] verifyOtp: Token guardado en mapa");
 
     return {
       user: {
@@ -145,17 +171,45 @@ export const authHandlers = {
   async getCurrentUser(token: string | null) {
     await delay(150);
     if (!token) {
+      console.error("[Mock] getCurrentUser: No token provided");
       throw new Error("No autorizado");
     }
+
+    console.log(
+      "[Mock] getCurrentUser: Token recibido:",
+      token.substring(0, 20) + "..."
+    );
+    console.log(
+      "[Mock] getCurrentUser: Tokens en mapa:",
+      Array.from(tokenToUserMap.keys()).map((k) => k.substring(0, 20) + "...")
+    );
 
     // En mock, retornamos el usuario según el token
     // En producción, decodificaríamos el JWT
     const user = getCurrentUserFromToken(token);
     if (!user) {
+      console.error(
+        "[Mock] getCurrentUser: Usuario no encontrado para token:",
+        token.substring(0, 20) + "..."
+      );
       throw new Error("Usuario no encontrado");
     }
 
-    return user;
+    console.log(
+      "[Mock] getCurrentUser: Usuario encontrado:",
+      user.name,
+      "Rol:",
+      user.role
+    );
+
+    // Retornar usuario con formato correcto (convertir Date a string si es necesario)
+    return {
+      ...user,
+      createdAt:
+        user.createdAt instanceof Date
+          ? user.createdAt.toISOString()
+          : user.createdAt,
+    };
   },
 };
 

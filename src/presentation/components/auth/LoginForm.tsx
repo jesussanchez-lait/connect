@@ -83,7 +83,12 @@ export function LoginForm() {
         otpCode,
       };
       await verifyOtpUseCase.execute(verification);
+
+      // Pequeño delay para asegurar que el token se guarde en localStorage
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       router.push("/dashboard");
+      router.refresh(); // Forzar refresh de la página
     } catch (err) {
       setError(err instanceof Error ? err.message : "Código OTP inválido");
     } finally {
