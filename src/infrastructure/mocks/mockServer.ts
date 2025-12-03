@@ -107,6 +107,30 @@ export class MockServer {
         });
       }
 
+      if (
+        pathname.startsWith("/api/dashboard/campaigns/") &&
+        method === "GET"
+      ) {
+        const campaignId = pathname.split("/").pop();
+        if (!campaignId) {
+          return new Response(
+            JSON.stringify({ message: "campaignId es requerido" }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+        const result = await dashboardHandlers.getCampaignDetail(
+          campaignId,
+          token
+        );
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
       if (pathname === "/api/dashboard/my-team" && method === "GET") {
         const campaignId = searchParams.get("campaignId");
         if (!campaignId) {

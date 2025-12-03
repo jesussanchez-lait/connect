@@ -235,6 +235,53 @@ export const dashboardHandlers = {
     }));
   },
 
+  async getCampaignDetail(campaignId: string, token: string | null) {
+    await delay(200);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Solo ADMIN y SUPER_ADMIN pueden ver detalles completos
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      throw new Error("No tienes permisos para ver los detalles de la campaña");
+    }
+
+    // Buscar la campaña
+    const campaign = MOCK_CAMPAIGNS.find((c) => c.id === campaignId);
+    if (!campaign) {
+      throw new Error("Campaña no encontrada");
+    }
+
+    // Retornar detalles completos con métricas adicionales
+    return {
+      ...campaign,
+      startDate: campaign.startDate.toISOString(),
+      endDate: campaign.endDate.toISOString(),
+      createdAt: campaign.createdAt.toISOString(),
+      totalMultipliers: 45, // Mock data
+      totalFollowers: 1205, // Mock data
+      totalCoordinators: 3, // Mock data
+      totalLinks: 8, // Mock data
+      activeZones: 12, // Mock data
+      growthRate: 15.5, // Mock data
+      budget: {
+        allocated: 50000000,
+        spent: 12500000,
+        remaining: 37500000,
+      },
+      metrics: {
+        registrationsToday: 23,
+        registrationsThisWeek: 156,
+        registrationsThisMonth: 642,
+      },
+    };
+  },
+
   async getMyTeam(campaignId: string, token: string | null) {
     await delay(250);
     if (!token) {
