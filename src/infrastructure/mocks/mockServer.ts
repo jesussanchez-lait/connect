@@ -280,6 +280,191 @@ export class MockServer {
         });
       }
 
+      // Multiplier Request routes
+      if (
+        pathname === "/api/dashboard/multiplier-request" &&
+        method === "POST"
+      ) {
+        const result = await dashboardHandlers.createMultiplierRequest(
+          body,
+          token
+        );
+        return new Response(JSON.stringify(result), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (
+        pathname === "/api/dashboard/multiplier-request" &&
+        method === "GET"
+      ) {
+        const userId = searchParams.get("userId");
+        const campaignId = searchParams.get("campaignId");
+        if (!userId || !campaignId) {
+          return new Response(
+            JSON.stringify({ message: "userId y campaignId son requeridos" }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+        const result = await dashboardHandlers.getMultiplierRequestByUser(
+          userId,
+          campaignId,
+          token
+        );
+        if (!result) {
+          return new Response(
+            JSON.stringify({ message: "Solicitud no encontrada" }),
+            {
+              status: 404,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (
+        pathname === "/api/dashboard/multiplier-requests" &&
+        method === "GET"
+      ) {
+        const campaignId = searchParams.get("campaignId");
+        const reviewerId = searchParams.get("reviewerId") || undefined;
+        if (!campaignId) {
+          return new Response(
+            JSON.stringify({ message: "campaignId es requerido" }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+        const result = await dashboardHandlers.getMultiplierRequests(
+          campaignId,
+          reviewerId,
+          token
+        );
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (
+        pathname.startsWith("/api/dashboard/multiplier-requests/") &&
+        method === "GET"
+      ) {
+        const requestId = pathname.split("/").pop();
+        if (!requestId) {
+          return new Response(
+            JSON.stringify({ message: "requestId es requerido" }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+        const result = await dashboardHandlers.getMultiplierRequestById(
+          requestId,
+          token
+        );
+        if (!result) {
+          return new Response(
+            JSON.stringify({ message: "Solicitud no encontrada" }),
+            {
+              status: 404,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (
+        pathname.startsWith("/api/dashboard/multiplier-requests/") &&
+        pathname.endsWith("/approve") &&
+        method === "POST"
+      ) {
+        const requestId = pathname.split("/").slice(-2, -1)[0];
+        if (!requestId) {
+          return new Response(
+            JSON.stringify({ message: "requestId es requerido" }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+        const result = await dashboardHandlers.approveMultiplierRequest(
+          requestId,
+          token
+        );
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (
+        pathname.startsWith("/api/dashboard/multiplier-requests/") &&
+        pathname.endsWith("/reject") &&
+        method === "POST"
+      ) {
+        const requestId = pathname.split("/").slice(-2, -1)[0];
+        if (!requestId) {
+          return new Response(
+            JSON.stringify({ message: "requestId es requerido" }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+        const result = await dashboardHandlers.rejectMultiplierRequest(
+          requestId,
+          body?.rejectionReason,
+          token
+        );
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (
+        pathname.startsWith("/api/dashboard/multiplier-requests/") &&
+        method === "PUT"
+      ) {
+        const requestId = pathname.split("/").pop();
+        if (!requestId) {
+          return new Response(
+            JSON.stringify({ message: "requestId es requerido" }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+        const result = await dashboardHandlers.updateMultiplierRequest(
+          requestId,
+          body,
+          token
+        );
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
       // Route not found
       return new Response(JSON.stringify({ message: "Ruta no encontrada" }), {
         status: 404,

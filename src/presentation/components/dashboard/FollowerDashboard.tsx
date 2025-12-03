@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { MyLeader } from "./MyLeader";
 import { CampaignSelector } from "./CampaignSelector";
+import { MultiplierRequestForm } from "./MultiplierRequestForm";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 
 function UserMenu() {
@@ -160,6 +161,13 @@ export function FollowerDashboard() {
           {selectedCampaign && (
             <div className="mb-6">
               <MyLeader />
+            </div>
+          )}
+
+          {/* Solicitud de Multiplicador */}
+          {selectedCampaign && (
+            <div className="mb-6">
+              <MultiplierRequestForm />
             </div>
           )}
 

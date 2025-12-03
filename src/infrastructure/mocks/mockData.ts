@@ -475,6 +475,53 @@ export function getOtpByPhone(phoneNumber: string): string | null {
   return entry ? entry[1].otp : null;
 }
 
+// Solicitudes de multiplicador mock
+export const MOCK_MULTIPLIER_REQUESTS: Array<{
+  id: string;
+  userId: string;
+  userName: string;
+  userPhoneNumber: string;
+  campaignId: string;
+  campaignName?: string;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: Date;
+  reviewedAt?: Date;
+  reviewedBy?: string;
+  reviewerName?: string;
+  rejectionReason?: string;
+}> = [
+  {
+    id: "multiplier-request-1",
+    userId: "user-follower-1",
+    userName: "Juan Pérez",
+    userPhoneNumber: "3000000006",
+    campaignId: "campaign-1",
+    campaignName: "Campaña Presidencial 2026",
+    status: "pending",
+    requestedAt: new Date("2024-02-20T10:00:00"),
+  },
+  {
+    id: "multiplier-request-2",
+    userId: "member-2",
+    userName: "Laura Sánchez",
+    userPhoneNumber: "3000000007",
+    campaignId: "campaign-1",
+    campaignName: "Campaña Presidencial 2026",
+    status: "pending",
+    requestedAt: new Date("2024-02-21T14:30:00"),
+  },
+  {
+    id: "multiplier-request-3",
+    userId: "member-3",
+    userName: "Roberto Gómez",
+    userPhoneNumber: "3000000008",
+    campaignId: "campaign-1",
+    campaignName: "Campaña Presidencial 2026",
+    status: "pending",
+    requestedAt: new Date("2024-02-22T09:15:00"),
+  },
+];
+
 // Helper para generar QR data
 export function generateQRData(userId: string, campaignId: string): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

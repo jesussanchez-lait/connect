@@ -8,6 +8,7 @@ import {
   MOCK_ACTIVITIES,
   MOCK_FRAUD_ALERTS,
   MOCK_DIVORCE_REQUESTS,
+  MOCK_MULTIPLIER_REQUESTS,
   getUserByPhone,
   getOtpByPhone,
   generateQRData,
@@ -534,6 +535,281 @@ export const dashboardHandlers = {
     return {
       success: true,
       message: "Divorcio aprobado exitosamente",
+    };
+  },
+
+  // Multiplier Request Handlers
+  async createMultiplierRequest(data: any, token: string | null) {
+    await delay(300);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Solo FOLLOWER puede solicitar ser multiplicador
+    if (user.role !== "FOLLOWER") {
+      throw new Error("Solo los seguidores pueden solicitar ser multiplicador");
+    }
+
+    // Verificar si ya existe una solicitud pendiente
+    const existingRequest = MOCK_MULTIPLIER_REQUESTS.find(
+      (req) =>
+        req.userId === user.id &&
+        req.campaignId === data.campaignId &&
+        req.status === "pending"
+    );
+
+    if (existingRequest) {
+      throw new Error("Ya tienes una solicitud pendiente de multiplicador");
+    }
+
+    // Crear nueva solicitud
+    const campaign = MOCK_CAMPAIGNS.find((c) => c.id === data.campaignId);
+    const newRequest = {
+      id: `multiplier-request-${Date.now()}`,
+      userId: user.id,
+      userName: user.name,
+      userPhoneNumber: user.phoneNumber || "",
+      campaignId: data.campaignId,
+      campaignName: campaign?.name || undefined,
+      status: "pending" as const,
+      requestedAt: new Date(),
+    };
+
+    MOCK_MULTIPLIER_REQUESTS.push(newRequest);
+
+    return {
+      ...newRequest,
+      requestedAt: newRequest.requestedAt.toISOString(),
+    };
+  },
+
+  async getMultiplierRequestByUser(
+    userId: string,
+    campaignId: string,
+    token: string | null
+  ) {
+    await delay(200);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Solo el mismo usuario puede ver su solicitud
+    if (user.id !== userId) {
+      throw new Error("No tienes permisos para ver esta solicitud");
+    }
+
+    const request = MOCK_MULTIPLIER_REQUESTS.find(
+      (req) => req.userId === userId && req.campaignId === campaignId
+    );
+
+    if (!request) {
+      return null;
+    }
+
+    return {
+      ...request,
+      requestedAt: request.requestedAt.toISOString(),
+      reviewedAt: request.reviewedAt?.toISOString(),
+    };
+  },
+
+  async getMultiplierRequests(
+    campaignId: string,
+    reviewerId: string | undefined,
+    token: string | null
+  ) {
+    await delay(200);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Solo LINK puede ver solicitudes de multiplicador
+    if (user.role !== "LINK") {
+      throw new Error(
+        "Solo los enlaces municipales pueden ver solicitudes de multiplicador"
+      );
+    }
+
+    // Filtrar solicitudes por campaña y estado pendiente
+    const requests = MOCK_MULTIPLIER_REQUESTS.filter(
+      (req) => req.campaignId === campaignId && req.status === "pending"
+    );
+
+    return requests.map((request) => ({
+      ...request,
+      requestedAt: request.requestedAt.toISOString(),
+      reviewedAt: request.reviewedAt?.toISOString(),
+    }));
+  },
+
+  async getMultiplierRequestById(id: string, token: string | null) {
+    await delay(150);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    const request = MOCK_MULTIPLIER_REQUESTS.find((req) => req.id === id);
+
+    if (!request) {
+      return null;
+    }
+
+    return {
+      ...request,
+      requestedAt: request.requestedAt.toISOString(),
+      reviewedAt: request.reviewedAt?.toISOString(),
+    };
+  },
+
+  async approveMultiplierRequest(requestId: string, token: string | null) {
+    await delay(300);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Solo LINK puede aprobar solicitudes
+    if (user.role !== "LINK") {
+      throw new Error(
+        "Solo los enlaces municipales pueden aprobar solicitudes de multiplicador"
+      );
+    }
+
+    const request = MOCK_MULTIPLIER_REQUESTS.find(
+      (req) => req.id === requestId
+    );
+
+    if (!request) {
+      throw new Error("Solicitud no encontrada");
+    }
+
+    if (request.status !== "pending") {
+      throw new Error(
+        `La solicitud ya fue ${
+          request.status === "approved" ? "aprobada" : "rechazada"
+        }`
+      );
+    }
+
+    // Actualizar solicitud
+    request.status = "approved";
+    request.reviewedAt = new Date();
+    request.reviewedBy = user.id;
+    request.reviewerName = user.name;
+
+    return {
+      ...request,
+      requestedAt: request.requestedAt.toISOString(),
+      reviewedAt: request.reviewedAt.toISOString(),
+    };
+  },
+
+  async rejectMultiplierRequest(
+    requestId: string,
+    rejectionReason: string | undefined,
+    token: string | null
+  ) {
+    await delay(300);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Solo LINK puede rechazar solicitudes
+    if (user.role !== "LINK") {
+      throw new Error(
+        "Solo los enlaces municipales pueden rechazar solicitudes de multiplicador"
+      );
+    }
+
+    const request = MOCK_MULTIPLIER_REQUESTS.find(
+      (req) => req.id === requestId
+    );
+
+    if (!request) {
+      throw new Error("Solicitud no encontrada");
+    }
+
+    if (request.status !== "pending") {
+      throw new Error(
+        `La solicitud ya fue ${
+          request.status === "approved" ? "aprobada" : "rechazada"
+        }`
+      );
+    }
+
+    // Actualizar solicitud
+    request.status = "rejected";
+    request.reviewedAt = new Date();
+    request.reviewedBy = user.id;
+    request.reviewerName = user.name;
+    request.rejectionReason = rejectionReason;
+
+    return {
+      ...request,
+      requestedAt: request.requestedAt.toISOString(),
+      reviewedAt: request.reviewedAt.toISOString(),
+    };
+  },
+
+  async updateMultiplierRequest(
+    requestId: string,
+    updates: any,
+    token: string | null
+  ) {
+    await delay(200);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    const request = MOCK_MULTIPLIER_REQUESTS.find(
+      (req) => req.id === requestId
+    );
+
+    if (!request) {
+      throw new Error("Solicitud no encontrada");
+    }
+
+    // Actualizar campos permitidos
+    Object.assign(request, updates);
+
+    return {
+      ...request,
+      requestedAt: request.requestedAt.toISOString(),
+      reviewedAt: request.reviewedAt?.toISOString(),
     };
   },
 };

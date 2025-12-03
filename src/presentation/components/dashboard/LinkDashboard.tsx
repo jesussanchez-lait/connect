@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { CampaignSelector } from "./CampaignSelector";
+import { MultiplierRequestsList } from "./MultiplierRequestsList";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
 
@@ -191,6 +192,13 @@ export function LinkDashboard() {
           <div className="mb-6">
             <CampaignSelector />
           </div>
+
+          {/* Solicitudes de Multiplicador */}
+          {selectedCampaign && (
+            <div className="mb-6">
+              <MultiplierRequestsList />
+            </div>
+          )}
 
           {/* Multiplicadores bajo gestión */}
           {selectedCampaign && (
