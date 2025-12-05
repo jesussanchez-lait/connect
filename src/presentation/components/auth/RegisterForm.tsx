@@ -280,9 +280,9 @@ export function RegisterForm({
     try {
       const normalizedPhone = normalizePhoneNumber(phoneNumber);
 
-      // Primero guardar los datos del paso 1 en Firebase antes de enviar el OTP
+      // PASO 1: Crear usuario parcial en Firestore (sin autenticación aún)
       console.log(
-        "💾 [REGISTRO] Guardando datos del paso 1 en Firebase antes de enviar OTP"
+        "💾 [REGISTRO] PASO 1: Creando usuario parcial en Firestore (sin autenticación)"
       );
       try {
         const partialUserData = {
@@ -294,11 +294,14 @@ export function RegisterForm({
           leaderName,
           campaignId,
         };
-        console.log("📋 [REGISTRO] Datos a guardar:", partialUserData);
+        console.log(
+          "📋 [REGISTRO] Datos del paso 1 a guardar:",
+          partialUserData
+        );
 
         await createPartialUserUseCase.execute(partialUserData);
         console.log(
-          "✅ [REGISTRO] Datos del paso 1 guardados exitosamente en Firebase"
+          "✅ [REGISTRO] PASO 1 COMPLETADO: Usuario parcial creado en Firestore con ID temporal (teléfono)"
         );
       } catch (partialUserError: any) {
         console.error("❌ [REGISTRO] Error al guardar datos del paso 1:", {
@@ -390,15 +393,22 @@ export function RegisterForm({
         otpCode: otpCode,
       });
 
-      // Verificar el código OTP
+      // PASO 2: Verificar el código OTP y autenticar en Firebase Auth
+      console.log(
+        "🔐 [REGISTRO] PASO 2: Verificando OTP y autenticando en Firebase Auth"
+      );
       let verifyResult;
       try {
         verifyResult = await verifyOtpUseCase.execute(verification);
-        console.log("✅ [REGISTRO] Código OTP verificado exitosamente:", {
-          userId: verifyResult?.user?.id,
-          userName: verifyResult?.user?.name,
-          hasToken: !!verifyResult?.tokens?.accessToken,
-        });
+        console.log(
+          "✅ [REGISTRO] PASO 2 COMPLETADO: Usuario autenticado en Firebase Auth:",
+          {
+            userId: verifyResult?.user?.id,
+            userName: verifyResult?.user?.name,
+            hasToken: !!verifyResult?.tokens?.accessToken,
+            phoneNumber: verifyResult?.user?.phoneNumber,
+          }
+        );
       } catch (verifyError: any) {
         console.error("❌ [REGISTRO] Error al verificar OTP:", {
           error: verifyError,
@@ -411,10 +421,11 @@ export function RegisterForm({
         throw verifyError;
       }
 
-      // Después de verificar el OTP, actualizar el usuario en Firestore con el UID real
-      // Los datos ya fueron guardados antes de enviar el OTP, ahora solo actualizamos con el UID
+      // Después de autenticar, actualizar el documento temporal con el UID real
+      // El documento parcial fue creado en el paso 1 con ID temporal (teléfono)
+      // Ahora lo actualizamos con el UID real del usuario autenticado
       console.log(
-        "🔄 [REGISTRO] Actualizando usuario en Firestore con UID de autenticación"
+        "🔄 [REGISTRO] PASO 2: Actualizando documento temporal con UID real de autenticación"
       );
       try {
         const partialUserData = {
@@ -427,28 +438,32 @@ export function RegisterForm({
           campaignId,
         };
         console.log(
-          "📋 [REGISTRO] Actualizando usuario con datos del paso 1:",
+          "📋 [REGISTRO] Datos del paso 1 a actualizar con UID real:",
           partialUserData
         );
 
-        // Esto ahora actualizará el documento con el UID real del usuario autenticado
+        // Esto actualizará el documento con el UID real del usuario autenticado
+        // Si había un documento temporal con ID de teléfono, lo moverá al UID real
         try {
           await createPartialUserUseCase.execute(partialUserData);
           console.log(
-            "✅ [REGISTRO] Usuario actualizado exitosamente en Firestore con UID real"
+            "✅ [REGISTRO] PASO 2 COMPLETADO: Usuario actualizado en Firestore con UID real"
           );
         } catch (partialUserError: any) {
-          console.error("❌ [REGISTRO] Error al actualizar usuario:", {
-            error: partialUserError,
-            message: partialUserError?.message || "Error desconocido",
-            code: partialUserError?.code,
-            stack: partialUserError?.stack,
-            data: partialUserData,
-          });
+          console.error(
+            "❌ [REGISTRO] Error al actualizar usuario con UID real:",
+            {
+              error: partialUserError,
+              message: partialUserError?.message || "Error desconocido",
+              code: partialUserError?.code,
+              stack: partialUserError?.stack,
+              data: partialUserData,
+            }
+          );
           // No bloqueamos el flujo si falla la actualización,
-          // el registro completo se hará al final
+          // el registro completo se hará en el paso 3
           console.warn(
-            "⚠️ [REGISTRO] Continuando a pesar del error de actualización"
+            "⚠️ [REGISTRO] Continuando al paso 3 a pesar del error de actualización"
           );
         }
       } catch (updateError: any) {
@@ -458,7 +473,7 @@ export function RegisterForm({
           code: updateError?.code,
           stack: updateError?.stack,
         });
-        // Continuar de todas formas
+        // Continuar de todas formas al paso 3
       }
 
       setPhoneVerified(true);
@@ -561,16 +576,27 @@ export function RegisterForm({
         selectedCity: selectedCity?.name,
       });
 
-      console.log("💾 [REGISTRO] Ejecutando registro completo en Firestore");
+      // PASO 3: Actualizar usuario con datos territoriales completos
+      console.log(
+        "💾 [REGISTRO] PASO 3: Actualizando usuario con datos territoriales completos"
+      );
       let result;
       try {
         result = await registerUseCase.execute(credentials);
-        console.log("✅ [REGISTRO] Registro completo exitoso:", {
-          userId: result?.user?.id,
-          userName: result?.user?.name,
-          hasToken: !!result?.tokens?.accessToken,
-          userData: result?.user,
-        });
+        console.log(
+          "✅ [REGISTRO] PASO 3 COMPLETADO: Usuario actualizado con datos territoriales:",
+          {
+            userId: result?.user?.id,
+            userName: result?.user?.name,
+            hasToken: !!result?.tokens?.accessToken,
+            address: result?.user?.address,
+            neighborhood: result?.user?.neighborhood,
+            department: result?.user?.department,
+            city: result?.user?.city,
+            latitude: result?.user?.latitude,
+            longitude: result?.user?.longitude,
+          }
+        );
       } catch (registerError: any) {
         console.error("❌ [REGISTRO] Error al ejecutar registerUseCase:", {
           error: registerError,

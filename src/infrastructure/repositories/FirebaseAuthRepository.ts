@@ -453,20 +453,27 @@ export class FirebaseAuthRepository implements IAuthRepository {
       confirmationResult = null;
       console.log("🧹 [DEBUG] confirmationResult limpiado");
 
-      // Obtener o crear el documento del usuario en Firestore
-      console.log("📄 [DEBUG] Obteniendo datos del usuario de Firestore...", {
-        uid: firebaseUser.uid,
-      });
+      // Obtener el documento del usuario en Firestore
+      // NOTA: El documento parcial ya fue creado en el paso 1, aquí solo lo obtenemos
+      // Si no existe, significa que el flujo no siguió el orden correcto
+      console.log(
+        "📄 [REGISTRO] Obteniendo datos del usuario de Firestore...",
+        {
+          uid: firebaseUser.uid,
+        }
+      );
       const userDocRef = doc(db!, "users", firebaseUser.uid);
       const userDoc = await getDoc(userDocRef);
 
       let user: User;
 
       if (userDoc.exists()) {
-        console.log("✅ [DEBUG] Usuario existe en Firestore");
-        // Usuario existe, obtener datos de Firestore
+        console.log(
+          "✅ [REGISTRO] Usuario existe en Firestore (documento parcial del paso 1)"
+        );
+        // Usuario existe (fue creado en paso 1), obtener datos de Firestore
         const userData = userDoc.data();
-        console.log("📋 [DEBUG] Datos del usuario:", userData);
+        console.log("📋 [REGISTRO] Datos del usuario parcial:", userData);
         user = {
           id: firebaseUser.uid,
           phoneNumber: firebaseUser.phoneNumber || verification.phoneNumber,
@@ -476,6 +483,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
           country: userData.country,
           department: userData.department,
           city: userData.city,
+          address: userData.address,
           neighborhood: userData.neighborhood,
           latitude: userData.latitude,
           longitude: userData.longitude,
@@ -484,8 +492,14 @@ export class FirebaseAuthRepository implements IAuthRepository {
           createdAt: userData.createdAt?.toDate() || new Date(),
         };
       } else {
-        console.log("🆕 [DEBUG] Usuario nuevo, creando documento básico");
-        // Usuario nuevo, crear documento básico
+        // Si no existe el documento, significa que el paso 1 no se ejecutó correctamente
+        // En este caso, creamos un documento mínimo para que el flujo continúe
+        console.warn(
+          "⚠️ [REGISTRO] Usuario no existe en Firestore. El paso 1 podría no haberse ejecutado correctamente."
+        );
+        console.log(
+          "🆕 [REGISTRO] Creando documento básico para continuar el flujo"
+        );
         const newUser: User = {
           id: firebaseUser.uid,
           phoneNumber: firebaseUser.phoneNumber || verification.phoneNumber,
@@ -497,7 +511,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
           ...newUser,
           createdAt: serverTimestamp(),
         });
-        console.log("✅ [DEBUG] Documento de usuario creado en Firestore");
+        console.log("✅ [REGISTRO] Documento básico creado en Firestore");
 
         user = newUser;
       }
