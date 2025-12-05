@@ -4,6 +4,7 @@ import {
   OtpVerification,
   OtpResponse,
   RegisterCredentials,
+  PartialUserCredentials,
 } from "@/src/domain/entities/AuthCredentials";
 import { AuthUser, User } from "@/src/domain/entities/User";
 import { IApiClient } from "../api/ApiClient";
@@ -32,6 +33,12 @@ export class AuthRepository implements IAuthRepository {
       this.storageService.setItem("refreshToken", response.tokens.refreshToken);
     }
     return response;
+  }
+
+  async createPartialUser(credentials: PartialUserCredentials): Promise<void> {
+    // En el repositorio mock, esto no hace nada ya que el registro completo se hace en register
+    // En producción, esto podría llamar a un endpoint específico si es necesario
+    await Promise.resolve();
   }
 
   async register(credentials: RegisterCredentials): Promise<AuthUser> {

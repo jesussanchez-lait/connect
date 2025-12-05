@@ -6,6 +6,7 @@ import {
   registerUseCase,
   sendOtpUseCase,
   verifyOtpUseCase,
+  createPartialUserUseCase,
 } from "@/src/shared/di/container";
 import {
   RegisterCredentials,
@@ -184,7 +185,29 @@ export function RegisterForm({
         phoneNumber: normalizedPhone,
         otpCode,
       };
+
+      // Verificar el código OTP
       await verifyOtpUseCase.execute(verification);
+
+      // Después de verificar el OTP exitosamente, crear el usuario en Firestore
+      // con los datos del paso 1
+      try {
+        await createPartialUserUseCase.execute({
+          firstName,
+          lastName,
+          documentNumber: documentNumber.replace(/\D/g, ""),
+          phoneNumber: normalizedPhone,
+          leaderId,
+          leaderName,
+          campaignId,
+        });
+        console.log("✅ Usuario creado en Firestore con datos del paso 1");
+      } catch (partialUserError) {
+        console.error("Error al crear usuario parcial:", partialUserError);
+        // No bloqueamos el flujo si falla la creación parcial,
+        // el registro completo se hará al final
+      }
+
       setPhoneVerified(true);
       setCurrentStep(3);
       setError("");

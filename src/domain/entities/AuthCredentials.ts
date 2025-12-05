@@ -35,3 +35,18 @@ export interface RegisterCredentials {
   // Datos de la campaña
   campaignId: string;
 }
+
+export interface PartialUserCredentials {
+  // Datos personales (del paso 1)
+  firstName: string;
+  lastName: string;
+  documentNumber: string;
+  phoneNumber: string;
+
+  // Datos del multiplicador
+  leaderId: string;
+  leaderName: string;
+
+  // Datos de la campaña
+  campaignId: string;
+}

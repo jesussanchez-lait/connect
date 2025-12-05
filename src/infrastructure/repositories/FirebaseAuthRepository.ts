@@ -4,6 +4,7 @@ import {
   OtpVerification,
   OtpResponse,
   RegisterCredentials,
+  PartialUserCredentials,
 } from "@/src/domain/entities/AuthCredentials";
 import { AuthUser, User, UserRole } from "@/src/domain/entities/User";
 import { auth, db } from "@/src/infrastructure/firebase";
@@ -533,6 +534,79 @@ export class FirebaseAuthRepository implements IAuthRepository {
     }
   }
 
+  async createPartialUser(credentials: PartialUserCredentials): Promise<void> {
+    try {
+      if (!auth) {
+        throw new Error("Firebase Auth no está inicializado");
+      }
+
+      if (!auth.currentUser) {
+        throw new Error(
+          "Debes verificar tu número de teléfono primero. Por favor, verifica el código OTP."
+        );
+      }
+
+      if (!db) {
+        throw new Error("Firestore no está inicializado");
+      }
+
+      const firebaseUser = auth.currentUser;
+
+      // Verificar si el documento de identidad ya existe
+      if (credentials.documentNumber) {
+        const usersRef = collection(db, "users");
+        const q = query(
+          usersRef,
+          where("documentNumber", "==", credentials.documentNumber)
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          // Verificar que no sea el mismo usuario
+          const existingUser = querySnapshot.docs[0];
+          if (existingUser.id !== firebaseUser.uid) {
+            throw new Error(
+              "Ya existe un usuario registrado con este número de cédula"
+            );
+          }
+        }
+      }
+
+      // Crear o actualizar el documento del usuario en Firestore con datos parciales
+      const userDocRef = doc(db, "users", firebaseUser.uid);
+      const userData = {
+        id: firebaseUser.uid,
+        phoneNumber: firebaseUser.phoneNumber || credentials.phoneNumber,
+        name: `${credentials.firstName} ${credentials.lastName}`,
+        firstName: credentials.firstName,
+        lastName: credentials.lastName,
+        documentNumber: credentials.documentNumber,
+        leaderId: credentials.leaderId,
+        leaderName: credentials.leaderName,
+        campaignId: credentials.campaignId,
+        role: "FOLLOWER" as UserRole, // Rol por defecto para nuevos usuarios
+        updatedAt: serverTimestamp(),
+      };
+
+      // Usar merge: true para actualizar solo los campos proporcionados
+      await setDoc(userDocRef, userData, { merge: true });
+
+      console.log(
+        "✅ [DEBUG] Usuario parcial creado/actualizado en Firestore",
+        {
+          uid: firebaseUser.uid,
+          name: userData.name,
+        }
+      );
+    } catch (error: any) {
+      console.error("❌ [DEBUG] Error creating partial user:", error);
+      throw new Error(
+        error.message ||
+          "Error al crear usuario. Por favor, intenta nuevamente."
+      );
+    }
+  }
+
   async register(credentials: RegisterCredentials): Promise<AuthUser> {
     try {
       if (!auth) {
@@ -569,10 +643,15 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
       // Crear o actualizar el documento del usuario en Firestore
       const userDocRef = doc(db!, "users", firebaseUser.uid);
-      const userData = {
+
+      // Verificar si el usuario ya existe para no sobrescribir createdAt
+      const existingUserDoc = await getDoc(userDocRef);
+      const userData: any = {
         id: firebaseUser.uid,
         phoneNumber: firebaseUser.phoneNumber || credentials.phoneNumber,
         name: `${credentials.firstName} ${credentials.lastName}`,
+        firstName: credentials.firstName,
+        lastName: credentials.lastName,
         documentNumber: credentials.documentNumber,
         country: credentials.country,
         department: credentials.department,
@@ -584,9 +663,13 @@ export class FirebaseAuthRepository implements IAuthRepository {
         leaderName: credentials.leaderName,
         campaignId: credentials.campaignId,
         role: "FOLLOWER" as UserRole, // Rol por defecto para nuevos usuarios
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+
+      // Solo establecer createdAt si el usuario no existe
+      if (!existingUserDoc.exists()) {
+        userData.createdAt = serverTimestamp();
+      }
 
       await setDoc(userDocRef, userData, { merge: true });
 
