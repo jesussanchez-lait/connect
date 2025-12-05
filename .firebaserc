@@ -1,5 +1,14 @@
 {
   "projects": {
     "default": "connect-tierra"
+  },
+  "targets": {
+    "connect-tierra": {
+      "hosting": {
+        "connect-tierra-demo": [
+          "connect-tierra-demo"
+        ]
+      }
+    }
   }
 }

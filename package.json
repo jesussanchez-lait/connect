@@ -5,8 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:firebase": "node scripts/prepare-firebase-build.js && next build && node scripts/restore-api-routes.js && node scripts/verify-deploy-files.js",
+    "deploy:firebase": "npm run build:firebase && firebase deploy --only hosting:connect-tierra-demo",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy:firebase": "npm run build:firebase && firebase deploy --only hosting:connect-tierra-demo"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
