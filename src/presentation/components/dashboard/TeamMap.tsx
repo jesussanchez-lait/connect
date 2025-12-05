@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 
@@ -41,6 +41,7 @@ export function TeamMap() {
       setTeam([]);
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCampaign]);
 
   const fetchTeam = async () => {
@@ -80,6 +81,12 @@ export function TeamMap() {
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
+  // Use the new API loader hook
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: googleMapsApiKey || "",
+    libraries: ["maps"], // Only load maps library, not places (places is loaded separately in RegisterForm)
+  });
+
   if (!googleMapsApiKey) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
@@ -96,7 +103,22 @@ export function TeamMap() {
     );
   }
 
-  if (loading) {
+  if (loadError) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Mapa del Equipo
+        </h3>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-sm text-red-800">
+            Error al cargar Google Maps: {loadError.message}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="animate-pulse">
@@ -137,35 +159,33 @@ export function TeamMap() {
           </p>
         </div>
       ) : (
-        <LoadScript googleMapsApiKey={googleMapsApiKey}>
-          <GoogleMap
-            mapContainerStyle={mapContainerStyle}
-            center={mapCenter}
-            zoom={validMembers.length === 1 ? 12 : 6}
-            options={{
-              disableDefaultUI: false,
-              zoomControl: true,
-              streetViewControl: false,
-              mapTypeControl: false,
-            }}
-          >
-            {validMembers.map((member) => (
-              <Marker
-                key={member.id}
-                position={{
-                  lat: member.latitude,
-                  lng: member.longitude,
-                }}
-                title={`${member.name} - ${member.city}`}
-                label={{
-                  text: member.name.charAt(0).toUpperCase(),
-                  color: "white",
-                  fontWeight: "bold",
-                }}
-              />
-            ))}
-          </GoogleMap>
-        </LoadScript>
+        <GoogleMap
+          mapContainerStyle={mapContainerStyle}
+          center={mapCenter}
+          zoom={validMembers.length === 1 ? 12 : 6}
+          options={{
+            disableDefaultUI: false,
+            zoomControl: true,
+            streetViewControl: false,
+            mapTypeControl: false,
+          }}
+        >
+          {validMembers.map((member) => (
+            <Marker
+              key={member.id}
+              position={{
+                lat: member.latitude,
+                lng: member.longitude,
+              }}
+              title={`${member.name} - ${member.city}`}
+              label={{
+                text: member.name.charAt(0).toUpperCase(),
+                color: "white",
+                fontWeight: "bold",
+              }}
+            />
+          ))}
+        </GoogleMap>
       )}
     </div>
   );

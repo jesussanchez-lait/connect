@@ -20,6 +20,7 @@ import {
 import { Stepper } from "@/src/presentation/components/ui/Stepper";
 import { HabeasDataCheckbox } from "@/src/presentation/components/legal/HabeasDataCheckbox";
 import { WhatsAppConsentCheckbox } from "@/src/presentation/components/legal/WhatsAppConsentCheckbox";
+import { loadGoogleMaps } from "@/src/infrastructure/api/GoogleMapsLoader";
 
 // Función para formatear número de teléfono al formato (xxx)-xxx-xxxx
 function formatPhoneNumber(value: string): string {
@@ -81,7 +82,8 @@ export function RegisterForm({
   const [mapError, setMapError] = useState<string>("");
 
   // Referencias para Google Places Autocomplete
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const autocompleteRef =
+    useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -120,104 +122,206 @@ export function RegisterForm({
       return;
     }
 
+    let isMounted = true;
+
     // Función para inicializar autocomplete cuando Google Maps esté listo
-    const initAutocomplete = () => {
-      if (
-        typeof window !== "undefined" &&
-        window.google &&
-        window.google.maps &&
-        window.google.maps.places &&
-        addressInputRef.current
-      ) {
-        // Limpiar autocomplete anterior si existe
-        if (autocompleteRef.current) {
-          try {
-            window.google.maps.event.clearInstanceListeners(
-              autocompleteRef.current
-            );
-          } catch (e) {
-            console.warn("Error al limpiar listeners:", e);
-          }
+    const initAutocomplete = (google: typeof window.google) => {
+      if (!isMounted || !addressInputRef.current) {
+        console.warn("⚠️ [REGISTRO] Input ref o componente no montado");
+        return;
+      }
+
+      // Verificar que Places está disponible
+      if (!google.maps?.places) {
+        console.error("❌ [REGISTRO] Places library no está disponible");
+        if (isMounted) {
+          setMapError(
+            "La biblioteca de Places no está disponible. Por favor, ingresa tu dirección manualmente."
+          );
+        }
+        return;
+      }
+
+      // Verificar que PlaceAutocompleteElement está disponible
+      if (!google.maps.places.PlaceAutocompleteElement) {
+        console.error(
+          "❌ [REGISTRO] PlaceAutocompleteElement no está disponible en Places"
+        );
+        if (isMounted) {
+          setMapError(
+            "El autocompletado no está disponible. Por favor, ingresa tu dirección manualmente."
+          );
+        }
+        return;
+      }
+
+      // Limpiar autocomplete anterior si existe
+      if (autocompleteRef.current) {
+        try {
+          // Remover listeners y el elemento
+          autocompleteRef.current.remove();
+        } catch (e) {
+          console.warn("Error al limpiar autocomplete anterior:", e);
+        }
+      }
+
+      // Crear nuevo autocomplete usando la nueva API PlaceAutocompleteElement
+      // PlaceAutocompleteElement es un Web Component que reemplaza el input
+      try {
+        if (!addressInputRef.current?.parentElement) {
+          throw new Error("Input element no tiene parent");
         }
 
-        // Crear nuevo autocomplete
-        try {
-          autocompleteRef.current = new window.google.maps.places.Autocomplete(
-            addressInputRef.current,
-            {
-              componentRestrictions: { country: "co" }, // Restringir a Colombia
-              fields: [
-                "formatted_address",
-                "geometry",
-                "address_components",
-                "place_id",
-              ],
-              types: ["address"], // Solo direcciones
-            }
-          );
-
-          // Listener para cuando se selecciona una dirección
-          autocompleteRef.current.addListener("place_changed", () => {
-            const place = autocompleteRef.current?.getPlace();
-            if (place && place.geometry && place.geometry.location) {
-              const location = place.geometry.location;
-              const formattedAddress = place.formatted_address || "";
-              setAddress(formattedAddress);
-              setLatitude(location.lat());
-              setLongitude(location.lng());
-              setMapError("");
-              console.log("📍 [REGISTRO] Dirección seleccionada:", {
-                address: formattedAddress,
-                lat: location.lat(),
-                lng: location.lng(),
-              });
-            }
+        // Crear el elemento PlaceAutocompleteElement
+        autocompleteRef.current =
+          new google.maps.places.PlaceAutocompleteElement({
+            componentRestrictions: { country: "co" }, // Restringir a Colombia
+            types: ["geocode"], // Solo direcciones geocodificadas
+            requestedRegion: "co", // Región Colombia
           });
 
-          console.log("✅ [REGISTRO] Google Places Autocomplete inicializado");
-        } catch (error) {
-          console.error("❌ [REGISTRO] Error al crear autocomplete:", error);
+        // Configurar atributos del elemento
+        autocompleteRef.current.setAttribute("id", "address-autocomplete");
+        autocompleteRef.current.setAttribute(
+          "class",
+          addressInputRef.current.className
+        );
+        autocompleteRef.current.setAttribute(
+          "placeholder",
+          addressInputRef.current.placeholder || ""
+        );
+        autocompleteRef.current.setAttribute("value", address);
+
+        // Reemplazar el input con el nuevo elemento
+        addressInputRef.current.parentElement.replaceChild(
+          autocompleteRef.current,
+          addressInputRef.current
+        );
+
+        // Listener para cuando se selecciona una dirección (evento 'gmp-select' en la nueva API)
+        autocompleteRef.current.addEventListener(
+          "gmp-select",
+          async (event: any) => {
+            if (!isMounted) return;
+
+            try {
+              const place = event.place;
+              if (place && place.geometry && place.geometry.location) {
+                const location = place.geometry.location;
+
+                // Obtener la dirección formateada
+                let formattedAddress = "";
+                if (place.formattedAddress) {
+                  formattedAddress = place.formattedAddress;
+                } else if (place.displayName) {
+                  formattedAddress = place.displayName;
+                }
+
+                setAddress(formattedAddress);
+
+                // Obtener coordenadas (puede ser LatLng o LatLngLiteral)
+                if (typeof location.lat === "function") {
+                  setLatitude(location.lat());
+                  setLongitude(location.lng());
+                } else {
+                  setLatitude(location.lat);
+                  setLongitude(location.lng);
+                }
+
+                setMapError("");
+                console.log("📍 [REGISTRO] Dirección seleccionada:", {
+                  address: formattedAddress,
+                  lat:
+                    typeof location.lat === "function"
+                      ? location.lat()
+                      : location.lat,
+                  lng:
+                    typeof location.lng === "function"
+                      ? location.lng()
+                      : location.lng,
+                });
+              }
+            } catch (error) {
+              console.error(
+                "❌ [REGISTRO] Error al procesar lugar seleccionado:",
+                error
+              );
+            }
+          }
+        );
+
+        // Listener para cambios en el valor del input
+        autocompleteRef.current.addEventListener("input", (event: any) => {
+          if (isMounted) {
+            setAddress(event.target.value || "");
+          }
+        });
+
+        console.log(
+          "✅ [REGISTRO] Google Places PlaceAutocompleteElement inicializado correctamente"
+        );
+      } catch (error) {
+        console.error(
+          "❌ [REGISTRO] Error al crear PlaceAutocompleteElement:",
+          error
+        );
+        if (isMounted) {
+          setMapError(
+            "Error al inicializar el autocompletado. Por favor, ingresa tu dirección manualmente."
+          );
         }
       }
     };
 
-    // Verificar si Google Maps ya está cargado
-    if (typeof window !== "undefined" && window.google?.maps?.places) {
-      // Pequeño delay para asegurar que el input esté renderizado
-      setTimeout(initAutocomplete, 100);
-    } else {
-      // Esperar a que se cargue Google Maps
-      const checkGoogleMaps = setInterval(() => {
-        if (typeof window !== "undefined" && window.google?.maps?.places) {
-          clearInterval(checkGoogleMaps);
-          setTimeout(initAutocomplete, 100);
-        }
-      }, 100);
+    // Cargar Google Maps usando el nuevo API loader
+    loadGoogleMaps()
+      .then((google) => {
+        if (!isMounted) return;
 
-      // Timeout después de 10 segundos
-      setTimeout(() => {
-        clearInterval(checkGoogleMaps);
-        if (!window.google?.maps?.places) {
-          console.error("❌ [REGISTRO] Google Maps Places API no se cargó");
+        // Verificar que Places está cargado
+        if (!google.maps?.places) {
+          console.error(
+            "❌ [REGISTRO] Places library no se cargó correctamente"
+          );
+          if (isMounted) {
+            setMapError(
+              "No se pudo cargar la biblioteca de Places. Por favor, ingresa tu dirección manualmente."
+            );
+          }
+          return;
+        }
+
+        // Pequeño delay para asegurar que el input esté renderizado
+        setTimeout(() => {
+          if (isMounted && addressInputRef.current) {
+            initAutocomplete(google);
+          } else {
+            console.warn("⚠️ [REGISTRO] Input no disponible después del delay");
+          }
+        }, 200);
+      })
+      .catch((error) => {
+        console.error("❌ [REGISTRO] Error al cargar Google Maps:", error);
+        if (isMounted) {
           setMapError(
             "No se pudo cargar el autocompletado de direcciones. Por favor, ingresa tu dirección manualmente."
           );
         }
-      }, 10000);
-    }
+      });
 
     // Cleanup
     return () => {
-      if (autocompleteRef.current && window.google?.maps?.event) {
+      isMounted = false;
+      if (autocompleteRef.current) {
         try {
-          window.google.maps.event.clearInstanceListeners(
-            autocompleteRef.current
-          );
+          // Remover el elemento y sus listeners
+          autocompleteRef.current.remove();
         } catch (e) {
           console.warn("Error en cleanup:", e);
         }
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [googleMapsApiKey, currentStep]); // Re-inicializar cuando cambie el paso
 
   // Obtener geolocalización
