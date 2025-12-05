@@ -150,22 +150,106 @@ export function RegisterForm({
 
   // Enviar OTP para verificación de teléfono
   const handleSendOtp = async () => {
+    console.log("📱 [REGISTRO] Iniciando envío de código OTP");
+    console.log("📋 [REGISTRO] Datos del paso 1:", {
+      firstName,
+      lastName,
+      documentNumber: documentNumber.replace(/\D/g, ""),
+      phoneNumber: normalizePhoneNumber(phoneNumber),
+      leaderId,
+      leaderName,
+      campaignId,
+    });
+
     setError("");
     setLoading(true);
 
     try {
       const normalizedPhone = normalizePhoneNumber(phoneNumber);
-      const response = await sendOtpUseCase.execute({
-        phoneNumber: normalizedPhone,
-      });
+
+      // Primero guardar los datos del paso 1 en Firebase antes de enviar el OTP
+      console.log(
+        "💾 [REGISTRO] Guardando datos del paso 1 en Firebase antes de enviar OTP"
+      );
+      try {
+        const partialUserData = {
+          firstName,
+          lastName,
+          documentNumber: documentNumber.replace(/\D/g, ""),
+          phoneNumber: normalizedPhone,
+          leaderId,
+          leaderName,
+          campaignId,
+        };
+        console.log("📋 [REGISTRO] Datos a guardar:", partialUserData);
+
+        await createPartialUserUseCase.execute(partialUserData);
+        console.log(
+          "✅ [REGISTRO] Datos del paso 1 guardados exitosamente en Firebase"
+        );
+      } catch (partialUserError: any) {
+        console.error("❌ [REGISTRO] Error al guardar datos del paso 1:", {
+          error: partialUserError,
+          message: partialUserError?.message || "Error desconocido",
+          code: partialUserError?.code,
+          stack: partialUserError?.stack,
+          data: {
+            firstName,
+            lastName,
+            documentNumber: documentNumber.replace(/\D/g, ""),
+            phoneNumber: normalizedPhone,
+            leaderId,
+            leaderName,
+            campaignId,
+          },
+        });
+        // Continuar con el envío del OTP aunque falle el guardado parcial
+        // El registro completo se hará después de verificar el OTP
+        console.warn(
+          "⚠️ [REGISTRO] Continuando con envío de OTP a pesar del error"
+        );
+      }
+
+      console.log("📤 [REGISTRO] Enviando OTP al número:", normalizedPhone);
+      let response;
+      try {
+        response = await sendOtpUseCase.execute({
+          phoneNumber: normalizedPhone,
+        });
+        console.log("✅ [REGISTRO] Respuesta de sendOtpUseCase:", response);
+      } catch (otpError: any) {
+        console.error("❌ [REGISTRO] Error al ejecutar sendOtpUseCase:", {
+          error: otpError,
+          message: otpError?.message || "Error desconocido",
+          code: otpError?.code,
+          stack: otpError?.stack,
+          phoneNumber: normalizedPhone,
+        });
+        throw otpError;
+      }
 
       if (response.success) {
+        console.log("✅ [REGISTRO] Código OTP enviado exitosamente");
         setOtpSent(true);
         setCurrentStep(2);
+        console.log("✅ [REGISTRO] Avanzando al paso 2 (Verificación de OTP)");
       } else {
+        console.error("❌ [REGISTRO] Error al enviar OTP:", {
+          success: response.success,
+          message: response.message,
+          response,
+        });
         setError(response.message || "Error al enviar código OTP");
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error("❌ [REGISTRO] Excepción completa al enviar OTP:", {
+        error: err,
+        message: err?.message || "Error desconocido",
+        code: err?.code,
+        stack: err?.stack,
+        name: err?.name,
+        phoneNumber: normalizePhoneNumber(phoneNumber),
+      });
       setError(
         err instanceof Error ? err.message : "Error al enviar código OTP"
       );
@@ -176,6 +260,7 @@ export function RegisterForm({
 
   // Verificar OTP
   const handleVerifyOtp = async () => {
+    console.log("🔐 [REGISTRO] Iniciando verificación de OTP");
     setError("");
     setLoading(true);
 
@@ -186,13 +271,40 @@ export function RegisterForm({
         otpCode,
       };
 
-      // Verificar el código OTP
-      await verifyOtpUseCase.execute(verification);
+      console.log("📱 [REGISTRO] Verificando código OTP:", {
+        phoneNumber: normalizedPhone,
+        otpCodeLength: otpCode.length,
+        otpCode: otpCode,
+      });
 
-      // Después de verificar el OTP exitosamente, crear el usuario en Firestore
-      // con los datos del paso 1
+      // Verificar el código OTP
+      let verifyResult;
       try {
-        await createPartialUserUseCase.execute({
+        verifyResult = await verifyOtpUseCase.execute(verification);
+        console.log("✅ [REGISTRO] Código OTP verificado exitosamente:", {
+          userId: verifyResult?.user?.id,
+          userName: verifyResult?.user?.name,
+          hasToken: !!verifyResult?.tokens?.accessToken,
+        });
+      } catch (verifyError: any) {
+        console.error("❌ [REGISTRO] Error al verificar OTP:", {
+          error: verifyError,
+          message: verifyError?.message || "Error desconocido",
+          code: verifyError?.code,
+          stack: verifyError?.stack,
+          phoneNumber: normalizedPhone,
+          otpCodeLength: otpCode.length,
+        });
+        throw verifyError;
+      }
+
+      // Después de verificar el OTP, actualizar el usuario en Firestore con el UID real
+      // Los datos ya fueron guardados antes de enviar el OTP, ahora solo actualizamos con el UID
+      console.log(
+        "🔄 [REGISTRO] Actualizando usuario en Firestore con UID de autenticación"
+      );
+      try {
+        const partialUserData = {
           firstName,
           lastName,
           documentNumber: documentNumber.replace(/\D/g, ""),
@@ -200,18 +312,56 @@ export function RegisterForm({
           leaderId,
           leaderName,
           campaignId,
+        };
+        console.log(
+          "📋 [REGISTRO] Actualizando usuario con datos del paso 1:",
+          partialUserData
+        );
+
+        // Esto ahora actualizará el documento con el UID real del usuario autenticado
+        try {
+          await createPartialUserUseCase.execute(partialUserData);
+          console.log(
+            "✅ [REGISTRO] Usuario actualizado exitosamente en Firestore con UID real"
+          );
+        } catch (partialUserError: any) {
+          console.error("❌ [REGISTRO] Error al actualizar usuario:", {
+            error: partialUserError,
+            message: partialUserError?.message || "Error desconocido",
+            code: partialUserError?.code,
+            stack: partialUserError?.stack,
+            data: partialUserData,
+          });
+          // No bloqueamos el flujo si falla la actualización,
+          // el registro completo se hará al final
+          console.warn(
+            "⚠️ [REGISTRO] Continuando a pesar del error de actualización"
+          );
+        }
+      } catch (updateError: any) {
+        console.error("❌ [REGISTRO] Error en bloque de actualización:", {
+          error: updateError,
+          message: updateError?.message || "Error desconocido",
+          code: updateError?.code,
+          stack: updateError?.stack,
         });
-        console.log("✅ Usuario creado en Firestore con datos del paso 1");
-      } catch (partialUserError) {
-        console.error("Error al crear usuario parcial:", partialUserError);
-        // No bloqueamos el flujo si falla la creación parcial,
-        // el registro completo se hará al final
+        // Continuar de todas formas
       }
 
       setPhoneVerified(true);
       setCurrentStep(3);
       setError("");
-    } catch (err) {
+      console.log("✅ [REGISTRO] Paso 2 completado, avanzando al paso 3");
+    } catch (err: any) {
+      console.error("❌ [REGISTRO] Error completo en verificación de OTP:", {
+        error: err,
+        message: err?.message || "Error desconocido",
+        code: err?.code,
+        stack: err?.stack,
+        name: err?.name,
+        phoneNumber: normalizePhoneNumber(phoneNumber),
+        otpCodeLength: otpCode.length,
+      });
       setError(err instanceof Error ? err.message : "Código OTP inválido");
     } finally {
       setLoading(false);
@@ -222,7 +372,7 @@ export function RegisterForm({
   const handleNextStep = () => {
     if (currentStep === 1 && validateStep1()) {
       setStep1Completed(true);
-      handleSendOtp();
+      // handleSendOtp();
     }
   };
 
@@ -241,11 +391,18 @@ export function RegisterForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    console.log("📝 [REGISTRO] Iniciando envío del formulario completo");
     setError("");
     setLoading(true);
 
     // Validar todos los campos antes de enviar
     if (!validateStep1() || !validateStep2()) {
+      console.warn("⚠️ [REGISTRO] Validación fallida:", {
+        step1Valid: validateStep1(),
+        step2Valid: validateStep2(),
+        habeasDataConsent,
+        whatsAppConsent,
+      });
       if (!habeasDataConsent) {
         setHabeasDataError("Debes aceptar la política de tratamiento de datos");
       }
@@ -281,9 +438,72 @@ export function RegisterForm({
         leaderName,
         campaignId,
       };
-      await registerUseCase.execute(credentials);
-      router.push("/dashboard");
-    } catch (err) {
+
+      console.log("📋 [REGISTRO] Datos completos del formulario:", {
+        ...credentials,
+        departmentId,
+        cityId,
+        selectedDepartment: selectedDepartment?.name,
+        selectedCity: selectedCity?.name,
+      });
+
+      console.log("💾 [REGISTRO] Ejecutando registro completo en Firestore");
+      let result;
+      try {
+        result = await registerUseCase.execute(credentials);
+        console.log("✅ [REGISTRO] Registro completo exitoso:", {
+          userId: result?.user?.id,
+          userName: result?.user?.name,
+          hasToken: !!result?.tokens?.accessToken,
+          userData: result?.user,
+        });
+      } catch (registerError: any) {
+        console.error("❌ [REGISTRO] Error al ejecutar registerUseCase:", {
+          error: registerError,
+          message: registerError?.message || "Error desconocido",
+          code: registerError?.code,
+          stack: registerError?.stack,
+          credentials: {
+            ...credentials,
+            phoneNumber: "[oculto]",
+            documentNumber: "[oculto]",
+          },
+        });
+        throw registerError;
+      }
+
+      try {
+        console.log("🚀 [REGISTRO] Redirigiendo al dashboard");
+        router.push("/dashboard");
+      } catch (routerError: any) {
+        console.error("❌ [REGISTRO] Error al redirigir:", {
+          error: routerError,
+          message: routerError?.message || "Error desconocido",
+        });
+        // El registro fue exitoso, solo falló la redirección
+        // Podríamos mostrar un mensaje de éxito y un botón manual
+        setError(
+          "Registro exitoso, pero hubo un error al redirigir. Por favor, inicia sesión."
+        );
+      }
+    } catch (err: any) {
+      console.error("❌ [REGISTRO] Error completo en registro:", {
+        error: err,
+        message: err?.message || "Error desconocido",
+        code: err?.code,
+        stack: err?.stack,
+        name: err?.name,
+        credentials: {
+          firstName,
+          lastName,
+          phoneNumber: normalizePhoneNumber(phoneNumber),
+          documentNumber: documentNumber.replace(/\D/g, ""),
+          departmentId,
+          cityId,
+          leaderId,
+          campaignId,
+        },
+      });
       setError(err instanceof Error ? err.message : "Error al registrarse");
     } finally {
       setLoading(false);

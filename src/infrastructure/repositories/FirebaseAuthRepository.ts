@@ -535,48 +535,106 @@ export class FirebaseAuthRepository implements IAuthRepository {
   }
 
   async createPartialUser(credentials: PartialUserCredentials): Promise<void> {
+    console.log(
+      "📝 [REGISTRO] Iniciando creación de usuario parcial en Firestore"
+    );
+    console.log("📝 [REGISTRO] Datos recibidos:", {
+      firstName: credentials.firstName,
+      lastName: credentials.lastName,
+      documentNumber: credentials.documentNumber,
+      phoneNumber: credentials.phoneNumber,
+      leaderId: credentials.leaderId,
+      leaderName: credentials.leaderName,
+      campaignId: credentials.campaignId,
+    });
+
     try {
-      if (!auth) {
-        throw new Error("Firebase Auth no está inicializado");
-      }
-
-      if (!auth.currentUser) {
-        throw new Error(
-          "Debes verificar tu número de teléfono primero. Por favor, verifica el código OTP."
-        );
-      }
-
       if (!db) {
+        console.error("❌ [REGISTRO] Firestore no está inicializado");
         throw new Error("Firestore no está inicializado");
       }
 
-      const firebaseUser = auth.currentUser;
+      // Si hay usuario autenticado, usar su UID, si no, usar el teléfono como ID temporal
+      let userId: string;
+      let isAuthenticated = false;
+
+      if (auth && auth.currentUser) {
+        userId = auth.currentUser.uid;
+        isAuthenticated = true;
+        console.log("✅ [REGISTRO] Usuario autenticado en Firebase Auth:", {
+          uid: userId,
+          phoneNumber: auth.currentUser.phoneNumber,
+        });
+      } else {
+        // Usar el teléfono como ID temporal antes de autenticar
+        userId = credentials.phoneNumber.replace(/\D/g, "");
+        console.log(
+          "📝 [REGISTRO] Usuario no autenticado, usando teléfono como ID temporal:",
+          userId
+        );
+      }
 
       // Verificar si el documento de identidad ya existe
       if (credentials.documentNumber) {
-        const usersRef = collection(db, "users");
-        const q = query(
-          usersRef,
-          where("documentNumber", "==", credentials.documentNumber)
-        );
-        const querySnapshot = await getDocs(q);
+        try {
+          console.log(
+            "🔍 [REGISTRO] Verificando si existe usuario con cédula:",
+            credentials.documentNumber
+          );
+          const usersRef = collection(db, "users");
+          const q = query(
+            usersRef,
+            where("documentNumber", "==", credentials.documentNumber)
+          );
+          const querySnapshot = await getDocs(q);
 
-        if (!querySnapshot.empty) {
-          // Verificar que no sea el mismo usuario
-          const existingUser = querySnapshot.docs[0];
-          if (existingUser.id !== firebaseUser.uid) {
-            throw new Error(
-              "Ya existe un usuario registrado con este número de cédula"
+          if (!querySnapshot.empty) {
+            // Verificar que no sea el mismo usuario
+            const existingUser = querySnapshot.docs[0];
+            console.log("⚠️ [REGISTRO] Usuario encontrado con misma cédula:", {
+              existingUserId: existingUser.id,
+              currentUserId: userId,
+            });
+            if (existingUser.id !== userId) {
+              console.error(
+                "❌ [REGISTRO] Ya existe otro usuario con esta cédula"
+              );
+              throw new Error(
+                "Ya existe un usuario registrado con este número de cédula"
+              );
+            }
+            console.log("✅ [REGISTRO] Es el mismo usuario, continuando...");
+          } else {
+            console.log(
+              "✅ [REGISTRO] No existe usuario con esta cédula, puede continuar"
             );
           }
+        } catch (validationError: any) {
+          console.error("❌ [REGISTRO] Error al verificar cédula duplicada:", {
+            error: validationError.message,
+            code: validationError.code,
+            stack: validationError.stack,
+            documentNumber: credentials.documentNumber,
+          });
+          // Re-lanzar el error si es de validación de duplicado
+          if (validationError.message.includes("Ya existe")) {
+            throw validationError;
+          }
+          // Si es otro error, solo loguearlo pero continuar
+          console.warn(
+            "⚠️ [REGISTRO] Continuando a pesar del error de validación"
+          );
         }
       }
 
       // Crear o actualizar el documento del usuario en Firestore con datos parciales
-      const userDocRef = doc(db, "users", firebaseUser.uid);
-      const userData = {
-        id: firebaseUser.uid,
-        phoneNumber: firebaseUser.phoneNumber || credentials.phoneNumber,
+      const userDocRef = doc(db, "users", userId);
+      const userData: any = {
+        id: userId,
+        phoneNumber:
+          isAuthenticated && auth && auth.currentUser?.phoneNumber
+            ? auth.currentUser.phoneNumber
+            : credentials.phoneNumber,
         name: `${credentials.firstName} ${credentials.lastName}`,
         firstName: credentials.firstName,
         lastName: credentials.lastName,
@@ -586,20 +644,127 @@ export class FirebaseAuthRepository implements IAuthRepository {
         campaignId: credentials.campaignId,
         role: "FOLLOWER" as UserRole, // Rol por defecto para nuevos usuarios
         updatedAt: serverTimestamp(),
+        // Si no está autenticado, marcar como pendiente
+        pendingAuth: !isAuthenticated,
       };
 
+      // Si está autenticado, establecer createdAt si es nuevo
+      try {
+        if (isAuthenticated) {
+          console.log("🔍 [REGISTRO] Verificando si el documento ya existe...");
+          const existingDoc = await getDoc(userDocRef);
+          if (!existingDoc.exists()) {
+            console.log(
+              "🆕 [REGISTRO] Documento nuevo, estableciendo createdAt"
+            );
+            userData.createdAt = serverTimestamp();
+          } else {
+            console.log(
+              "🔄 [REGISTRO] Documento existente, preservando createdAt"
+            );
+          }
+        } else {
+          // Si no está autenticado, establecer createdAt para el documento temporal
+          console.log(
+            "📝 [REGISTRO] Usuario no autenticado, estableciendo createdAt"
+          );
+          userData.createdAt = serverTimestamp();
+        }
+      } catch (checkError: any) {
+        console.error("❌ [REGISTRO] Error al verificar documento existente:", {
+          error: checkError.message,
+          code: checkError.code,
+          stack: checkError.stack,
+          userId,
+        });
+        // Continuar y establecer createdAt de todas formas
+        userData.createdAt = serverTimestamp();
+      }
+
+      console.log("💾 [REGISTRO] Guardando usuario en Firestore:", {
+        collection: "users",
+        documentId: userId,
+        isAuthenticated,
+        data: {
+          ...userData,
+          createdAt: userData.createdAt
+            ? "[serverTimestamp]"
+            : "[no establecido]",
+          updatedAt: "[serverTimestamp]",
+        },
+      });
+
       // Usar merge: true para actualizar solo los campos proporcionados
-      await setDoc(userDocRef, userData, { merge: true });
+      try {
+        await setDoc(userDocRef, userData, { merge: true });
+        console.log("✅ [REGISTRO] setDoc ejecutado exitosamente");
+      } catch (setDocError: any) {
+        console.error("❌ [REGISTRO] Error al ejecutar setDoc:", {
+          error: setDocError.message,
+          code: setDocError.code,
+          stack: setDocError.stack,
+          userId,
+          collection: "users",
+          dataKeys: Object.keys(userData),
+        });
+        throw setDocError;
+      }
 
       console.log(
-        "✅ [DEBUG] Usuario parcial creado/actualizado en Firestore",
-        {
-          uid: firebaseUser.uid,
-          name: userData.name,
-        }
+        "✅ [REGISTRO] Usuario parcial creado/actualizado exitosamente en Firestore"
       );
+      console.log("✅ [REGISTRO] Detalles del usuario guardado:", {
+        userId,
+        name: userData.name,
+        documentNumber: userData.documentNumber,
+        phoneNumber: userData.phoneNumber,
+        leaderId: userData.leaderId,
+        leaderName: userData.leaderName,
+        campaignId: userData.campaignId,
+        role: userData.role,
+        isAuthenticated,
+        pendingAuth: !isAuthenticated,
+      });
+
+      // Si no estaba autenticado y ahora sí lo está, mover el documento al UID real
+      if (!isAuthenticated && auth && auth.currentUser) {
+        const realUserId = auth.currentUser.uid;
+        if (realUserId !== userId) {
+          console.log(
+            "🔄 [REGISTRO] Moviendo documento temporal al UID real:",
+            {
+              from: userId,
+              to: realUserId,
+            }
+          );
+          const realUserDocRef = doc(db, "users", realUserId);
+          await setDoc(
+            realUserDocRef,
+            {
+              ...userData,
+              id: realUserId,
+              phoneNumber:
+                auth.currentUser.phoneNumber || credentials.phoneNumber,
+              pendingAuth: false,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+
+          // Eliminar el documento temporal
+          const tempUserDocRef = doc(db, "users", userId);
+          await setDoc(tempUserDocRef, { deleted: true }, { merge: true });
+          console.log(
+            "✅ [REGISTRO] Documento movido al UID real exitosamente"
+          );
+        }
+      }
     } catch (error: any) {
-      console.error("❌ [DEBUG] Error creating partial user:", error);
+      console.error("❌ [REGISTRO] Error al crear usuario parcial:", {
+        error: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
       throw new Error(
         error.message ||
           "Error al crear usuario. Por favor, intenta nuevamente."
@@ -608,36 +773,86 @@ export class FirebaseAuthRepository implements IAuthRepository {
   }
 
   async register(credentials: RegisterCredentials): Promise<AuthUser> {
+    console.log("📝 [REGISTRO] Iniciando registro completo de usuario");
+    console.log("📝 [REGISTRO] Datos completos recibidos:", {
+      firstName: credentials.firstName,
+      lastName: credentials.lastName,
+      documentNumber: credentials.documentNumber,
+      phoneNumber: credentials.phoneNumber,
+      country: credentials.country,
+      department: credentials.department,
+      city: credentials.city,
+      neighborhood: credentials.neighborhood,
+      latitude: credentials.latitude,
+      longitude: credentials.longitude,
+      leaderId: credentials.leaderId,
+      leaderName: credentials.leaderName,
+      campaignId: credentials.campaignId,
+    });
+
     try {
       if (!auth) {
+        console.error("❌ [REGISTRO] Firebase Auth no está inicializado");
         throw new Error("Firebase Auth no está inicializado");
       }
 
       if (!auth.currentUser) {
+        console.error("❌ [REGISTRO] No hay usuario autenticado");
         throw new Error(
           "Debes verificar tu número de teléfono primero. Por favor, inicia sesión."
         );
       }
 
       const firebaseUser = auth.currentUser;
+      console.log("✅ [REGISTRO] Usuario autenticado:", {
+        uid: firebaseUser.uid,
+        phoneNumber: firebaseUser.phoneNumber,
+      });
 
       // Verificar si el documento de identidad ya existe
       if (credentials.documentNumber) {
-        const usersRef = collection(db!, "users");
-        const q = query(
-          usersRef,
-          where("documentNumber", "==", credentials.documentNumber)
-        );
-        const querySnapshot = await getDocs(q);
+        try {
+          console.log(
+            "🔍 [REGISTRO] Verificando duplicados de cédula:",
+            credentials.documentNumber
+          );
+          const usersRef = collection(db!, "users");
+          const q = query(
+            usersRef,
+            where("documentNumber", "==", credentials.documentNumber)
+          );
+          const querySnapshot = await getDocs(q);
 
-        if (!querySnapshot.empty) {
-          // Verificar que no sea el mismo usuario
-          const existingUser = querySnapshot.docs[0];
-          if (existingUser.id !== firebaseUser.uid) {
-            throw new Error(
-              "Ya existe un usuario registrado con este número de cédula"
-            );
+          if (!querySnapshot.empty) {
+            // Verificar que no sea el mismo usuario
+            const existingUser = querySnapshot.docs[0];
+            console.log("⚠️ [REGISTRO] Usuario encontrado con misma cédula:", {
+              existingUserId: existingUser.id,
+              currentUserId: firebaseUser.uid,
+            });
+            if (existingUser.id !== firebaseUser.uid) {
+              console.error("❌ [REGISTRO] Cédula duplicada detectada");
+              throw new Error(
+                "Ya existe un usuario registrado con este número de cédula"
+              );
+            }
+            console.log("✅ [REGISTRO] Es el mismo usuario, continuando...");
           }
+        } catch (validationError: any) {
+          console.error("❌ [REGISTRO] Error al verificar cédula duplicada:", {
+            error: validationError.message,
+            code: validationError.code,
+            stack: validationError.stack,
+            documentNumber: credentials.documentNumber,
+          });
+          // Re-lanzar el error si es de validación de duplicado
+          if (validationError.message.includes("Ya existe")) {
+            throw validationError;
+          }
+          // Si es otro error, solo loguearlo pero continuar
+          console.warn(
+            "⚠️ [REGISTRO] Continuando a pesar del error de validación"
+          );
         }
       }
 
@@ -645,7 +860,28 @@ export class FirebaseAuthRepository implements IAuthRepository {
       const userDocRef = doc(db!, "users", firebaseUser.uid);
 
       // Verificar si el usuario ya existe para no sobrescribir createdAt
-      const existingUserDoc = await getDoc(userDocRef);
+      let userExists = false;
+      try {
+        console.log(
+          "🔍 [REGISTRO] Verificando si usuario ya existe en Firestore"
+        );
+        const existingUserDoc = await getDoc(userDocRef);
+        userExists = existingUserDoc.exists();
+        console.log("📊 [REGISTRO] Estado del usuario:", {
+          exists: userExists,
+          uid: firebaseUser.uid,
+        });
+      } catch (checkError: any) {
+        console.error("❌ [REGISTRO] Error al verificar usuario existente:", {
+          error: checkError.message,
+          code: checkError.code,
+          stack: checkError.stack,
+          uid: firebaseUser.uid,
+        });
+        // Continuar asumiendo que es nuevo
+        userExists = false;
+      }
+
       const userData: any = {
         id: firebaseUser.uid,
         phoneNumber: firebaseUser.phoneNumber || credentials.phoneNumber,
@@ -667,11 +903,45 @@ export class FirebaseAuthRepository implements IAuthRepository {
       };
 
       // Solo establecer createdAt si el usuario no existe
-      if (!existingUserDoc.exists()) {
+      if (!userExists) {
+        console.log("🆕 [REGISTRO] Usuario nuevo, estableciendo createdAt");
         userData.createdAt = serverTimestamp();
+      } else {
+        console.log("🔄 [REGISTRO] Usuario existente, preservando createdAt");
       }
 
-      await setDoc(userDocRef, userData, { merge: true });
+      console.log(
+        "💾 [REGISTRO] Actualizando usuario en Firestore con datos completos:",
+        {
+          collection: "users",
+          documentId: firebaseUser.uid,
+          isNewUser: !userExists,
+          data: {
+            ...userData,
+            createdAt: userExists ? "[preservado]" : "[serverTimestamp]",
+            updatedAt: "[serverTimestamp]",
+          },
+        }
+      );
+
+      try {
+        await setDoc(userDocRef, userData, { merge: true });
+        console.log("✅ [REGISTRO] setDoc ejecutado exitosamente en register");
+      } catch (setDocError: any) {
+        console.error("❌ [REGISTRO] Error al ejecutar setDoc en register:", {
+          error: setDocError.message,
+          code: setDocError.code,
+          stack: setDocError.stack,
+          uid: firebaseUser.uid,
+          collection: "users",
+          dataKeys: Object.keys(userData),
+        });
+        throw setDocError;
+      }
+
+      console.log(
+        "✅ [REGISTRO] Usuario actualizado exitosamente en Firestore"
+      );
 
       const user: User = {
         id: firebaseUser.uid,
@@ -690,17 +960,32 @@ export class FirebaseAuthRepository implements IAuthRepository {
         createdAt: new Date(),
       };
 
+      console.log("🔑 [REGISTRO] Obteniendo token de acceso");
       // Obtener el token de acceso
       const idToken = await firebaseUser.getIdToken();
+      console.log("✅ [REGISTRO] Token obtenido exitosamente");
 
-      return {
+      const authUser = {
         user,
         tokens: {
           accessToken: idToken,
         },
       };
+
+      console.log("✅ [REGISTRO] Registro completo exitoso:", {
+        userId: user.id,
+        userName: user.name,
+        role: user.role,
+        hasToken: !!authUser.tokens.accessToken,
+      });
+
+      return authUser;
     } catch (error: any) {
-      console.error("Error registering user:", error);
+      console.error("❌ [REGISTRO] Error en registro completo:", {
+        error: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
       throw new Error(
         error.message || "Error al registrarse. Por favor, intenta nuevamente."
       );
