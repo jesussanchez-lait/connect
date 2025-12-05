@@ -24,7 +24,8 @@ export interface RegisterCredentials {
   country: string;
   department: string;
   city: string;
-  neighborhood: string;
+  address: string; // Dirección completa (con autocomplete de Google Maps)
+  neighborhood: string; // Barrio / Vereda
   latitude?: number;
   longitude?: number;
 

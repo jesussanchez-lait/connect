@@ -8,8 +8,7 @@
     "build:firebase": "node scripts/prepare-firebase-build.js && next build && node scripts/restore-api-routes.js && node scripts/verify-deploy-files.js",
     "deploy:firebase": "npm run build:firebase && firebase deploy --only hosting:connect-tierra-demo",
     "start": "next start",
-    "lint": "next lint",
-    "deploy:firebase": "npm run build:firebase && firebase deploy --only hosting:connect-tierra-demo"
+    "lint": "next lint"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
@@ -20,6 +19,7 @@
     "react-qr-code": "^2.0.18"
   },
   "devDependencies": {
+    "@types/google.maps": "^3.58.1",
     "@types/node": "^20.14.12",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

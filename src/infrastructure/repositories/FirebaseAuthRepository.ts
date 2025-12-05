@@ -892,6 +892,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         country: credentials.country,
         department: credentials.department,
         city: credentials.city,
+        address: credentials.address,
         neighborhood: credentials.neighborhood,
         latitude: credentials.latitude || null,
         longitude: credentials.longitude || null,

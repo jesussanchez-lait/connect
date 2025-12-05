@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   registerUseCase,
@@ -74,10 +74,16 @@ export function RegisterForm({
   const [country, setCountry] = useState("Colombia");
   const [departmentId, setDepartmentId] = useState<string>("");
   const [cityId, setCityId] = useState<string>("");
+  const [address, setAddress] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
   const [latitude, setLatitude] = useState<number | undefined>();
   const [longitude, setLongitude] = useState<number | undefined>();
   const [mapError, setMapError] = useState<string>("");
+
+  // Referencias para Google Places Autocomplete
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   // Consentimientos legales
   const [habeasDataConsent, setHabeasDataConsent] = useState(false);
@@ -107,6 +113,112 @@ export function RegisterForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departmentId]);
+
+  // Inicializar Google Places Autocomplete solo cuando estemos en el paso 3
+  useEffect(() => {
+    if (currentStep !== 3 || !googleMapsApiKey) {
+      return;
+    }
+
+    // Función para inicializar autocomplete cuando Google Maps esté listo
+    const initAutocomplete = () => {
+      if (
+        typeof window !== "undefined" &&
+        window.google &&
+        window.google.maps &&
+        window.google.maps.places &&
+        addressInputRef.current
+      ) {
+        // Limpiar autocomplete anterior si existe
+        if (autocompleteRef.current) {
+          try {
+            window.google.maps.event.clearInstanceListeners(
+              autocompleteRef.current
+            );
+          } catch (e) {
+            console.warn("Error al limpiar listeners:", e);
+          }
+        }
+
+        // Crear nuevo autocomplete
+        try {
+          autocompleteRef.current = new window.google.maps.places.Autocomplete(
+            addressInputRef.current,
+            {
+              componentRestrictions: { country: "co" }, // Restringir a Colombia
+              fields: [
+                "formatted_address",
+                "geometry",
+                "address_components",
+                "place_id",
+              ],
+              types: ["address"], // Solo direcciones
+            }
+          );
+
+          // Listener para cuando se selecciona una dirección
+          autocompleteRef.current.addListener("place_changed", () => {
+            const place = autocompleteRef.current?.getPlace();
+            if (place && place.geometry && place.geometry.location) {
+              const location = place.geometry.location;
+              const formattedAddress = place.formatted_address || "";
+              setAddress(formattedAddress);
+              setLatitude(location.lat());
+              setLongitude(location.lng());
+              setMapError("");
+              console.log("📍 [REGISTRO] Dirección seleccionada:", {
+                address: formattedAddress,
+                lat: location.lat(),
+                lng: location.lng(),
+              });
+            }
+          });
+
+          console.log("✅ [REGISTRO] Google Places Autocomplete inicializado");
+        } catch (error) {
+          console.error("❌ [REGISTRO] Error al crear autocomplete:", error);
+        }
+      }
+    };
+
+    // Verificar si Google Maps ya está cargado
+    if (typeof window !== "undefined" && window.google?.maps?.places) {
+      // Pequeño delay para asegurar que el input esté renderizado
+      setTimeout(initAutocomplete, 100);
+    } else {
+      // Esperar a que se cargue Google Maps
+      const checkGoogleMaps = setInterval(() => {
+        if (typeof window !== "undefined" && window.google?.maps?.places) {
+          clearInterval(checkGoogleMaps);
+          setTimeout(initAutocomplete, 100);
+        }
+      }, 100);
+
+      // Timeout después de 10 segundos
+      setTimeout(() => {
+        clearInterval(checkGoogleMaps);
+        if (!window.google?.maps?.places) {
+          console.error("❌ [REGISTRO] Google Maps Places API no se cargó");
+          setMapError(
+            "No se pudo cargar el autocompletado de direcciones. Por favor, ingresa tu dirección manualmente."
+          );
+        }
+      }, 10000);
+    }
+
+    // Cleanup
+    return () => {
+      if (autocompleteRef.current && window.google?.maps?.event) {
+        try {
+          window.google.maps.event.clearInstanceListeners(
+            autocompleteRef.current
+          );
+        } catch (e) {
+          console.warn("Error en cleanup:", e);
+        }
+      }
+    };
+  }, [googleMapsApiKey, currentStep]); // Re-inicializar cuando cambie el paso
 
   // Obtener geolocalización
   const getCurrentLocation = () => {
@@ -142,6 +254,7 @@ export function RegisterForm({
     return (
       departmentId !== "" &&
       cityId !== "" &&
+      address.trim() !== "" &&
       neighborhood.trim() !== "" &&
       habeasDataConsent &&
       whatsAppConsent
@@ -372,7 +485,7 @@ export function RegisterForm({
   const handleNextStep = () => {
     if (currentStep === 1 && validateStep1()) {
       setStep1Completed(true);
-      // handleSendOtp();
+      handleSendOtp();
     }
   };
 
@@ -431,7 +544,8 @@ export function RegisterForm({
         country,
         department: selectedDepartment?.name || "",
         city: selectedCity?.name || "",
-        neighborhood,
+        address: address, // Dirección completa
+        neighborhood: neighborhood, // Barrio
         latitude,
         longitude,
         leaderId,
@@ -808,6 +922,50 @@ export function RegisterForm({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="address"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Dirección <span className="text-red-500">*</span>
+                </label>
+                {googleMapsApiKey ? (
+                  <>
+                    <input
+                      id="address"
+                      ref={addressInputRef}
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                      placeholder="Escribe tu dirección (se autocompletará)"
+                      autoComplete="off"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Escribe tu dirección y selecciona una opción del menú
+                      desplegable
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      id="address"
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                      placeholder="Escribe tu dirección completa"
+                    />
+                    <p className="mt-1 text-xs text-yellow-600">
+                      ⚠️ Google Maps API no configurada. Ingresa tu dirección
+                      manualmente.
+                    </p>
+                  </>
+                )}
               </div>
 
               <div>

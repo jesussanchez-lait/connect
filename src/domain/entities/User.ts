@@ -16,7 +16,8 @@ export interface User {
   country?: string;
   department?: string;
   city?: string;
-  neighborhood?: string;
+  address?: string; // Dirección completa
+  neighborhood?: string; // Barrio / Vereda
   latitude?: number;
   longitude?: number;
   leaderId?: string;
