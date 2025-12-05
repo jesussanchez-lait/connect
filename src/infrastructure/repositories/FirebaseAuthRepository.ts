@@ -32,8 +32,52 @@ import { RecaptchaVerifier } from "firebase/auth";
 let confirmationResult: ConfirmationResult | null = null;
 let recaptchaVerifier: RecaptchaVerifier | null = null;
 
+// Site key de reCAPTCHA v3
+const RECAPTCHA_SITE_KEY = "6LdtfCIsAAAAAGKD9vHbGG-HBRmYTbEp17_S9xhC";
+
+// Esperar a que reCAPTCHA v3 esté disponible
+function waitForRecaptcha(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Verificar si grecaptcha está disponible
+    const checkRecaptcha = () => {
+      const hasRecaptcha = typeof (window as any).grecaptcha !== "undefined";
+
+      if (hasRecaptcha) {
+        console.log("✅ [DEBUG] reCAPTCHA v3 disponible");
+        return true;
+      }
+      return false;
+    };
+
+    // Verificar inmediatamente
+    if (checkRecaptcha()) {
+      resolve();
+      return;
+    }
+
+    // Esperar a que se cargue el script de reCAPTCHA
+    let attempts = 0;
+    const maxAttempts = 50; // 5 segundos máximo
+    const checkInterval = setInterval(() => {
+      attempts++;
+      if (checkRecaptcha()) {
+        console.log(
+          "✅ [DEBUG] reCAPTCHA cargado después de",
+          attempts * 100,
+          "ms"
+        );
+        clearInterval(checkInterval);
+        resolve();
+      } else if (attempts >= maxAttempts) {
+        clearInterval(checkInterval);
+        reject(new Error("reCAPTCHA no se pudo cargar después de 5 segundos"));
+      }
+    }, 100);
+  });
+}
+
 // Inicializar reCAPTCHA verifier
-function initializeRecaptcha(): RecaptchaVerifier {
+async function initializeRecaptcha(): Promise<RecaptchaVerifier> {
   if (typeof window === "undefined") {
     throw new Error("reCAPTCHA solo puede inicializarse en el cliente");
   }
@@ -42,12 +86,15 @@ function initializeRecaptcha(): RecaptchaVerifier {
     throw new Error("Firebase Auth no está inicializado");
   }
 
+  console.log("🔐 [DEBUG] Iniciando inicialización de reCAPTCHA...");
+
   // Limpiar verifier anterior si existe
   if (recaptchaVerifier) {
     try {
+      console.log("🧹 [DEBUG] Limpiando verifier anterior...");
       recaptchaVerifier.clear();
     } catch (error) {
-      // Ignorar errores al limpiar
+      console.warn("⚠️ [DEBUG] Error al limpiar verifier anterior:", error);
     }
     recaptchaVerifier = null;
   }
@@ -60,95 +107,301 @@ function initializeRecaptcha(): RecaptchaVerifier {
     );
   }
 
-  // Configuración de reCAPTCHA
-  // Nota: El sitio de reCAPTCHA "lait-connect" debe estar configurado en Firebase Console
-  // Firebase maneja automáticamente el site key a través de la configuración del proyecto
-  recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-    size: "invisible",
-    callback: () => {
-      // reCAPTCHA resuelto
-      console.log("reCAPTCHA verificado para lait-connect");
-    },
-    "expired-callback": () => {
-      // reCAPTCHA expirado
-      console.error("reCAPTCHA expirado");
-      recaptchaVerifier = null;
-    },
-  });
+  console.log("✅ [DEBUG] Contenedor de reCAPTCHA encontrado");
 
-  return recaptchaVerifier;
-}
-
-// Formatear número de teléfono al formato internacional (+57 para Colombia)
-function formatPhoneNumberForFirebase(phoneNumber: string): string {
-  // Remover todos los caracteres no numéricos
-  const numbers = phoneNumber.replace(/\D/g, "");
-
-  // Si el número ya empieza con 57 (código de país de Colombia)
-  if (numbers.startsWith("57")) {
-    // Verificar si tiene más de 2 dígitos (57 + número de teléfono)
-    if (numbers.length > 2) {
-      return `+${numbers}`;
-    }
-    // Si solo tiene "57", es inválido
-    throw new Error("Número de teléfono inválido");
-  }
-
-  // Si tiene exactamente 10 dígitos, agregar código de país +57 (Colombia)
-  if (numbers.length === 10) {
-    return `+57${numbers}`;
-  }
-
-  // Si tiene menos de 10 dígitos, intentar agregar +57 de todas formas
-  // pero esto podría ser un error, así que lanzamos un error si es muy corto
-  if (numbers.length < 10) {
-    throw new Error(
-      `Número de teléfono inválido. Debe tener 10 dígitos. Se recibieron ${numbers.length} dígitos.`
+  // Esperar a que reCAPTCHA esté disponible
+  try {
+    console.log("⏳ [DEBUG] Esperando a que reCAPTCHA esté disponible...");
+    await waitForRecaptcha();
+  } catch (error) {
+    console.warn(
+      "⚠️ [DEBUG] No se pudo verificar reCAPTCHA, continuando de todas formas:",
+      error
     );
   }
 
-  // Si tiene más de 10 dígitos pero no empieza con 57, podría ser un número internacional
-  // Por defecto, asumimos que es Colombia y agregamos +57
-  return `+57${numbers}`;
+  // Esperar un momento adicional para asegurar que el DOM está completamente cargado
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  try {
+    // Configuración de reCAPTCHA para Firebase Phone Authentication
+    // IMPORTANTE: Firebase Phone Authentication usa reCAPTCHA v3 invisible internamente
+    // El RecaptchaVerifier de Firebase maneja la integración con reCAPTCHA v3
+    // El site key (6LdtfCIsAAAAAGKD9vHbGG-HBRmYTbEp17_S9xhC) debe estar vinculado
+    // al proyecto en Firebase Console > Authentication > Settings
+    console.log("🔐 [DEBUG] Creando nuevo RecaptchaVerifier...");
+    console.log("🔐 [DEBUG] Auth instance:", auth);
+    console.log("🔐 [DEBUG] Container ID: recaptcha-container");
+    console.log("🔐 [DEBUG] reCAPTCHA Site Key:", RECAPTCHA_SITE_KEY);
+
+    recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+      size: "invisible",
+      callback: () => {
+        // reCAPTCHA resuelto
+        console.log("✅ [DEBUG] reCAPTCHA verificado para lait-connect");
+      },
+      "expired-callback": () => {
+        // reCAPTCHA expirado
+        console.error("❌ [DEBUG] reCAPTCHA expirado");
+        recaptchaVerifier = null;
+      },
+    });
+
+    console.log("✅ [DEBUG] RecaptchaVerifier creado exitosamente");
+
+    // El reCAPTCHA se renderiza automáticamente cuando se crea el verifier
+    // Esperar un momento para asegurar que esté completamente inicializado
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    console.log("✅ [DEBUG] reCAPTCHA listo para usar");
+
+    return recaptchaVerifier;
+  } catch (error: any) {
+    console.error("❌ [DEBUG] Error al inicializar reCAPTCHA:", {
+      error,
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+    });
+
+    // Si hay un error, limpiar el verifier
+    if (recaptchaVerifier) {
+      try {
+        recaptchaVerifier.clear();
+      } catch (clearError) {
+        console.error(
+          "Error al limpiar verifier después de error:",
+          clearError
+        );
+      }
+      recaptchaVerifier = null;
+    }
+
+    // Proporcionar mensaje de error más útil
+    if (error.code === "auth/invalid-app-credential") {
+      throw new Error(
+        "Error de credenciales de aplicación Firebase. Por favor verifica:\n\n" +
+          "1. Que el dominio esté autorizado en Firebase Console:\n" +
+          "   - Ve a Authentication > Settings > Authorized domains\n" +
+          "   - Asegúrate de que 'localhost' esté en la lista\n\n" +
+          "2. Que reCAPTCHA esté correctamente configurado:\n" +
+          "   - Ve a Authentication > Sign-in method > Phone\n" +
+          "   - Verifica que Phone Authentication esté habilitado\n" +
+          "   - Confirma que reCAPTCHA esté activo\n\n" +
+          "3. Que las credenciales de la aplicación sean válidas:\n" +
+          "   - Ve a Project Settings > General\n" +
+          "   - Verifica que las credenciales web sean correctas\n\n" +
+          "Error técnico: " +
+          error.message
+      );
+    }
+
+    throw error;
+  }
+}
+
+// Formatear número de teléfono al formato internacional (+57 para Colombia)
+// Formato esperado: +57XXXXXXXXXX (57 + 10 dígitos = 12 dígitos totales)
+function formatPhoneNumberForFirebase(phoneNumber: string): string {
+  console.log("📞 [DEBUG] Formateando número de teléfono:", phoneNumber);
+
+  // Remover todos los caracteres no numéricos
+  const numbers = phoneNumber.replace(/\D/g, "");
+  console.log(
+    "📞 [DEBUG] Número sin caracteres especiales:",
+    numbers,
+    `(${numbers.length} dígitos)`
+  );
+
+  let formattedNumber: string;
+
+  // Si el número ya empieza con 57 (código de país de Colombia)
+  if (numbers.startsWith("57")) {
+    // Verificar que tenga exactamente 12 dígitos (57 + 10 dígitos del teléfono)
+    if (numbers.length === 12) {
+      formattedNumber = `+${numbers}`;
+      console.log(
+        "✅ [DEBUG] Número ya tiene código de país 57, formato correcto:",
+        formattedNumber
+      );
+    } else if (numbers.length > 12) {
+      // Si tiene más de 12 dígitos, tomar solo los primeros 12
+      formattedNumber = `+${numbers.substring(0, 12)}`;
+      console.warn(
+        "⚠️ [DEBUG] Número tenía más de 12 dígitos, truncado a:",
+        formattedNumber
+      );
+    } else if (numbers.length > 2 && numbers.length < 12) {
+      // Si tiene 57 pero menos de 12 dígitos, es inválido
+      throw new Error(
+        `Número de teléfono inválido. Debe tener 12 dígitos (57 + 10 dígitos). Se recibieron ${numbers.length} dígitos.`
+      );
+    } else {
+      // Si solo tiene "57", es inválido
+      throw new Error(
+        "Número de teléfono inválido. Solo contiene el código de país."
+      );
+    }
+  } else {
+    // Si NO empieza con 57, agregar código de país +57
+    // Verificar que tenga exactamente 10 dígitos (número colombiano sin código de país)
+    if (numbers.length === 10) {
+      formattedNumber = `+57${numbers}`;
+      console.log(
+        "✅ [DEBUG] Número de 10 dígitos, agregado código +57:",
+        formattedNumber
+      );
+    } else if (numbers.length < 10) {
+      throw new Error(
+        `Número de teléfono inválido. Debe tener 10 dígitos. Se recibieron ${numbers.length} dígitos.`
+      );
+    } else {
+      // Si tiene más de 10 dígitos pero no empieza con 57, podría ser un número internacional
+      // Por seguridad, solo tomamos los últimos 10 dígitos y agregamos +57
+      const lastTenDigits = numbers.substring(numbers.length - 10);
+      formattedNumber = `+57${lastTenDigits}`;
+      console.warn(
+        "⚠️ [DEBUG] Número tenía más de 10 dígitos, usando últimos 10:",
+        formattedNumber
+      );
+    }
+  }
+
+  // Validación final: debe tener exactamente 12 dígitos después del +
+  const digitsOnly = formattedNumber.replace(/\D/g, "");
+  if (digitsOnly.length !== 12) {
+    throw new Error(
+      `Error en formato final. El número debe tener 12 dígitos (57 + 10). Formato actual: ${formattedNumber} (${digitsOnly.length} dígitos)`
+    );
+  }
+
+  // Validación adicional: debe empezar con +57
+  if (!formattedNumber.startsWith("+57")) {
+    throw new Error(
+      `Error en formato final. El número debe empezar con +57. Formato actual: ${formattedNumber}`
+    );
+  }
+
+  console.log("✅ [DEBUG] Número formateado correctamente:", formattedNumber);
+  return formattedNumber;
 }
 
 export class FirebaseAuthRepository implements IAuthRepository {
   async sendOtp(credentials: LoginCredentials): Promise<OtpResponse> {
+    console.log("🔵 [DEBUG] sendOtp iniciado", {
+      phoneNumber: credentials.phoneNumber,
+    });
+
     try {
       if (!auth) {
+        console.error("❌ [DEBUG] Firebase Auth no está inicializado");
         throw new Error("Firebase Auth no está inicializado");
       }
+
+      console.log("✅ [DEBUG] Firebase Auth está inicializado");
 
       const formattedPhone = formatPhoneNumberForFirebase(
         credentials.phoneNumber
       );
+      console.log("📱 [DEBUG] Número formateado:", {
+        original: credentials.phoneNumber,
+        formatted: formattedPhone,
+      });
+
+      // Validación final antes de enviar a Firebase
+      // El número debe tener formato: +57XXXXXXXXXX (12 dígitos después del +)
+      const phoneDigits = formattedPhone.replace(/\D/g, "");
+      if (!formattedPhone.startsWith("+57") || phoneDigits.length !== 12) {
+        const errorMsg = `Número de teléfono con formato inválido para Firebase. Esperado: +57XXXXXXXXXX (12 dígitos). Recibido: ${formattedPhone} (${phoneDigits.length} dígitos)`;
+        console.error("❌ [DEBUG]", errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      console.log("✅ [DEBUG] Validación de formato exitosa:", {
+        formato: formattedPhone,
+        digitos: phoneDigits.length,
+        codigoPais: formattedPhone.substring(0, 3),
+        numero: formattedPhone.substring(3),
+      });
 
       // Inicializar reCAPTCHA si no está inicializado
-      const verifier = initializeRecaptcha();
+      console.log("🔐 [DEBUG] Inicializando reCAPTCHA...");
+      const verifier = await initializeRecaptcha();
+      console.log("✅ [DEBUG] reCAPTCHA inicializado correctamente");
 
       // Enviar código OTP
-      confirmationResult = await signInWithPhoneNumber(
-        auth,
-        formattedPhone,
-        verifier
-      );
+      console.log("📤 [DEBUG] Enviando código OTP a Firebase:", formattedPhone);
+      console.log("📤 [DEBUG] Formato verificado: +57 seguido de 10 dígitos");
+
+      try {
+        confirmationResult = await signInWithPhoneNumber(
+          auth,
+          formattedPhone,
+          verifier
+        );
+        console.log("✅ [DEBUG] Código OTP enviado exitosamente", {
+          verificationId: confirmationResult.verificationId,
+        });
+      } catch (signInError: any) {
+        console.error("❌ [DEBUG] Error al enviar código OTP:", {
+          error: signInError,
+          code: signInError.code,
+          message: signInError.message,
+        });
+
+        // Limpiar verifier en caso de error
+        if (recaptchaVerifier) {
+          try {
+            recaptchaVerifier.clear();
+          } catch (clearError) {
+            console.error("Error al limpiar verifier:", clearError);
+          }
+          recaptchaVerifier = null;
+        }
+
+        // Proporcionar mensaje de error más específico
+        if (signInError.code === "auth/invalid-app-credential") {
+          throw new Error(
+            "Error de credenciales de aplicación Firebase. Por favor verifica:\n" +
+              "1. Que el dominio esté autorizado en Firebase Console > Authentication > Settings > Authorized domains\n" +
+              "2. Que reCAPTCHA esté correctamente configurado en Firebase Console\n" +
+              "3. Que las credenciales de la aplicación sean válidas\n\n" +
+              "Error técnico: " +
+              signInError.message
+          );
+        }
+
+        throw signInError;
+      }
 
       // En desarrollo, podemos obtener el código de verificación
       // Nota: Esto solo funciona en el emulador de Firebase
       let devOtpCode: string | undefined;
       if (process.env.NODE_ENV === "development") {
+        console.log(
+          "🔧 [DEBUG] Modo desarrollo - verificando código OTP en emulador"
+        );
         // En desarrollo, Firebase Auth emulator puede proporcionar el código
         // Por ahora, retornamos éxito sin código
         devOtpCode = undefined;
       }
 
-      return {
+      const response = {
         success: true,
         message: "Código OTP enviado exitosamente",
         otpCode: devOtpCode,
       };
+      console.log("✅ [DEBUG] Respuesta final:", response);
+
+      return response;
     } catch (error: any) {
-      console.error("Error sending OTP:", error);
+      console.error("❌ [DEBUG] Error sending OTP:", {
+        error,
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
+
       return {
         success: false,
         message:
@@ -158,35 +411,61 @@ export class FirebaseAuthRepository implements IAuthRepository {
   }
 
   async verifyOtp(verification: OtpVerification): Promise<AuthUser> {
+    console.log("🔵 [DEBUG] verifyOtp iniciado", {
+      phoneNumber: verification.phoneNumber,
+      otpCodeLength: verification.otpCode.length,
+    });
+
     try {
       if (!confirmationResult) {
+        console.error("❌ [DEBUG] No hay confirmationResult pendiente");
         throw new Error(
           "No hay una verificación pendiente. Por favor, solicita un nuevo código."
         );
       }
 
+      console.log("✅ [DEBUG] confirmationResult encontrado", {
+        verificationId: confirmationResult.verificationId,
+      });
+
       if (!auth) {
+        console.error("❌ [DEBUG] Firebase Auth no está inicializado");
         throw new Error("Firebase Auth no está inicializado");
       }
+
+      console.log("🔐 [DEBUG] Verificando código OTP:", {
+        code: verification.otpCode,
+        phoneNumber: verification.phoneNumber,
+      });
 
       // Verificar el código OTP
       const userCredential = await confirmationResult.confirm(
         verification.otpCode
       );
       const firebaseUser = userCredential.user;
+      console.log("✅ [DEBUG] Código OTP verificado exitosamente", {
+        uid: firebaseUser.uid,
+        phoneNumber: firebaseUser.phoneNumber,
+      });
 
       // Limpiar el confirmationResult
       confirmationResult = null;
+      console.log("🧹 [DEBUG] confirmationResult limpiado");
 
       // Obtener o crear el documento del usuario en Firestore
+      console.log("📄 [DEBUG] Obteniendo datos del usuario de Firestore...", {
+        uid: firebaseUser.uid,
+      });
       const userDocRef = doc(db!, "users", firebaseUser.uid);
       const userDoc = await getDoc(userDocRef);
 
       let user: User;
 
       if (userDoc.exists()) {
+        console.log("✅ [DEBUG] Usuario existe en Firestore");
         // Usuario existe, obtener datos de Firestore
         const userData = userDoc.data();
+        console.log("📋 [DEBUG] Datos del usuario:", userData);
         user = {
           id: firebaseUser.uid,
           phoneNumber: firebaseUser.phoneNumber || verification.phoneNumber,
@@ -204,6 +483,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
           createdAt: userData.createdAt?.toDate() || new Date(),
         };
       } else {
+        console.log("🆕 [DEBUG] Usuario nuevo, creando documento básico");
         // Usuario nuevo, crear documento básico
         const newUser: User = {
           id: firebaseUser.uid,
@@ -216,21 +496,36 @@ export class FirebaseAuthRepository implements IAuthRepository {
           ...newUser,
           createdAt: serverTimestamp(),
         });
+        console.log("✅ [DEBUG] Documento de usuario creado en Firestore");
 
         user = newUser;
       }
 
       // Obtener el token de acceso
+      console.log("🔑 [DEBUG] Obteniendo token de acceso...");
       const idToken = await firebaseUser.getIdToken();
+      console.log("✅ [DEBUG] Token obtenido (longitud):", idToken.length);
 
-      return {
+      const authUser: AuthUser = {
         user,
         tokens: {
           accessToken: idToken,
         },
       };
+
+      console.log("✅ [DEBUG] verifyOtp completado exitosamente", {
+        userId: user.id,
+        userName: user.name,
+      });
+
+      return authUser;
     } catch (error: any) {
-      console.error("Error verifying OTP:", error);
+      console.error("❌ [DEBUG] Error verifying OTP:", {
+        error,
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
       confirmationResult = null;
       throw new Error(
         error.message || "Código OTP inválido. Por favor, intenta nuevamente."

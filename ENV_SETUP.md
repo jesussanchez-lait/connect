@@ -50,15 +50,49 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 Para que la autenticación por teléfono funcione correctamente, asegúrate de que:
 
-1. **reCAPTCHA está configurado en Firebase Console:**
+### 1. Configurar Dominios Autorizados
 
-   - El sitio de reCAPTCHA "lait-connect" debe estar configurado en Firebase Console
-   - Ve a Firebase Console > Authentication > Sign-in method > Phone
-   - Asegúrate de que reCAPTCHA esté habilitado y configurado correctamente
+**IMPORTANTE:** El error `auth/invalid-app-credential` generalmente ocurre cuando el dominio no está autorizado.
 
-2. **Contenedor de reCAPTCHA:**
-   - El código incluye un contenedor invisible (`recaptcha-container`) en los formularios de login y registro
-   - Este contenedor es necesario para que Firebase pueda inicializar reCAPTCHA
+1. Ve a [Firebase Console](https://console.firebase.google.com/)
+2. Selecciona tu proyecto `connect-tierra`
+3. Ve a **Authentication** > **Settings** > **Authorized domains**
+4. Asegúrate de que los siguientes dominios estén autorizados:
+   - `localhost` (para desarrollo local)
+   - Tu dominio de producción (ej: `tu-dominio.com`)
+   - `connect-tierra.firebaseapp.com` (dominio de Firebase)
+
+### 2. Configurar reCAPTCHA
+
+1. Ve a Firebase Console > **Authentication** > **Sign-in method** > **Phone**
+2. Habilita **Phone** como método de autenticación
+3. Verifica que reCAPTCHA esté habilitado
+4. El sitio de reCAPTCHA "lait-connect" debe estar configurado en la consola de reCAPTCHA de Google
+
+### 3. Verificar Credenciales de la Aplicación
+
+1. Ve a Firebase Console > **Project Settings** > **General**
+2. Verifica que las credenciales de la aplicación web sean correctas:
+   - API Key
+   - Auth Domain
+   - Project ID
+   - App ID
+
+### 4. Contenedor de reCAPTCHA
+
+- El código incluye un contenedor invisible (`recaptcha-container`) en los formularios de login y registro
+- Este contenedor es necesario para que Firebase pueda inicializar reCAPTCHA
+- Asegúrate de que el elemento con `id="recaptcha-container"` esté presente en el DOM antes de enviar el OTP
+
+### Solución de Problemas
+
+Si recibes el error `auth/invalid-app-credential`:
+
+1. **Verifica dominios autorizados:** Asegúrate de que `localhost` esté en la lista de dominios autorizados
+2. **Verifica reCAPTCHA:** Confirma que reCAPTCHA esté habilitado en Firebase Console
+3. **Limpia caché del navegador:** A veces el navegador cachea credenciales antiguas
+4. **Verifica la consola del navegador:** Revisa los logs de depuración para más detalles
+5. **Revisa las reglas de Firestore:** Asegúrate de que las reglas permitan la autenticación
 
 ## Notas Importantes
 
