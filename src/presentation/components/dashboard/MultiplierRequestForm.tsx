@@ -123,7 +123,7 @@ export function MultiplierRequestForm({
             </h3>
             <p className="text-sm text-blue-700 mt-1">
               {requestStatus.message ||
-                "Tu solicitud está siendo revisada por el enlace municipal."}
+                "Tu solicitud está siendo revisada por el administrador."}
             </p>
           </div>
         </div>
@@ -222,8 +222,8 @@ export function MultiplierRequestForm({
           </svg>
           <div>
             <p className="text-sm text-blue-800">
-              <strong>Nota:</strong> Tu solicitud será revisada por el enlace
-              municipal. Serás notificado cuando sea aceptada.
+              <strong>Nota:</strong> Tu solicitud será revisada por el
+              administrador. Serás notificado cuando sea aceptada.
             </p>
           </div>
         </div>

@@ -638,10 +638,10 @@ export const dashboardHandlers = {
       throw new Error("Usuario no encontrado");
     }
 
-    // Solo LINK puede ver solicitudes de multiplicador
-    if (user.role !== "LINK") {
+    // Solo ADMIN puede ver solicitudes de multiplicador
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
       throw new Error(
-        "Solo los enlaces municipales pueden ver solicitudes de multiplicador"
+        "Solo los administradores pueden ver solicitudes de multiplicador"
       );
     }
 
@@ -692,10 +692,10 @@ export const dashboardHandlers = {
       throw new Error("Usuario no encontrado");
     }
 
-    // Solo LINK puede aprobar solicitudes
-    if (user.role !== "LINK") {
+    // Solo ADMIN puede aprobar solicitudes
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
       throw new Error(
-        "Solo los enlaces municipales pueden aprobar solicitudes de multiplicador"
+        "Solo los administradores pueden aprobar solicitudes de multiplicador"
       );
     }
 
@@ -743,10 +743,10 @@ export const dashboardHandlers = {
       throw new Error("Usuario no encontrado");
     }
 
-    // Solo LINK puede rechazar solicitudes
-    if (user.role !== "LINK") {
+    // Solo ADMIN puede rechazar solicitudes
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
       throw new Error(
-        "Solo los enlaces municipales pueden rechazar solicitudes de multiplicador"
+        "Solo los administradores pueden rechazar solicitudes de multiplicador"
       );
     }
 

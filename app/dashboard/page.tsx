@@ -8,9 +8,6 @@ import {
   ROLES,
 } from "@/src/presentation/contexts/RoleContext";
 import { MultiplierDashboard } from "@/src/presentation/components/dashboard/MultiplierDashboard";
-import { FollowerDashboard } from "@/src/presentation/components/dashboard/FollowerDashboard";
-import { LinkDashboard } from "@/src/presentation/components/dashboard/LinkDashboard";
-import { CoordinatorDashboard } from "@/src/presentation/components/dashboard/CoordinatorDashboard";
 import { AdminDashboard } from "@/src/presentation/components/dashboard/AdminDashboard";
 
 function DashboardRouter() {
@@ -24,28 +21,26 @@ function DashboardRouter() {
     );
   }
 
-  // Renderizar dashboard según el rol
+  // Renderizar dashboard según el rol - Solo ADMIN y MULTIPLIER
   switch (role) {
     case ROLES.SUPER_ADMIN:
     case ROLES.ADMIN:
       return <AdminDashboard />;
-    case ROLES.COORDINATOR:
-      return <CoordinatorDashboard />;
-    case ROLES.LINK:
-      return <LinkDashboard />;
     case ROLES.MULTIPLIER:
       return <MultiplierDashboard />;
-    case ROLES.FOLLOWER:
-      return <FollowerDashboard />;
     default:
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Rol no identificado
+              Acceso no autorizado
             </h2>
-            <p className="text-gray-600">
-              No se pudo determinar tu rol en el sistema.
+            <p className="text-gray-600 mb-4">
+              Solo los administradores y multiplicadores pueden acceder al
+              dashboard.
+            </p>
+            <p className="text-sm text-gray-500">
+              Tu rol actual: {role || "No identificado"}
             </p>
           </div>
         </div>

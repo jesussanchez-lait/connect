@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { CampaignSelector } from "./CampaignSelector";
+import { MultiplierRequestsList } from "./MultiplierRequestsList";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { useRole } from "@/src/presentation/hooks/useRole";
 import { ROLES } from "@/src/presentation/contexts/RoleContext";
@@ -254,6 +255,13 @@ export function AdminDashboard() {
           <div className="mb-6">
             <CampaignSelector />
           </div>
+
+          {/* Solicitudes de Multiplicador */}
+          {selectedCampaign && (
+            <div className="mb-6">
+              <MultiplierRequestsList />
+            </div>
+          )}
 
           {/* Métricas Globales */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
