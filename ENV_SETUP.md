@@ -46,9 +46,24 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=tu_api_key_aqui
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
+## Configuración de Firebase Phone Authentication
+
+Para que la autenticación por teléfono funcione correctamente, asegúrate de que:
+
+1. **reCAPTCHA está configurado en Firebase Console:**
+
+   - El sitio de reCAPTCHA "lait-connect" debe estar configurado en Firebase Console
+   - Ve a Firebase Console > Authentication > Sign-in method > Phone
+   - Asegúrate de que reCAPTCHA esté habilitado y configurado correctamente
+
+2. **Contenedor de reCAPTCHA:**
+   - El código incluye un contenedor invisible (`recaptcha-container`) en los formularios de login y registro
+   - Este contenedor es necesario para que Firebase pueda inicializar reCAPTCHA
+
 ## Notas Importantes
 
 - El archivo `.env.local` está en `.gitignore` y no se subirá al repositorio
 - Después de crear o modificar `.env.local`, reinicia el servidor de desarrollo
 - Las variables que empiezan con `NEXT_PUBLIC_` son accesibles en el cliente (navegador)
 - No compartas tu API key públicamente
+- El token de reCAPTCHA "lait-connect" debe estar configurado en Firebase Console

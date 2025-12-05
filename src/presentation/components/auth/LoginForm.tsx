@@ -174,42 +174,46 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSendOtp} className="space-y-6">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
+    <>
+      {/* Contenedor invisible para reCAPTCHA de Firebase */}
+      <div id="recaptcha-container" className="hidden"></div>
+      <form onSubmit={handleSendOtp} className="space-y-6">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+
+        <div>
+          <label
+            htmlFor="phoneNumber"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Número de Celular
+          </label>
+          <input
+            id="phoneNumber"
+            type="tel"
+            value={phoneNumberDisplay}
+            onChange={handlePhoneNumberChange}
+            required
+            maxLength={14} // (xxx)-xxx-xxxx = 14 caracteres
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
+            placeholder="(123)-456-7890"
+          />
+          <p className="mt-2 text-sm text-gray-500">
+            Te enviaremos un código de 6 dígitos por SMS
+          </p>
         </div>
-      )}
 
-      <div>
-        <label
-          htmlFor="phoneNumber"
-          className="block text-sm font-medium text-gray-700 mb-2"
+        <button
+          type="submit"
+          disabled={loading || normalizePhoneNumber(phoneNumber).length < 10}
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          Número de Celular
-        </label>
-        <input
-          id="phoneNumber"
-          type="tel"
-          value={phoneNumberDisplay}
-          onChange={handlePhoneNumberChange}
-          required
-          maxLength={14} // (xxx)-xxx-xxxx = 14 caracteres
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
-          placeholder="(123)-456-7890"
-        />
-        <p className="mt-2 text-sm text-gray-500">
-          Te enviaremos un código de 6 dígitos por SMS
-        </p>
-      </div>
-
-      <button
-        type="submit"
-        disabled={loading || normalizePhoneNumber(phoneNumber).length < 10}
-        className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {loading ? "Enviando código..." : "Enviar Código OTP"}
-      </button>
-    </form>
+          {loading ? "Enviando código..." : "Enviar Código OTP"}
+        </button>
+      </form>
+    </>
   );
 }

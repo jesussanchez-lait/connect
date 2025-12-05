@@ -2,8 +2,15 @@
 
 import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { registerUseCase } from "@/src/shared/di/container";
-import { RegisterCredentials } from "@/src/domain/entities/AuthCredentials";
+import {
+  registerUseCase,
+  sendOtpUseCase,
+  verifyOtpUseCase,
+} from "@/src/shared/di/container";
+import {
+  RegisterCredentials,
+  OtpVerification,
+} from "@/src/domain/entities/AuthCredentials";
 import { useColombiaData } from "@/src/presentation/hooks/useColombiaData";
 import {
   validateColombianId,
@@ -81,8 +88,15 @@ export function RegisterForm({
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [step1Completed, setStep1Completed] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
-  const steps = ["Datos Personales", "Datos Territoriales"];
+  const steps = [
+    "Datos Personales",
+    "Verificación de Teléfono",
+    "Datos Territoriales",
+  ];
 
   // Cargar ciudades cuando se selecciona un departamento
   useEffect(() => {
@@ -133,12 +147,59 @@ export function RegisterForm({
     );
   };
 
+  // Enviar OTP para verificación de teléfono
+  const handleSendOtp = async () => {
+    setError("");
+    setLoading(true);
+
+    try {
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      const response = await sendOtpUseCase.execute({
+        phoneNumber: normalizedPhone,
+      });
+
+      if (response.success) {
+        setOtpSent(true);
+        setCurrentStep(2);
+      } else {
+        setError(response.message || "Error al enviar código OTP");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Error al enviar código OTP"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Verificar OTP
+  const handleVerifyOtp = async () => {
+    setError("");
+    setLoading(true);
+
+    try {
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      const verification: OtpVerification = {
+        phoneNumber: normalizedPhone,
+        otpCode,
+      };
+      await verifyOtpUseCase.execute(verification);
+      setPhoneVerified(true);
+      setCurrentStep(3);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Código OTP inválido");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Avanzar al siguiente paso
   const handleNextStep = () => {
     if (currentStep === 1 && validateStep1()) {
       setStep1Completed(true);
-      setCurrentStep(2);
-      setError("");
+      handleSendOtp();
     }
   };
 
@@ -146,6 +207,11 @@ export function RegisterForm({
   const handlePreviousStep = () => {
     if (currentStep === 2) {
       setCurrentStep(1);
+      setOtpSent(false);
+      setOtpCode("");
+      setError("");
+    } else if (currentStep === 3) {
+      setCurrentStep(2);
       setError("");
     }
   };
@@ -228,6 +294,8 @@ export function RegisterForm({
 
   return (
     <div className="space-y-6">
+      {/* Contenedor invisible para reCAPTCHA de Firebase */}
+      <div id="recaptcha-container" className="hidden"></div>
       {/* Stepper */}
       <Stepper
         currentStep={currentStep}
@@ -354,8 +422,70 @@ export function RegisterForm({
           </div>
         )}
 
-        {/* PASO 2: DATOS TERRITORIALES */}
+        {/* PASO 2: VERIFICACIÓN DE TELÉFONO */}
         {currentStep === 2 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Paso 2: Verificación de Teléfono
+            </h3>
+
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
+                <p className="text-sm">
+                  Hemos enviado un código de verificación al número{" "}
+                  <span className="font-bold">{phoneNumberDisplay}</span>
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="otp"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Código OTP (6 dígitos) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="otp"
+                  type="text"
+                  value={otpCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    setOtpCode(value);
+                  }}
+                  required
+                  maxLength={6}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl font-mono tracking-widest text-gray-900 placeholder:text-gray-400"
+                  placeholder="000000"
+                  autoFocus
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  Ingresa el código de 6 dígitos que recibiste por SMS
+                </p>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={handlePreviousStep}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                >
+                  ← Volver
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyOtp}
+                  disabled={loading || otpCode.length !== 6}
+                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading ? "Verificando..." : "Verificar Código"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PASO 3: DATOS TERRITORIALES */}
+        {currentStep === 3 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Paso 2: Datos Territoriales
@@ -521,7 +651,7 @@ export function RegisterForm({
                   onClick={handlePreviousStep}
                   className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
                 >
-                  ← Volver al Paso 1
+                  ← Volver
                 </button>
                 <button
                   type="submit"

@@ -1,10 +1,5 @@
 import { IAuthRepository } from "@/src/domain/repositories/IAuthRepository";
-import { AuthRepository } from "@/src/infrastructure/repositories/AuthRepository";
-import { ApiClient, IApiClient } from "@/src/infrastructure/api/ApiClient";
-import {
-  IStorageService,
-  LocalStorageService,
-} from "@/src/infrastructure/storage/StorageService";
+import { FirebaseAuthRepository } from "@/src/infrastructure/repositories/FirebaseAuthRepository";
 import { SendOtpUseCase } from "@/src/application/use-cases/auth/LoginUseCase";
 import { VerifyOtpUseCase } from "@/src/application/use-cases/auth/VerifyOtpUseCase";
 import { RegisterUseCase } from "@/src/application/use-cases/auth/RegisterUseCase";
@@ -12,12 +7,7 @@ import { LogoutUseCase } from "@/src/application/use-cases/auth/LogoutUseCase";
 import { GetCurrentUserUseCase } from "@/src/application/use-cases/auth/GetCurrentUserUseCase";
 
 // Infrastructure instances
-const apiClient: IApiClient = new ApiClient();
-const storageService: IStorageService = new LocalStorageService();
-const authRepository: IAuthRepository = new AuthRepository(
-  apiClient,
-  storageService
-);
+const authRepository: IAuthRepository = new FirebaseAuthRepository();
 
 // Use cases
 export const sendOtpUseCase = new SendOtpUseCase(authRepository);
