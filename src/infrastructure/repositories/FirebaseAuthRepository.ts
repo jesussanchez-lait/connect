@@ -656,7 +656,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         leaderId: credentials.leaderId,
         leaderName: credentials.leaderName,
         campaignId: credentials.campaignId,
-        role: "FOLLOWER" as UserRole, // Rol por defecto para nuevos usuarios
+        role: "MULTIPLIER" as UserRole, // Rol por defecto para nuevos usuarios registrados
         updatedAt: serverTimestamp(),
         // Si no está autenticado, marcar como pendiente
         pendingAuth: !isAuthenticated,
@@ -913,7 +913,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         leaderId: credentials.leaderId,
         leaderName: credentials.leaderName,
         campaignId: credentials.campaignId,
-        role: "FOLLOWER" as UserRole, // Rol por defecto para nuevos usuarios
+        role: "MULTIPLIER" as UserRole, // Rol por defecto para nuevos usuarios registrados
         updatedAt: serverTimestamp(),
       };
 
@@ -971,7 +971,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         longitude: credentials.longitude,
         leaderId: credentials.leaderId,
         leaderName: credentials.leaderName,
-        role: "FOLLOWER",
+        role: "MULTIPLIER",
         createdAt: new Date(),
       };
 

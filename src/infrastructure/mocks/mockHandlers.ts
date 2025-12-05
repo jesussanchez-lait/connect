@@ -131,13 +131,13 @@ export const authHandlers = {
 
   async register(credentials: any) {
     await delay(400);
-    // Crear nuevo usuario FOLLOWER
+    // Crear nuevo usuario MULTIPLIER
     const newUser = {
       id: `user-${Date.now()}`,
       name: `${credentials.firstName} ${credentials.lastName}`,
       phoneNumber: credentials.phoneNumber,
       email: undefined,
-      role: "FOLLOWER" as const,
+      role: "MULTIPLIER" as const,
       documentNumber: credentials.documentNumber,
       country: credentials.country,
       department: credentials.department,

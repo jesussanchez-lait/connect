@@ -82,8 +82,7 @@ export function RegisterForm({
   const [mapError, setMapError] = useState<string>("");
 
   // Referencias para Google Places Autocomplete
-  const autocompleteRef =
-    useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -142,10 +141,10 @@ export function RegisterForm({
         return;
       }
 
-      // Verificar que PlaceAutocompleteElement está disponible
-      if (!google.maps.places.PlaceAutocompleteElement) {
+      // Verificar que Autocomplete está disponible
+      if (!google.maps.places.Autocomplete) {
         console.error(
-          "❌ [REGISTRO] PlaceAutocompleteElement no está disponible en Places"
+          "❌ [REGISTRO] Autocomplete no está disponible en Places"
         );
         if (isMounted) {
           setMapError(
@@ -157,114 +156,77 @@ export function RegisterForm({
 
       // Limpiar autocomplete anterior si existe
       if (autocompleteRef.current) {
-        try {
-          // Remover listeners y el elemento
-          autocompleteRef.current.remove();
-        } catch (e) {
-          console.warn("Error al limpiar autocomplete anterior:", e);
-        }
+        // La API tradicional de Autocomplete no tiene método remove explícito,
+        // pero podemos limpiar los listeners si es necesario
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
       }
 
-      // Crear nuevo autocomplete usando la nueva API PlaceAutocompleteElement
-      // PlaceAutocompleteElement es un Web Component que reemplaza el input
+      // Crear nuevo autocomplete usando la API tradicional
       try {
-        if (!addressInputRef.current?.parentElement) {
-          throw new Error("Input element no tiene parent");
-        }
+        const input = addressInputRef.current;
+        const options: google.maps.places.AutocompleteOptions = {
+          componentRestrictions: { country: "co" }, // Restringir a Colombia
+          types: ["geocode"], // Solo direcciones geocodificadas
+          fields: ["formatted_address", "geometry", "name"], // Campos que necesitamos
+        };
 
-        // Crear el elemento PlaceAutocompleteElement
-        autocompleteRef.current =
-          new google.maps.places.PlaceAutocompleteElement({
-            componentRestrictions: { country: "co" }, // Restringir a Colombia
-            types: ["geocode"], // Solo direcciones geocodificadas
-            requestedRegion: "co", // Región Colombia
-          });
-
-        // Configurar atributos del elemento
-        autocompleteRef.current.setAttribute("id", "address-autocomplete");
-        autocompleteRef.current.setAttribute(
-          "class",
-          addressInputRef.current.className
-        );
-        autocompleteRef.current.setAttribute(
-          "placeholder",
-          addressInputRef.current.placeholder || ""
-        );
-        autocompleteRef.current.setAttribute("value", address);
-
-        // Reemplazar el input con el nuevo elemento
-        addressInputRef.current.parentElement.replaceChild(
-          autocompleteRef.current,
-          addressInputRef.current
+        autocompleteRef.current = new google.maps.places.Autocomplete(
+          input,
+          options
         );
 
-        // Listener para cuando se selecciona una dirección (evento 'gmp-select' en la nueva API)
-        autocompleteRef.current.addEventListener(
-          "gmp-select",
-          async (event: any) => {
-            if (!isMounted) return;
+        // Listener para cuando se selecciona una dirección
+        autocompleteRef.current.addListener("place_changed", () => {
+          if (!isMounted) return;
 
-            try {
-              const place = event.place;
-              if (place && place.geometry && place.geometry.location) {
-                const location = place.geometry.location;
+          try {
+            const place = autocompleteRef.current?.getPlace();
+            if (place && place.geometry && place.geometry.location) {
+              const location = place.geometry.location;
 
-                // Obtener la dirección formateada
-                let formattedAddress = "";
-                if (place.formattedAddress) {
-                  formattedAddress = place.formattedAddress;
-                } else if (place.displayName) {
-                  formattedAddress = place.displayName;
-                }
+              // Obtener la dirección formateada
+              const formattedAddress =
+                place.formatted_address || place.name || input.value || "";
 
-                setAddress(formattedAddress);
+              // Actualizar el estado con la dirección seleccionada
+              setAddress(formattedAddress);
 
-                // Obtener coordenadas (puede ser LatLng o LatLngLiteral)
-                if (typeof location.lat === "function") {
-                  setLatitude(location.lat());
-                  setLongitude(location.lng());
-                } else {
-                  setLatitude(location.lat);
-                  setLongitude(location.lng);
-                }
-
-                setMapError("");
-                console.log("📍 [REGISTRO] Dirección seleccionada:", {
-                  address: formattedAddress,
-                  lat:
-                    typeof location.lat === "function"
-                      ? location.lat()
-                      : location.lat,
-                  lng:
-                    typeof location.lng === "function"
-                      ? location.lng()
-                      : location.lng,
-                });
+              // Obtener coordenadas (puede ser LatLng o LatLngLiteral)
+              if (typeof location.lat === "function") {
+                setLatitude(location.lat());
+                setLongitude(location.lng());
+              } else {
+                setLatitude(location.lat);
+                setLongitude(location.lng);
               }
-            } catch (error) {
-              console.error(
-                "❌ [REGISTRO] Error al procesar lugar seleccionado:",
-                error
-              );
-            }
-          }
-        );
 
-        // Listener para cambios en el valor del input
-        autocompleteRef.current.addEventListener("input", (event: any) => {
-          if (isMounted) {
-            setAddress(event.target.value || "");
+              setMapError("");
+              console.log("📍 [REGISTRO] Dirección seleccionada:", {
+                address: formattedAddress,
+                lat:
+                  typeof location.lat === "function"
+                    ? location.lat()
+                    : location.lat,
+                lng:
+                  typeof location.lng === "function"
+                    ? location.lng()
+                    : location.lng,
+              });
+            }
+          } catch (error) {
+            console.error(
+              "❌ [REGISTRO] Error al procesar lugar seleccionado:",
+              error
+            );
           }
         });
 
         console.log(
-          "✅ [REGISTRO] Google Places PlaceAutocompleteElement inicializado correctamente"
+          "✅ [REGISTRO] Google Places Autocomplete inicializado correctamente"
         );
       } catch (error) {
-        console.error(
-          "❌ [REGISTRO] Error al crear PlaceAutocompleteElement:",
-          error
-        );
+        console.error("❌ [REGISTRO] Error al crear Autocomplete:", error);
         if (isMounted) {
           setMapError(
             "Error al inicializar el autocompletado. Por favor, ingresa tu dirección manualmente."
@@ -273,7 +235,7 @@ export function RegisterForm({
       }
     };
 
-    // Cargar Google Maps usando el nuevo API loader
+    // Cargar Google Maps usando el loader
     loadGoogleMaps()
       .then((google) => {
         if (!isMounted) return;
@@ -312,10 +274,12 @@ export function RegisterForm({
     // Cleanup
     return () => {
       isMounted = false;
-      if (autocompleteRef.current) {
+      if (autocompleteRef.current && window.google?.maps?.event) {
         try {
-          // Remover el elemento y sus listeners
-          autocompleteRef.current.remove();
+          // Limpiar listeners del autocomplete
+          window.google.maps.event.clearInstanceListeners(
+            autocompleteRef.current
+          );
         } catch (e) {
           console.warn("Error en cleanup:", e);
         }
@@ -353,16 +317,49 @@ export function RegisterForm({
     );
   };
 
-  // Validar paso 2
-  const validateStep2 = (): boolean => {
-    return (
+  // Validar paso 3 (Datos Territoriales)
+  const validateStep3 = (): boolean => {
+    const hasDepartment =
       departmentId !== "" &&
-      cityId !== "" &&
-      address.trim() !== "" &&
-      neighborhood.trim() !== "" &&
-      habeasDataConsent &&
-      whatsAppConsent
-    );
+      departmentId !== null &&
+      departmentId !== undefined;
+    const hasCity = cityId !== "" && cityId !== null && cityId !== undefined;
+    const hasAddress = address.trim() !== "";
+    console.log("address::: ", address);
+    const hasNeighborhood = neighborhood.trim() !== "";
+    const hasHabeasData = habeasDataConsent === true;
+    const hasWhatsApp = whatsAppConsent === true;
+
+    const isValid =
+      hasDepartment &&
+      hasCity &&
+      hasAddress &&
+      hasNeighborhood &&
+      hasHabeasData &&
+      hasWhatsApp;
+
+    // Log de depuración solo en desarrollo
+    if (process.env.NODE_ENV === "development" && currentStep === 3) {
+      console.log("🔍 [REGISTRO] Validación paso 3:", {
+        hasDepartment,
+        hasCity,
+        hasAddress,
+        hasNeighborhood,
+        hasHabeasData,
+        hasWhatsApp,
+        isValid,
+        values: {
+          departmentId,
+          cityId,
+          address: address.trim(),
+          neighborhood: neighborhood.trim(),
+          habeasDataConsent,
+          whatsAppConsent,
+        },
+      });
+    }
+
+    return isValid;
   };
 
   // Enviar OTP para verificación de teléfono
@@ -628,10 +625,14 @@ export function RegisterForm({
     setLoading(true);
 
     // Validar todos los campos antes de enviar
-    if (!validateStep1() || !validateStep2()) {
+    if (!validateStep1() || !validateStep3()) {
       console.warn("⚠️ [REGISTRO] Validación fallida:", {
         step1Valid: validateStep1(),
-        step2Valid: validateStep2(),
+        step3Valid: validateStep3(),
+        departmentId,
+        cityId,
+        address: address.trim(),
+        neighborhood: neighborhood.trim(),
         habeasDataConsent,
         whatsAppConsent,
       });
@@ -975,7 +976,7 @@ export function RegisterForm({
         {currentStep === 3 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Paso 2: Datos Territoriales
+              Paso 3: Datos Territoriales
             </h3>
 
             <div className="space-y-4">
@@ -1186,7 +1187,7 @@ export function RegisterForm({
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || !validateStep2()}
+                  disabled={loading || !validateStep3()}
                   className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {loading ? "Registrando..." : "Registrarse"}
