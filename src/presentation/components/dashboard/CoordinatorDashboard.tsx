@@ -183,7 +183,7 @@ export function CoordinatorDashboard() {
             <div className="flex items-center">
               <h1 className="text-xl font-semibold text-gray-900">Connect</h1>
               <span className="ml-3 px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">
-                Coordinador - "El Auditor"
+                Coordinador - &quot;El Auditor&quot;
               </span>
             </div>
             <div className="flex items-center space-x-4">
@@ -213,7 +213,7 @@ export function CoordinatorDashboard() {
               </svg>
               <div>
                 <h3 className="text-sm font-medium text-purple-800">
-                  Rol: Coordinador - "El Auditor"
+                  Rol: Coordinador - &quot;El Auditor&quot;
                 </h3>
                 <p className="text-sm text-purple-700 mt-1">
                   Tu función es garantizar la integridad de los datos, resolver

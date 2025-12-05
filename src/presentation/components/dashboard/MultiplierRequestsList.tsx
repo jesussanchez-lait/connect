@@ -55,7 +55,8 @@ export function MultiplierRequestsList() {
     setProcessingId(requestId);
     try {
       await apiClient.post(
-        `/dashboard/multiplier-requests/${requestId}/approve`
+        `/dashboard/multiplier-requests/${requestId}/approve`,
+        {}
       );
       await fetchRequests(); // Refrescar lista
     } catch (error: any) {

@@ -178,7 +178,7 @@ export function LinkDashboard() {
               </svg>
               <div>
                 <h3 className="text-sm font-medium text-green-800">
-                  Rol: Enlace Municipal - "El Activador"
+                  Rol: Enlace Municipal - &quot;El Activador&quot;
                 </h3>
                 <p className="text-sm text-green-700 mt-1">
                   Tu función es gestionar zonas, validar líderes, entregar

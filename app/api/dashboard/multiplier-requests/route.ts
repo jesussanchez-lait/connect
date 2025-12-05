@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     const result = await dashboardHandlers.getMultiplierRequests(
       campaignId,
-      reviewerId,
+      reviewerId || undefined,
       token
     );
 

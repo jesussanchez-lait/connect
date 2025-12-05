@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthGuard } from "@/src/presentation/components/layout/AuthGuard";
 import { RegisterForm } from "@/src/presentation/components/auth/RegisterForm";
 
-export default function RegisterPage() {
+function RegisterContent() {
   const searchParams = useSearchParams();
   const leaderId = searchParams.get("leaderId") || "";
   const leaderName = searchParams.get("leaderName") || "";
@@ -49,5 +50,21 @@ export default function RegisterPage() {
         </div>
       </div>
     </AuthGuard>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <p className="text-gray-600">Cargando...</p>
+          </div>
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
   );
 }
