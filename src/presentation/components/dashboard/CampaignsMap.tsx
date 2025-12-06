@@ -1,12 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useEffect } from "react";
-import {
-  GoogleMap,
-  useJsApiLoader,
-  Marker,
-  LatLngBounds,
-} from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { useCampaignUsers } from "@/src/presentation/hooks/useCampaignUsers";
 
@@ -23,6 +18,7 @@ const defaultCenter = {
 export function CampaignsMap() {
   const { selectedCampaigns } = useCampaign();
   const { users, loading } = useCampaignUsers(selectedCampaigns);
+  const mapRef = useRef<google.maps.Map | null>(null);
 
   // Filter users: only MULTIPLIER role with valid coordinates
   const validUsers = useMemo(() => {
@@ -32,16 +28,34 @@ export function CampaignsMap() {
     ) as Array<(typeof users)[0] & { latitude: number; longitude: number }>;
   }, [users]);
 
-  const mapCenter = useMemo(() => {
-    if (validUsers.length === 0) return defaultCenter;
+  // Calculate bounding box for all multipliers
+  const bounds = useMemo(() => {
+    if (validUsers.length === 0) return null;
 
-    const avgLat =
-      validUsers.reduce((sum, u) => sum + u.latitude, 0) / validUsers.length;
-    const avgLng =
-      validUsers.reduce((sum, u) => sum + u.longitude, 0) / validUsers.length;
+    let minLat = validUsers[0].latitude;
+    let maxLat = validUsers[0].latitude;
+    let minLng = validUsers[0].longitude;
+    let maxLng = validUsers[0].longitude;
 
-    return { lat: avgLat, lng: avgLng };
+    validUsers.forEach((user) => {
+      minLat = Math.min(minLat, user.latitude);
+      maxLat = Math.max(maxLat, user.latitude);
+      minLng = Math.min(minLng, user.longitude);
+      maxLng = Math.max(maxLng, user.longitude);
+    });
+
+    return { minLat, maxLat, minLng, maxLng };
   }, [validUsers]);
+
+  // Calculate center from bounding box
+  const mapCenter = useMemo(() => {
+    if (!bounds) return defaultCenter;
+
+    return {
+      lat: (bounds.minLat + bounds.maxLat) / 2,
+      lng: (bounds.minLng + bounds.maxLng) / 2,
+    };
+  }, [bounds]);
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -50,6 +64,25 @@ export function CampaignsMap() {
     googleMapsApiKey: googleMapsApiKey || "",
     libraries: ["maps"], // Only load maps library, not places
   });
+
+  // Fit bounds when validUsers change (after map is loaded)
+  useEffect(() => {
+    if (mapRef.current && isLoaded && validUsers.length > 0) {
+      const googleBounds = new google.maps.LatLngBounds();
+      validUsers.forEach((user) => {
+        googleBounds.extend(
+          new google.maps.LatLng(user.latitude, user.longitude)
+        );
+      });
+      // Fit bounds with padding to avoid markers touching edges
+      mapRef.current.fitBounds(googleBounds, {
+        top: 50,
+        right: 50,
+        bottom: 50,
+        left: 50,
+      });
+    }
+  }, [validUsers, isLoaded]);
 
   if (!googleMapsApiKey) {
     return (
@@ -128,6 +161,12 @@ export function CampaignsMap() {
           mapContainerStyle={mapContainerStyle}
           center={mapCenter}
           zoom={validUsers.length === 1 ? 12 : 6}
+          onLoad={(map) => {
+            mapRef.current = map;
+          }}
+          onUnmount={() => {
+            mapRef.current = null;
+          }}
           options={{
             disableDefaultUI: false,
             zoomControl: true,
