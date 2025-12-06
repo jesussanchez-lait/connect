@@ -131,13 +131,43 @@ export const authHandlers = {
 
   async register(credentials: any) {
     await delay(400);
-    // Crear nuevo usuario MULTIPLIER
+
+    // Verificar si el usuario ya existe (por teléfono)
+    let existingUser = Object.values(MOCK_USERS).find(
+      (u: any) => u.phoneNumber === credentials.phoneNumber
+    ) as any;
+
+    let campaignIds: string[] = [];
+    if (existingUser) {
+      // Si el usuario existe, obtener sus campaignIds existentes
+      campaignIds = existingUser.campaignIds || [];
+      // Si existe campaignId (legacy), agregarlo también
+      if (
+        existingUser.campaignId &&
+        !campaignIds.includes(existingUser.campaignId)
+      ) {
+        campaignIds.push(existingUser.campaignId);
+      }
+    }
+
+    // Si hay una nueva campaña, agregarla a la lista
+    if (
+      credentials.campaignId &&
+      !campaignIds.includes(credentials.campaignId)
+    ) {
+      campaignIds.push(credentials.campaignId);
+    }
+
+    // Crear o actualizar usuario MULTIPLIER
     const newUser = {
-      id: `user-${Date.now()}`,
+      id: existingUser?.id || `user-${Date.now()}`,
       name: `${credentials.firstName} ${credentials.lastName}`,
       phoneNumber: credentials.phoneNumber,
-      email: undefined,
-      role: "MULTIPLIER" as const,
+      email: existingUser?.email || undefined,
+      role:
+        credentials.leaderId && credentials.campaignId
+          ? ("MULTIPLIER" as const)
+          : ("ADMIN" as const),
       documentNumber: credentials.documentNumber,
       country: credentials.country,
       department: credentials.department,
@@ -147,7 +177,8 @@ export const authHandlers = {
       longitude: credentials.longitude,
       leaderId: credentials.leaderId,
       leaderName: credentials.leaderName,
-      createdAt: new Date(),
+      campaignIds: campaignIds,
+      createdAt: existingUser?.createdAt || new Date(),
     };
 
     const token = `mock-token-${newUser.id}-${Date.now()}`;

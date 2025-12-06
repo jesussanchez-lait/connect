@@ -437,6 +437,27 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // Crear o actualizar el documento del usuario en Firestore con datos parciales
       const userDocRef = doc(db, "users", userId);
 
+      // Verificar si el usuario ya existe para obtener campaignIds existentes
+      let existingCampaignIds: string[] = [];
+      try {
+        const existingUserDoc = await getDoc(userDocRef);
+        if (existingUserDoc.exists() && existingUserDoc.data()) {
+          const existingData = existingUserDoc.data();
+          // Obtener campaignIds existentes o inicializar como array vacío
+          existingCampaignIds = existingData.campaignIds || [];
+          // Si existe campaignId (legacy), agregarlo también
+          if (
+            existingData.campaignId &&
+            !existingCampaignIds.includes(existingData.campaignId)
+          ) {
+            existingCampaignIds.push(existingData.campaignId);
+          }
+        }
+      } catch (checkError: any) {
+        // Continuar asumiendo que es nuevo
+        existingCampaignIds = [];
+      }
+
       // Determinar el rol: ADMIN si no hay leaderId/campaignId, MULTIPLIER en caso contrario
       const userRole: UserRole =
         !credentials.leaderId || !credentials.campaignId
@@ -463,12 +484,16 @@ export class FirebaseAuthRepository implements IAuthRepository {
         userData.leaderName = credentials.leaderName;
       }
       if (credentials.campaignId) {
-        userData.campaignId = credentials.campaignId;
-        // Agregar también a campaignIds si existe campaignId
-        userData.campaignIds = [credentials.campaignId];
+        // Agregar la campaña a la lista de campañas del usuario
+        // Si no está ya incluida, agregarla
+        if (!existingCampaignIds.includes(credentials.campaignId)) {
+          existingCampaignIds.push(credentials.campaignId);
+        }
+        userData.campaignIds = existingCampaignIds;
       } else {
-        // Inicializar campaignIds como array vacío si no hay campaignId
-        userData.campaignIds = [];
+        // Si no hay campaignId, mantener las campañas existentes o inicializar como array vacío
+        userData.campaignIds =
+          existingCampaignIds.length > 0 ? existingCampaignIds : [];
       }
 
       // Usar merge: true para actualizar solo los campos proporcionados
@@ -527,11 +552,26 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // Crear o actualizar el documento del usuario en Firestore
       const userDocRef = doc(db!, "users", firebaseUser.uid);
 
-      // Verificar si el usuario ya existe para no sobrescribir createdAt
+      // Verificar si el usuario ya existe para no sobrescribir createdAt y campaignIds
       let userExists = false;
+      let existingCampaignIds: string[] = [];
       try {
         const existingUserDoc = await getDoc(userDocRef);
         userExists = existingUserDoc.exists();
+        if (userExists) {
+          const existingData = existingUserDoc.data();
+          if (existingData) {
+            // Obtener campaignIds existentes o inicializar como array vacío
+            existingCampaignIds = existingData.campaignIds || [];
+            // Si existe campaignId (legacy), agregarlo también
+            if (
+              existingData.campaignId &&
+              !existingCampaignIds.includes(existingData.campaignId)
+            ) {
+              existingCampaignIds.push(existingData.campaignId);
+            }
+          }
+        }
       } catch (checkError: any) {
         // Continuar asumiendo que es nuevo
         userExists = false;
@@ -569,12 +609,16 @@ export class FirebaseAuthRepository implements IAuthRepository {
         userData.leaderName = credentials.leaderName;
       }
       if (credentials.campaignId) {
-        userData.campaignId = credentials.campaignId;
-        // Agregar también a campaignIds si existe campaignId
-        userData.campaignIds = [credentials.campaignId];
+        // Agregar la campaña a la lista de campañas del usuario
+        // Si no está ya incluida, agregarla
+        if (!existingCampaignIds.includes(credentials.campaignId)) {
+          existingCampaignIds.push(credentials.campaignId);
+        }
+        userData.campaignIds = existingCampaignIds;
       } else {
-        // Inicializar campaignIds como array vacío si no hay campaignId
-        userData.campaignIds = [];
+        // Si no hay campaignId, mantener las campañas existentes o inicializar como array vacío
+        userData.campaignIds =
+          existingCampaignIds.length > 0 ? existingCampaignIds : [];
       }
 
       // Solo establecer createdAt si el usuario no existe
@@ -596,7 +640,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         latitude: credentials.latitude,
         longitude: credentials.longitude,
         role: userRole,
-        campaignIds: credentials.campaignId ? [credentials.campaignId] : [],
+        campaignIds: userData.campaignIds || [],
         createdAt: new Date(),
       };
 
