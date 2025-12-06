@@ -2,7 +2,8 @@
 
 import { useState, FormEvent } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
-import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { FirebaseDataSource } from "@/src/infrastructure/firebase/FirebaseDataSource";
+import { Campaign } from "@/src/domain/entities/Campaign";
 import { LoaderWithText } from "@/src/presentation/components/ui/Loader";
 
 interface CreateCampaignModalProps {
@@ -30,7 +31,7 @@ export function CreateCampaignModal({
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const apiClient = new ApiClient();
+  const campaignDataSource = new FirebaseDataSource<Campaign>("campaigns");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -66,15 +67,14 @@ export function CreateCampaignModal({
     }
 
     try {
-      const newCampaign = {
+      await campaignDataSource.create({
         name: formData.name.trim(),
         description: formData.description.trim(),
-        startDate: formData.startDate,
-        endDate: formData.endDate,
+        startDate: new Date(formData.startDate),
+        endDate: new Date(formData.endDate),
         status: "active",
-      };
-
-      await apiClient.post("/dashboard/campaigns", newCampaign);
+        participants: 0,
+      });
 
       // Resetear formulario
       setFormData({
@@ -84,7 +84,7 @@ export function CreateCampaignModal({
         endDate: "",
       });
 
-      // Refrescar lista de campañas
+      // Refrescar lista de campañas (aunque el stream debería actualizar automáticamente)
       await refreshCampaigns();
 
       // Cerrar modal

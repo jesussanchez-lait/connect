@@ -7,18 +7,8 @@ import {
   useEffect,
   ReactNode,
 } from "react";
-import { ApiClient } from "@/src/infrastructure/api/ApiClient";
-
-interface Campaign {
-  id: string;
-  name: string;
-  description: string;
-  startDate: Date;
-  endDate: Date;
-  status: string;
-  participants: number;
-  createdAt: Date;
-}
+import { FirebaseDataSource } from "@/src/infrastructure/firebase/FirebaseDataSource";
+import { Campaign } from "@/src/domain/entities/Campaign";
 
 interface CampaignContextType {
   campaigns: Campaign[];
@@ -38,22 +28,17 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     null
   );
   const [loading, setLoading] = useState(true);
-  const apiClient = new ApiClient();
+  const campaignDataSource = new FirebaseDataSource<Campaign>("campaigns");
 
   const fetchCampaigns = async () => {
     try {
-      const data = await apiClient.get<Campaign[]>("/dashboard/campaigns");
-      const campaignsWithDates = data.map((campaign) => ({
-        ...campaign,
-        startDate: new Date(campaign.startDate),
-        endDate: new Date(campaign.endDate),
-        createdAt: new Date(campaign.createdAt),
-      }));
-      setCampaigns(campaignsWithDates);
+      setLoading(true);
+      const data = await campaignDataSource.getAll();
+      setCampaigns(data);
 
       // Auto-select first campaign if available and none selected
-      if (campaignsWithDates.length > 0 && !selectedCampaign) {
-        setSelectedCampaign(campaignsWithDates[0]);
+      if (data.length > 0 && !selectedCampaign) {
+        setSelectedCampaign(data[0]);
       }
     } catch (error) {
       console.error("Error fetching campaigns:", error);
@@ -62,8 +47,22 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Subscribe to real-time updates
   useEffect(() => {
-    fetchCampaigns();
+    const unsubscribe = campaignDataSource.subscribeToCollection(
+      (updatedCampaigns) => {
+        setCampaigns(updatedCampaigns);
+
+        // Auto-select first campaign if available and none selected
+        if (updatedCampaigns.length > 0 && !selectedCampaign) {
+          setSelectedCampaign(updatedCampaigns[0]);
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
