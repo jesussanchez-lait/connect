@@ -10,6 +10,7 @@ import { useRole } from "@/src/presentation/hooks/useRole";
 import { useCampaignKPIs } from "@/src/presentation/hooks/useCampaignKPIs";
 import { ROLES } from "@/src/presentation/contexts/RoleContext";
 import { CampaignsMap } from "./CampaignsMap";
+import { TeamTreeCanvas } from "./TeamTreeCanvas";
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -206,7 +207,7 @@ export function AdminDashboard() {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           {/* Información para Admin */}
-          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
             <div className="flex items-start">
               <svg
                 className="w-5 h-5 text-indigo-600 mt-0.5 mr-3"
@@ -235,59 +236,20 @@ export function AdminDashboard() {
           </div>
 
           {/* Selector de Campaña */}
-          <div className="mb-6">
+          <div className="mb-4">
             <CampaignSelector />
           </div>
 
-          {/* Métricas Globales - Calculadas basadas en campañas seleccionadas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">
-                Campañas Seleccionadas
-              </h3>
-              <p className="text-3xl font-bold text-gray-900">
-                {kpis.totalCampaigns}
-              </p>
-              {kpis.totalCampaigns > 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {kpis.activeCampaigns} activas, {kpis.inactiveCampaigns}{" "}
-                  inactivas
-                </p>
-              )}
+          {/* Árbol de Participantes */}
+          {kpis.totalCampaigns > 0 && (
+            <div className="mb-4">
+              <TeamTreeCanvas />
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">
-                Total de Participantes
-              </h3>
-              <p className="text-3xl font-bold text-gray-900">
-                {kpis.totalParticipants.toLocaleString()}
-              </p>
-              {kpis.totalCampaigns > 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Promedio:{" "}
-                  {kpis.averageParticipantsPerCampaign.toLocaleString()} por
-                  campaña
-                </p>
-              )}
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">
-                Participantes Activos
-              </h3>
-              <p className="text-3xl font-bold text-indigo-600">
-                {kpis.totalActiveParticipants.toLocaleString()}
-              </p>
-              {kpis.totalCampaigns > 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  En campañas activas
-                </p>
-              )}
-            </div>
-          </div>
+          )}
 
           {/* KPIs de Distribución Geográfica */}
           {kpis.totalCampaigns > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
               {/* Distribución Urbano/Rural */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-sm font-medium text-gray-500 mb-4">
@@ -370,14 +332,14 @@ export function AdminDashboard() {
 
           {/* Mapa de Participantes - Solo mostrar si hay campañas seleccionadas */}
           {kpis.totalCampaigns > 0 && (
-            <div className="mb-6">
+            <div className="mb-4">
               <CampaignsMap />
             </div>
           )}
 
           {/* Mensaje cuando no hay campañas seleccionadas */}
           {kpis.totalCampaigns === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-4">
               <div className="flex items-start">
                 <svg
                   className="w-5 h-5 text-yellow-600 mt-0.5 mr-3"
