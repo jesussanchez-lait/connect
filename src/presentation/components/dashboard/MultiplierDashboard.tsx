@@ -9,7 +9,7 @@ import { ActivityHistory } from "./ActivityHistory";
 import { TeamMap } from "./TeamMap";
 import { CampaignSelector } from "./CampaignSelector";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
-import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { useTeam } from "@/src/presentation/hooks/useTeam";
 
 function DownloadCampaignProposalButton() {
   const [downloading, setDownloading] = useState(false);
@@ -197,7 +197,6 @@ export function MultiplierDashboard() {
   const [hasTeam, setHasTeam] = useState(false);
   const [checkingTeam, setCheckingTeam] = useState(true);
   const leaderContainerRef = useRef<HTMLDivElement>(null);
-  const apiClientRef = useRef(new ApiClient());
 
   // Detectar si MyLeader está renderizando contenido
   useEffect(() => {
@@ -244,43 +243,29 @@ export function MultiplierDashboard() {
     };
   }, [selectedCampaign, user]);
 
-  // Verificar si el multiplicador tiene equipo
-  const checkTeam = useCallback(async () => {
-    if (!selectedCampaign) {
-      setHasTeam(false);
-      setCheckingTeam(false);
-      return;
-    }
-
-    setCheckingTeam(true);
-    try {
-      const data = await apiClientRef.current.get<any[]>(
-        `/dashboard/my-team?campaignId=${selectedCampaign.id}&limit=1`
-      );
-      setHasTeam(data && data.length > 0);
-    } catch (error) {
-      console.error("Error checking team:", error);
-      setHasTeam(false);
-    } finally {
-      setCheckingTeam(false);
-    }
-  }, [selectedCampaign]);
+  // Use the useTeam hook to check if multiplier has team
+  const { team, loading: teamLoading } = useTeam({
+    campaignId: selectedCampaign?.id,
+  });
 
   useEffect(() => {
-    checkTeam();
-  }, [checkTeam]);
+    setCheckingTeam(teamLoading);
+    setHasTeam(team.length > 0);
+  }, [team, teamLoading]);
 
   // Escuchar eventos de actualización del equipo
   useEffect(() => {
     const handleTeamUpdate = () => {
-      checkTeam();
+      // The useTeam hook will automatically refetch when dependencies change
+      // This is just to ensure we update the UI state
+      setHasTeam(team.length > 0);
     };
 
     window.addEventListener("team-updated", handleTeamUpdate);
     return () => {
       window.removeEventListener("team-updated", handleTeamUpdate);
     };
-  }, [checkTeam]);
+  }, [team]);
 
   return (
     <>
@@ -307,7 +292,7 @@ export function MultiplierDashboard() {
         <div className="px-4 py-6 sm:px-0">
           {/* Selector de Campaña y Multiplicador */}
           <div
-            className={`grid grid-cols-1 gap-6 mb-6 ${
+            className={`grid grid-cols-1 gap-4 mb-4 ${
               hasLeader ? "lg:grid-cols-2" : "lg:grid-cols-1"
             }`}
           >
@@ -318,28 +303,21 @@ export function MultiplierDashboard() {
           </div>
 
           {/* Código QR - Solo Multiplicadores tienen QR */}
-          <div className="mb-6">
+          <div className="mb-4">
             <QRCodeSection />
           </div>
 
           {/* Lista de equipo - Seguidores reclutados - Solo mostrar si hay equipo */}
           {hasTeam && (
-            <div className="mb-6">
+            <div className="mb-4">
               <TeamList />
             </div>
           )}
 
           {/* Mapa del equipo - Solo mostrar si hay equipo */}
           {hasTeam && (
-            <div className="mb-6">
+            <div className="mb-4">
               <TeamMap />
-            </div>
-          )}
-
-          {/* Historial de actividades - Solo mostrar si hay equipo */}
-          {hasTeam && (
-            <div>
-              <ActivityHistory />
             </div>
           )}
         </div>

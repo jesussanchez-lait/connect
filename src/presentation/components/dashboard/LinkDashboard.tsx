@@ -5,16 +5,7 @@ import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { CampaignSelector } from "./CampaignSelector";
 import { MultiplierRequestsList } from "./MultiplierRequestsList";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
-import { ApiClient } from "@/src/infrastructure/api/ApiClient";
-
-interface Multiplier {
-  id: string;
-  name: string;
-  phoneNumber: string;
-  email?: string;
-  photo?: string;
-  teamSize: number;
-}
+import { useTeam } from "@/src/presentation/hooks/useTeam";
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -125,34 +116,12 @@ function UserMenu() {
 export function LinkDashboard() {
   const { user } = useAuth();
   const { selectedCampaign } = useCampaign();
-  const [multipliers, setMultipliers] = useState<Multiplier[]>([]);
-  const [loading, setLoading] = useState(true);
-  const apiClient = new ApiClient();
 
-  useEffect(() => {
-    if (selectedCampaign) {
-      fetchMultipliers();
-    } else {
-      setMultipliers([]);
-      setLoading(false);
-    }
-  }, [selectedCampaign]);
-
-  const fetchMultipliers = async () => {
-    if (!selectedCampaign) return;
-
-    setLoading(true);
-    try {
-      const data = await apiClient.get<Multiplier[]>(
-        `/dashboard/my-team?campaignId=${selectedCampaign.id}`
-      );
-      setMultipliers(data);
-    } catch (error) {
-      console.error("Error fetching multipliers:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use the useTeam hook to fetch multipliers directly from Firestore
+  // LINK sees multipliers under their management (users with leaderId = LINK's id)
+  const { team: multipliers, loading } = useTeam({
+    campaignId: selectedCampaign?.id,
+  });
 
   return (
     <>

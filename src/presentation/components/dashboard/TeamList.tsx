@@ -1,66 +1,27 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { useState, useEffect } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { AddTeamMemberForm } from "./AddTeamMemberForm";
-
-interface TeamMember {
-  id: string;
-  name: string;
-  phoneNumber: string;
-  city: string;
-  department: string;
-  neighborhood: string;
-  latitude?: number;
-  longitude?: number;
-  createdAt: Date;
-  teamSize: number; // Cantidad de personas bajo su perfil
-}
+import { useTeam, TeamMember } from "@/src/presentation/hooks/useTeam";
 
 type SortField = "name" | "phoneNumber" | "city" | "createdAt" | "teamSize";
 type SortOrder = "asc" | "desc";
 
 export function TeamList() {
-  const [team, setTeam] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [limit, setLimit] = useState<10 | 20 | 50>(10);
   const [sortBy, setSortBy] = useState<SortField>("createdAt");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-  const apiClientRef = useRef(new ApiClient());
-  const hasDataRef = useRef(false);
   const { selectedCampaign } = useCampaign();
 
-  const fetchTeam = useCallback(
-    async (showLoading: boolean = false) => {
-      if (!selectedCampaign) return;
-
-      // Solo mostrar skeleton si se solicita explícitamente
-      if (showLoading) {
-        setLoading(true);
-      }
-
-      try {
-        const params = new URLSearchParams({
-          campaignId: selectedCampaign.id,
-          limit: limit.toString(),
-          sortBy,
-          sortOrder,
-        });
-        const data = await apiClientRef.current.get<TeamMember[]>(
-          `/dashboard/my-team?${params.toString()}`
-        );
-        setTeam(data);
-        hasDataRef.current = true;
-      } catch (error) {
-        console.error("Error fetching team:", error);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [selectedCampaign, limit, sortBy, sortOrder]
-  );
+  // Use the useTeam hook to fetch team directly from Firestore
+  const { team, loading, refetch } = useTeam({
+    campaignId: selectedCampaign?.id,
+    limit: limit,
+    sortBy: sortBy,
+    sortOrder: sortOrder,
+  });
 
   const handleSort = (field: SortField) => {
     if (sortBy === field) {
@@ -76,28 +37,6 @@ export function TeamList() {
   const handleLimitChange = (newLimit: 10 | 20 | 50) => {
     setLimit(newLimit);
   };
-
-  // Carga inicial cuando cambia la campaña - mostrar skeleton
-  useEffect(() => {
-    if (selectedCampaign) {
-      hasDataRef.current = false;
-      fetchTeam(true);
-    } else {
-      setTeam([]);
-      setLoading(false);
-      hasDataRef.current = false;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCampaign]);
-
-  // Actualización sin skeleton cuando cambian filtros/ordenamiento
-  useEffect(() => {
-    // Solo hacer fetch si ya hay datos cargados (no es carga inicial)
-    if (selectedCampaign && hasDataRef.current) {
-      fetchTeam(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [limit, sortBy, sortOrder]);
 
   // Prevenir scroll del body cuando el modal está abierto
   useEffect(() => {
@@ -275,7 +214,7 @@ export function TeamList() {
               <AddTeamMemberForm
                 onSuccess={() => {
                   setShowAddForm(false);
-                  fetchTeam();
+                  refetch();
                   // Disparar evento para notificar al dashboard que el equipo se actualizó
                   window.dispatchEvent(new CustomEvent("team-updated"));
                 }}

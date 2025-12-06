@@ -1,21 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
-import { ApiClient } from "@/src/infrastructure/api/ApiClient";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
-
-interface TeamMember {
-  id: string;
-  name: string;
-  phoneNumber: string;
-  city: string;
-  department: string;
-  neighborhood: string;
-  latitude?: number;
-  longitude?: number;
-  createdAt: Date;
-}
+import { useTeam, TeamMember } from "@/src/presentation/hooks/useTeam";
 
 const mapContainerStyle = {
   width: "100%",
@@ -28,45 +16,21 @@ const defaultCenter = {
 };
 
 export function TeamMap() {
-  const [team, setTeam] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mapError, setMapError] = useState(false);
-  const apiClient = new ApiClient();
   const { selectedCampaign } = useCampaign();
 
-  useEffect(() => {
-    if (selectedCampaign) {
-      fetchTeam();
-    } else {
-      setTeam([]);
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCampaign]);
+  // Use the useTeam hook to fetch team directly from Firestore
+  const { team, loading } = useTeam({
+    campaignId: selectedCampaign?.id,
+  });
 
-  const fetchTeam = async () => {
-    if (!selectedCampaign) return;
-
-    setLoading(true);
-    try {
-      const data = await apiClient.get<TeamMember[]>(
-        `/dashboard/my-team?campaignId=${selectedCampaign.id}`
-      );
-      setTeam(data.filter((member) => member.latitude && member.longitude));
-    } catch (error) {
-      console.error("Error fetching team:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const mapCenter = useMemo(() => {
-    if (team.length === 0) return defaultCenter;
-
-    const validMembers = team.filter((m) => m.latitude && m.longitude) as Array<
+  // Filter members with valid coordinates
+  const validMembers = useMemo(() => {
+    return team.filter((m) => m.latitude && m.longitude) as Array<
       TeamMember & { latitude: number; longitude: number }
     >;
+  }, [team]);
 
+  const mapCenter = useMemo(() => {
     if (validMembers.length === 0) return defaultCenter;
 
     const avgLat =
@@ -77,7 +41,7 @@ export function TeamMap() {
       validMembers.length;
 
     return { lat: avgLat, lng: avgLng };
-  }, [team]);
+  }, [validMembers]);
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -118,7 +82,7 @@ export function TeamMap() {
     );
   }
 
-  if (!isLoaded) {
+  if (!isLoaded || loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="animate-pulse">
@@ -128,10 +92,6 @@ export function TeamMap() {
       </div>
     );
   }
-
-  const validMembers = team.filter((m) => m.latitude && m.longitude) as Array<
-    TeamMember & { latitude: number; longitude: number }
-  >;
 
   if (!selectedCampaign) {
     return (

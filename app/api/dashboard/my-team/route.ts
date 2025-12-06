@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Mock API endpoint - Replace with actual database query
+// Mock API endpoint - Frontend now uses Firebase directly via useTeam hook
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Mock team members - In production, query database where leaderId = currentUserId AND campaignId = campaignId
-    // Also include teamSize: count of people registered under each member's QR code for this campaign
+    // Mock team members - Frontend now uses Firebase directly via useTeam hook
+    // This endpoint is kept for backward compatibility with mock server
     const mockTeam = [
       {
         id: "2",
