@@ -98,7 +98,7 @@ export function RegisterForm({
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingPreResiger, setLoadingPreResiger] = useState(false);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
@@ -329,7 +329,6 @@ export function RegisterForm({
       departmentId !== undefined;
     const hasCity = cityId !== "" && cityId !== null && cityId !== undefined;
     const hasAddress = address.trim() !== "";
-    console.log("address::: ", address);
     const hasNeighborhood = neighborhood.trim() !== "";
     const hasHabeasData = habeasDataConsent === true;
     const hasWhatsApp = whatsAppConsent === true;
@@ -368,12 +367,7 @@ export function RegisterForm({
 
   const handlePreRegisterUser = async () => {
     const normalizedPhone = normalizePhoneNumber(phoneNumber);
-
-    // PASO 1: Crear usuario parcial en Firestore (sin autenticación aún)
-    console.log(
-      "💾 [REGISTRO] PASO 1: Creando usuario parcial en Firestore (sin autenticación)"
-    );
-    setLoadingPreResiger(true);
+    setLoading(true);
     try {
       const partialUserData = {
         firstName,
@@ -384,97 +378,35 @@ export function RegisterForm({
         leaderName,
         campaignId,
       };
-      console.log("📋 [REGISTRO] Datos del paso 1 a guardar:", partialUserData);
-
       await createPartialUserUseCase.execute(partialUserData);
-      console.log(
-        "✅ [REGISTRO] PASO 1 COMPLETADO: Usuario parcial creado en Firestore con ID temporal (teléfono)"
-      );
-      setLoadingPreResiger(false);
-    } catch (partialUserError: any) {
-      console.error("❌ [REGISTRO] Error al guardar datos del paso 1:", {
-        error: partialUserError,
-        message: partialUserError?.message || "Error desconocido",
-        code: partialUserError?.code,
-        stack: partialUserError?.stack,
-        data: {
-          firstName,
-          lastName,
-          documentNumber: documentNumber.replace(/\D/g, ""),
-          phoneNumber: normalizedPhone,
-          leaderId,
-          leaderName,
-          campaignId,
-        },
-      });
-      // Continuar con el envío del OTP aunque falle el guardado parcial
-      // El registro completo se hará después de verificar el OTP
-      console.warn(
-        "⚠️ [REGISTRO] Continuando con envío de OTP a pesar del error"
-      );
-      setLoadingPreResiger(false);
+    } catch (error: any) {
+      setError(error?.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   // Enviar OTP para verificación de teléfono
   const handleSendOtp = async () => {
-    console.log("📱 [REGISTRO] Iniciando envío de código OTP");
-    console.log("📋 [REGISTRO] Datos del paso 1:", {
-      firstName,
-      lastName,
-      documentNumber: documentNumber.replace(/\D/g, ""),
-      phoneNumber: normalizePhoneNumber(phoneNumber),
-      leaderId,
-      leaderName,
-      campaignId,
-    });
-
     setError("");
-    setLoading(true);
-
     try {
       const normalizedPhone = normalizePhoneNumber(phoneNumber);
 
-      console.log("📤 [REGISTRO] Enviando OTP al número:", normalizedPhone);
       let response;
       try {
         response = await sendOtpUseCase.execute({
           phoneNumber: normalizedPhone,
         });
-        console.log("✅ [REGISTRO] Respuesta de sendOtpUseCase:", response);
       } catch (otpError: any) {
-        console.error("❌ [REGISTRO] Error al ejecutar sendOtpUseCase:", {
-          error: otpError,
-          message: otpError?.message || "Error desconocido",
-          code: otpError?.code,
-          stack: otpError?.stack,
-          phoneNumber: normalizedPhone,
-        });
         throw otpError;
       }
 
       if (response.success) {
-        console.log("✅ [REGISTRO] Código OTP enviado exitosamente");
         setOtpSent(true);
-        setCurrentStep(2);
-        console.log("✅ [REGISTRO] Avanzando al paso 2 (Verificación de OTP)");
       } else {
-        console.error("❌ [REGISTRO] Error al enviar OTP:", {
-          success: response.success,
-          message: response.message,
-          response,
-        });
         setError(response.message || "Error al enviar código OTP");
       }
     } catch (err: any) {
-      console.error("❌ [REGISTRO] Excepción completa al enviar OTP:", {
-        error: err,
-        message: err?.message || "Error desconocido",
-        code: err?.code,
-        stack: err?.stack,
-        name: err?.name,
-        phoneNumber: normalizePhoneNumber(phoneNumber),
-      });
       setError(
         err instanceof Error ? err.message : "Error al enviar código OTP"
       );
@@ -610,7 +542,8 @@ export function RegisterForm({
     console.log("ON NEXT STEP FORM 1");
     if (currentStep === 1 && validateStep1()) {
       await handlePreRegisterUser();
-      // await handleSendOtp();
+      setCurrentStep(2);
+      await handleSendOtp();
     }
   };
 
@@ -910,10 +843,10 @@ export function RegisterForm({
               <button
                 type="button"
                 onClick={handleNextStep}
-                disabled={!validateStep1() || loadingPreResiger}
+                disabled={!validateStep1() || loading}
                 className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {loadingPreResiger ? (
+                {loading ? (
                   <LoaderWithText text="Procesando..." color="white" />
                 ) : (
                   "Continuar"
@@ -933,7 +866,7 @@ export function RegisterForm({
             <div className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
                 <p className="text-sm">
-                  Hemos enviado un código de verificación al número{" "}
+                  Hemos enviado un código de verificación al número: <br />
                   <span className="font-bold">{phoneNumberDisplay}</span>
                 </p>
               </div>
