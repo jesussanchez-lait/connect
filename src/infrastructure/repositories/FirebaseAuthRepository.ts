@@ -429,7 +429,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
       }
 
       // Si hay usuario autenticado, usar su UID, si no, usar el teléfono como ID temporal
-      let userId = credentials.phoneNumber.replace(/\D/g, "");
+      let userId = credentials.id;
 
       // Verificar si el documento de identidad ya existe
       await this.validateUserExists(credentials);

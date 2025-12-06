@@ -38,6 +38,7 @@ export interface RegisterCredentials {
 }
 
 export interface PartialUserCredentials {
+  id: string;
   // Datos personales (del paso 1)
   firstName: string;
   lastName: string;

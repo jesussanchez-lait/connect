@@ -365,11 +365,12 @@ export function RegisterForm({
     return isValid;
   };
 
-  const handlePreRegisterUser = async () => {
+  const handlePreRegisterUser = async ({ id }: { id: string }) => {
     const normalizedPhone = normalizePhoneNumber(phoneNumber);
     setLoading(true);
     try {
       const partialUserData = {
+        id: id,
         firstName,
         lastName,
         documentNumber: documentNumber.replace(/\D/g, ""),
@@ -417,7 +418,6 @@ export function RegisterForm({
 
   // Verificar OTP
   const handleVerifyOtp = async () => {
-    console.log("🔐 [REGISTRO] Iniciando verificación de OTP");
     setError("");
     setLoading(true);
 
@@ -428,109 +428,18 @@ export function RegisterForm({
         otpCode,
       };
 
-      console.log("📱 [REGISTRO] Verificando código OTP:", {
-        phoneNumber: normalizedPhone,
-        otpCodeLength: otpCode.length,
-        otpCode: otpCode,
-      });
-
-      // PASO 2: Verificar el código OTP y autenticar en Firebase Auth
-      console.log(
-        "🔐 [REGISTRO] PASO 2: Verificando OTP y autenticando en Firebase Auth"
-      );
       let verifyResult;
       try {
         verifyResult = await verifyOtpUseCase.execute(verification);
-        console.log(
-          "✅ [REGISTRO] PASO 2 COMPLETADO: Usuario autenticado en Firebase Auth:",
-          {
-            userId: verifyResult?.user?.id,
-            userName: verifyResult?.user?.name,
-            hasToken: !!verifyResult?.tokens?.accessToken,
-            phoneNumber: verifyResult?.user?.phoneNumber,
-          }
-        );
       } catch (verifyError: any) {
-        console.error("❌ [REGISTRO] Error al verificar OTP:", {
-          error: verifyError,
-          message: verifyError?.message || "Error desconocido",
-          code: verifyError?.code,
-          stack: verifyError?.stack,
-          phoneNumber: normalizedPhone,
-          otpCodeLength: otpCode.length,
-        });
         throw verifyError;
       }
 
-      // Después de autenticar, actualizar el documento temporal con el UID real
-      // El documento parcial fue creado en el paso 1 con ID temporal (teléfono)
-      // Ahora lo actualizamos con el UID real del usuario autenticado
-      console.log(
-        "🔄 [REGISTRO] PASO 2: Actualizando documento temporal con UID real de autenticación"
-      );
-      try {
-        const partialUserData = {
-          firstName,
-          lastName,
-          documentNumber: documentNumber.replace(/\D/g, ""),
-          phoneNumber: normalizedPhone,
-          leaderId,
-          leaderName,
-          campaignId,
-        };
-        console.log(
-          "📋 [REGISTRO] Datos del paso 1 a actualizar con UID real:",
-          partialUserData
-        );
-
-        // Esto actualizará el documento con el UID real del usuario autenticado
-        // Si había un documento temporal con ID de teléfono, lo moverá al UID real
-        try {
-          await createPartialUserUseCase.execute(partialUserData);
-          console.log(
-            "✅ [REGISTRO] PASO 2 COMPLETADO: Usuario actualizado en Firestore con UID real"
-          );
-        } catch (partialUserError: any) {
-          console.error(
-            "❌ [REGISTRO] Error al actualizar usuario con UID real:",
-            {
-              error: partialUserError,
-              message: partialUserError?.message || "Error desconocido",
-              code: partialUserError?.code,
-              stack: partialUserError?.stack,
-              data: partialUserData,
-            }
-          );
-          // No bloqueamos el flujo si falla la actualización,
-          // el registro completo se hará en el paso 3
-          console.warn(
-            "⚠️ [REGISTRO] Continuando al paso 3 a pesar del error de actualización"
-          );
-        }
-      } catch (updateError: any) {
-        console.error("❌ [REGISTRO] Error en bloque de actualización:", {
-          error: updateError,
-          message: updateError?.message || "Error desconocido",
-          code: updateError?.code,
-          stack: updateError?.stack,
-        });
-        // Continuar de todas formas al paso 3
-      }
+      await handlePreRegisterUser({ id: verifyResult.user.id });
 
       setPhoneVerified(true);
       setCurrentStep(3);
-      setError("");
-      console.log("✅ [REGISTRO] Paso 2 completado, avanzando al paso 3");
     } catch (err: any) {
-      console.error("❌ [REGISTRO] Error completo en verificación de OTP:", {
-        error: err,
-        message: err?.message || "Error desconocido",
-        code: err?.code,
-        stack: err?.stack,
-        name: err?.name,
-        phoneNumber: normalizePhoneNumber(phoneNumber),
-        otpCodeLength: otpCode.length,
-      });
       setError(err instanceof Error ? err.message : "Código OTP inválido");
     } finally {
       setLoading(false);
@@ -538,10 +447,8 @@ export function RegisterForm({
   };
 
   // Avanzar al siguiente paso
-  const handleNextStep = async () => {
-    console.log("ON NEXT STEP FORM 1");
+  const handleConfirmUserData = async () => {
     if (currentStep === 1 && validateStep1()) {
-      await handlePreRegisterUser();
       setCurrentStep(2);
       await handleSendOtp();
     }
@@ -562,22 +469,11 @@ export function RegisterForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log("📝 [REGISTRO] Iniciando envío del formulario completo");
     setError("");
     setLoading(true);
 
     // Validar todos los campos antes de enviar
     if (!validateStep1() || !validateStep3()) {
-      console.warn("⚠️ [REGISTRO] Validación fallida:", {
-        step1Valid: validateStep1(),
-        step3Valid: validateStep3(),
-        departmentId,
-        cityId,
-        address: address.trim(),
-        neighborhood: neighborhood.trim(),
-        habeasDataConsent,
-        whatsAppConsent,
-      });
       if (!habeasDataConsent) {
         setHabeasDataError("Debes aceptar la política de tratamiento de datos");
       }
@@ -615,82 +511,20 @@ export function RegisterForm({
         campaignId,
       };
 
-      console.log("📋 [REGISTRO] Datos completos del formulario:", {
-        ...credentials,
-        departmentId,
-        cityId,
-        selectedDepartment: selectedDepartment?.name,
-        selectedCity: selectedCity?.name,
-      });
-
-      // PASO 3: Actualizar usuario con datos territoriales completos
-      console.log(
-        "💾 [REGISTRO] PASO 3: Actualizando usuario con datos territoriales completos"
-      );
-      let result;
       try {
-        result = await registerUseCase.execute(credentials);
-        console.log(
-          "✅ [REGISTRO] PASO 3 COMPLETADO: Usuario actualizado con datos territoriales:",
-          {
-            userId: result?.user?.id,
-            userName: result?.user?.name,
-            hasToken: !!result?.tokens?.accessToken,
-            address: result?.user?.address,
-            neighborhood: result?.user?.neighborhood,
-            department: result?.user?.department,
-            city: result?.user?.city,
-            latitude: result?.user?.latitude,
-            longitude: result?.user?.longitude,
-          }
-        );
+        await registerUseCase.execute(credentials);
       } catch (registerError: any) {
-        console.error("❌ [REGISTRO] Error al ejecutar registerUseCase:", {
-          error: registerError,
-          message: registerError?.message || "Error desconocido",
-          code: registerError?.code,
-          stack: registerError?.stack,
-          credentials: {
-            ...credentials,
-            phoneNumber: "[oculto]",
-            documentNumber: "[oculto]",
-          },
-        });
         throw registerError;
       }
 
       try {
-        console.log("🚀 [REGISTRO] Redirigiendo al dashboard");
         router.push("/dashboard");
       } catch (routerError: any) {
-        console.error("❌ [REGISTRO] Error al redirigir:", {
-          error: routerError,
-          message: routerError?.message || "Error desconocido",
-        });
-        // El registro fue exitoso, solo falló la redirección
-        // Podríamos mostrar un mensaje de éxito y un botón manual
         setError(
           "Registro exitoso, pero hubo un error al redirigir. Por favor, inicia sesión."
         );
       }
     } catch (err: any) {
-      console.error("❌ [REGISTRO] Error completo en registro:", {
-        error: err,
-        message: err?.message || "Error desconocido",
-        code: err?.code,
-        stack: err?.stack,
-        name: err?.name,
-        credentials: {
-          firstName,
-          lastName,
-          phoneNumber: normalizePhoneNumber(phoneNumber),
-          documentNumber: documentNumber.replace(/\D/g, ""),
-          departmentId,
-          cityId,
-          leaderId,
-          campaignId,
-        },
-      });
       setError(err instanceof Error ? err.message : "Error al registrarse");
     } finally {
       setLoading(false);
@@ -842,7 +676,7 @@ export function RegisterForm({
 
               <button
                 type="button"
-                onClick={handleNextStep}
+                onClick={handleConfirmUserData}
                 disabled={!validateStep1() || loading}
                 className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
