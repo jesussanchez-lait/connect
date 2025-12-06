@@ -107,6 +107,14 @@ export class MockServer {
         });
       }
 
+      if (pathname === "/api/dashboard/campaigns" && method === "POST") {
+        const result = await dashboardHandlers.createCampaign(body, token);
+        return new Response(JSON.stringify(result), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
       if (
         pathname.startsWith("/api/dashboard/campaigns/") &&
         method === "GET"

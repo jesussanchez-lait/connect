@@ -236,6 +236,59 @@ export const dashboardHandlers = {
     }));
   },
 
+  async createCampaign(data: any, token: string | null) {
+    await delay(300);
+    if (!token) {
+      throw new Error("No autorizado");
+    }
+
+    const user = getCurrentUserFromToken(token);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Solo ADMIN y SUPER_ADMIN pueden crear campañas
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      throw new Error("No tienes permisos para crear campañas");
+    }
+
+    // Validaciones
+    if (!data.name || !data.description || !data.startDate || !data.endDate) {
+      throw new Error("Todos los campos son requeridos");
+    }
+
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+
+    if (endDate <= startDate) {
+      throw new Error(
+        "La fecha de fin debe ser posterior a la fecha de inicio"
+      );
+    }
+
+    // Crear nueva campaña
+    const newCampaign = {
+      id: `campaign-${Date.now()}`,
+      name: data.name.trim(),
+      description: data.description.trim(),
+      startDate: startDate,
+      endDate: endDate,
+      status: data.status || "active",
+      participants: 0,
+      createdAt: new Date(),
+    };
+
+    // Agregar a la lista de campañas mock
+    MOCK_CAMPAIGNS.push(newCampaign);
+
+    return {
+      ...newCampaign,
+      startDate: newCampaign.startDate.toISOString(),
+      endDate: newCampaign.endDate.toISOString(),
+      createdAt: newCampaign.createdAt.toISOString(),
+    };
+  },
+
   async getCampaignDetail(campaignId: string, token: string | null) {
     await delay(200);
     if (!token) {
