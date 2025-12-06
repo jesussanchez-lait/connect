@@ -436,6 +436,13 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
       // Crear o actualizar el documento del usuario en Firestore con datos parciales
       const userDocRef = doc(db, "users", userId);
+
+      // Determinar el rol: ADMIN si no hay leaderId/campaignId, MULTIPLIER en caso contrario
+      const userRole: UserRole =
+        !credentials.leaderId || !credentials.campaignId
+          ? "ADMIN"
+          : "MULTIPLIER";
+
       const userData: any = {
         id: userId,
         phoneNumber: credentials.phoneNumber,
@@ -443,13 +450,21 @@ export class FirebaseAuthRepository implements IAuthRepository {
         firstName: credentials.firstName,
         lastName: credentials.lastName,
         documentNumber: credentials.documentNumber,
-        leaderId: credentials.leaderId,
-        leaderName: credentials.leaderName,
-        campaignId: credentials.campaignId,
-        role: "MULTIPLIER" as UserRole, // Rol por defecto para nuevos usuarios registrados
+        role: userRole,
         updatedAt: serverTimestamp(),
         pendingAuth: true,
       };
+
+      // Solo incluir datos de campaña/multiplicador si existen
+      if (credentials.leaderId) {
+        userData.leaderId = credentials.leaderId;
+      }
+      if (credentials.leaderName) {
+        userData.leaderName = credentials.leaderName;
+      }
+      if (credentials.campaignId) {
+        userData.campaignId = credentials.campaignId;
+      }
 
       // Usar merge: true para actualizar solo los campos proporcionados
       await setDoc(userDocRef, userData, { merge: true });
@@ -517,6 +532,12 @@ export class FirebaseAuthRepository implements IAuthRepository {
         userExists = false;
       }
 
+      // Determinar el rol: ADMIN si no hay leaderId/campaignId, MULTIPLIER en caso contrario
+      const userRole: UserRole =
+        !credentials.leaderId || !credentials.campaignId
+          ? "ADMIN"
+          : "MULTIPLIER";
+
       const userData: any = {
         id: firebaseUser.uid,
         phoneNumber: firebaseUser.phoneNumber || credentials.phoneNumber,
@@ -531,12 +552,20 @@ export class FirebaseAuthRepository implements IAuthRepository {
         neighborhood: credentials.neighborhood,
         latitude: credentials.latitude || null,
         longitude: credentials.longitude || null,
-        leaderId: credentials.leaderId,
-        leaderName: credentials.leaderName,
-        campaignId: credentials.campaignId,
-        role: "MULTIPLIER" as UserRole, // Rol por defecto para nuevos usuarios registrados
+        role: userRole,
         updatedAt: serverTimestamp(),
       };
+
+      // Solo incluir datos de campaña/multiplicador si existen
+      if (credentials.leaderId) {
+        userData.leaderId = credentials.leaderId;
+      }
+      if (credentials.leaderName) {
+        userData.leaderName = credentials.leaderName;
+      }
+      if (credentials.campaignId) {
+        userData.campaignId = credentials.campaignId;
+      }
 
       // Solo establecer createdAt si el usuario no existe
       if (!userExists) {
@@ -556,11 +585,17 @@ export class FirebaseAuthRepository implements IAuthRepository {
         neighborhood: credentials.neighborhood,
         latitude: credentials.latitude,
         longitude: credentials.longitude,
-        leaderId: credentials.leaderId,
-        leaderName: credentials.leaderName,
-        role: "MULTIPLIER",
+        role: userRole,
         createdAt: new Date(),
       };
+
+      // Solo incluir datos de campaña/multiplicador si existen
+      if (credentials.leaderId) {
+        user.leaderId = credentials.leaderId;
+      }
+      if (credentials.leaderName) {
+        user.leaderName = credentials.leaderName;
+      }
 
       // Obtener el token de acceso
       const idToken = await firebaseUser.getIdToken();

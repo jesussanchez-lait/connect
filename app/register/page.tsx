@@ -7,12 +7,14 @@ import { RegisterForm } from "@/src/presentation/components/auth/RegisterForm";
 
 function RegisterContent() {
   const searchParams = useSearchParams();
+  const isAdmin = searchParams.get("admin") === "true";
   const leaderId = searchParams.get("leaderId") || "";
   const leaderName = searchParams.get("leaderName") || "";
   const campaignId = searchParams.get("campaignId") || "";
 
-  // Si no hay parámetros del QR, mostrar error
-  if (!leaderId || !leaderName || !campaignId) {
+  // Si es admin, no requiere parámetros de QR
+  // Si no es admin, requiere todos los parámetros del QR
+  if (!isAdmin && (!leaderId || !leaderName || !campaignId)) {
     return (
       <AuthGuard requireAuth={false}>
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -36,16 +38,17 @@ function RegisterContent() {
         <div className="max-w-md w-full space-y-8">
           <div>
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Crear Cuenta
+              {isAdmin ? "Crear Cuenta de Administrador" : "Crear Cuenta"}
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
               Completa tus datos para registrarte
             </p>
           </div>
           <RegisterForm
-            leaderId={leaderId}
-            leaderName={leaderName}
-            campaignId={campaignId}
+            isAdmin={isAdmin}
+            leaderId={isAdmin ? undefined : leaderId}
+            leaderName={isAdmin ? undefined : leaderName}
+            campaignId={isAdmin ? undefined : campaignId}
           />
         </div>
       </div>

@@ -29,12 +29,12 @@ export interface RegisterCredentials {
   latitude?: number;
   longitude?: number;
 
-  // Datos del multiplicador
-  leaderId: string;
-  leaderName: string;
+  // Datos del multiplicador (opcionales para admin)
+  leaderId?: string;
+  leaderName?: string;
 
-  // Datos de la campaña
-  campaignId: string;
+  // Datos de la campaña (opcional para admin)
+  campaignId?: string;
 }
 
 export interface PartialUserCredentials {
@@ -45,10 +45,10 @@ export interface PartialUserCredentials {
   documentNumber: string;
   phoneNumber: string;
 
-  // Datos del multiplicador
-  leaderId: string;
-  leaderName: string;
+  // Datos del multiplicador (opcionales para admin)
+  leaderId?: string;
+  leaderName?: string;
 
-  // Datos de la campaña
-  campaignId: string;
+  // Datos de la campaña (opcional para admin)
+  campaignId?: string;
 }

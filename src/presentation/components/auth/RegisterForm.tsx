@@ -49,12 +49,14 @@ function normalizePhoneNumber(value: string): string {
 }
 
 interface RegisterFormProps {
-  leaderId: string;
-  leaderName: string;
-  campaignId: string;
+  isAdmin?: boolean;
+  leaderId?: string;
+  leaderName?: string;
+  campaignId?: string;
 }
 
 export function RegisterForm({
+  isAdmin = false,
   leaderId,
   leaderName,
   campaignId,
@@ -371,16 +373,21 @@ export function RegisterForm({
     const normalizedPhone = normalizePhoneNumber(phoneNumber);
     setLoading(true);
     try {
-      const partialUserData = {
+      const partialUserData: any = {
         id: id,
         firstName,
         lastName,
         documentNumber: documentNumber.replace(/\D/g, ""),
         phoneNumber: normalizedPhone,
-        leaderId,
-        leaderName,
-        campaignId,
       };
+
+      // Solo incluir datos de campaña/multiplicador si no es admin
+      if (!isAdmin) {
+        partialUserData.leaderId = leaderId;
+        partialUserData.leaderName = leaderName;
+        partialUserData.campaignId = campaignId;
+      }
+
       await createPartialUserUseCase.execute(partialUserData);
     } catch (error: any) {
       setError(error?.message);
@@ -508,10 +515,14 @@ export function RegisterForm({
         neighborhood: neighborhood, // Barrio
         latitude,
         longitude,
-        leaderId,
-        leaderName,
-        campaignId,
       };
+
+      // Solo incluir datos de campaña/multiplicador si no es admin
+      if (!isAdmin) {
+        credentials.leaderId = leaderId;
+        credentials.leaderName = leaderName;
+        credentials.campaignId = campaignId;
+      }
 
       try {
         await registerUseCase.execute(credentials);
@@ -577,12 +588,22 @@ export function RegisterForm({
         </div>
       )}
 
-      <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
-        <p className="text-sm font-medium">
-          Te estás registrando bajo el Multiplicador{" "}
-          <span className="font-bold">{leaderName}</span>
-        </p>
-      </div>
+      {!isAdmin && leaderName && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
+          <p className="text-sm font-medium">
+            Te estás registrando bajo el Multiplicador{" "}
+            <span className="font-bold">{leaderName}</span>
+          </p>
+        </div>
+      )}
+      {isAdmin && (
+        <div className="bg-purple-50 border border-purple-200 text-purple-800 px-4 py-3 rounded">
+          <p className="text-sm font-medium">
+            Estás creando una cuenta de{" "}
+            <span className="font-bold">Administrador</span>
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* PASO 1: DATOS PERSONALES */}
