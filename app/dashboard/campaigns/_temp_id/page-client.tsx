@@ -60,22 +60,35 @@ function UserMenu() {
     };
   }, [isOpen]);
 
+  const userInitials = user?.name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "U";
+
   return (
     <div className="relative user-menu-container">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+        className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
       >
-        <div className="flex flex-col items-end">
-          <span className="text-sm font-medium text-gray-900">
+        {/* Avatar en móvil, nombre completo en desktop */}
+        <div className="hidden sm:flex flex-col items-end">
+          <span className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
             {user?.name || "Usuario"}
           </span>
           {user?.phoneNumber && (
-            <span className="text-xs text-gray-500">{user.phoneNumber}</span>
+            <span className="text-xs text-gray-500 hidden md:block">
+              {user.phoneNumber}
+            </span>
           )}
         </div>
+        <div className="sm:hidden h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-medium">
+          {userInitials}
+        </div>
         <svg
-          className={`w-4 h-4 text-gray-500 transition-transform ${
+          className={`w-4 h-4 text-gray-500 transition-transform flex-shrink-0 ${
             isOpen ? "rotate-180" : ""
           }`}
           fill="none"
@@ -174,16 +187,16 @@ function CampaignDetailContent() {
   // Renderizar siempre la navegación para transición suave
   const renderNav = () => (
     <nav className="bg-white shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center space-x-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+        <div className="flex justify-between items-center h-16 gap-2">
+          <div className="flex items-center min-w-0 flex-1 gap-2 sm:gap-4">
             <button
               onClick={() => router.push("/dashboard")}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-gray-600 hover:text-gray-900 transition-colors flex-shrink-0"
               aria-label="Volver"
             >
               <svg
-                className="w-6 h-6"
+                className="w-5 h-5 sm:w-6 sm:h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -197,14 +210,14 @@ function CampaignDetailContent() {
               </svg>
             </button>
             {isLoadingRole || loading ? (
-              <div className="h-6 w-48 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-6 w-32 sm:w-48 bg-gray-200 rounded animate-pulse"></div>
             ) : campaign ? (
               <>
-                <h1 className="text-xl font-semibold text-gray-900">
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
                   {campaign.name}
                 </h1>
                 {role && (
-                  <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded">
+                  <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded whitespace-nowrap flex-shrink-0">
                     {role === ROLES.SUPER_ADMIN
                       ? "Soporte Técnico"
                       : "Dirección"}
@@ -212,10 +225,12 @@ function CampaignDetailContent() {
                 )}
               </>
             ) : (
-              <h1 className="text-xl font-semibold text-gray-900">Connect</h1>
+              <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
+                Connect
+              </h1>
             )}
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
             <UserMenu />
           </div>
         </div>

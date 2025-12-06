@@ -37,22 +37,36 @@ function UserMenu() {
     };
   }, [isOpen]);
 
+  const userInitials =
+    user?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "U";
+
   return (
     <div className="relative user-menu-container">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+        className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
       >
-        <div className="flex flex-col items-end">
-          <span className="text-sm font-medium text-gray-900">
+        {/* Avatar en móvil, nombre completo en desktop */}
+        <div className="hidden sm:flex flex-col items-end">
+          <span className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
             {user?.name || "Usuario"}
           </span>
           {user?.phoneNumber && (
-            <span className="text-xs text-gray-500">{user.phoneNumber}</span>
+            <span className="text-xs text-gray-500 hidden md:block">
+              {user.phoneNumber}
+            </span>
           )}
         </div>
+        <div className="sm:hidden h-8 w-8 rounded-full bg-green-600 flex items-center justify-center text-white text-xs font-medium">
+          {userInitials}
+        </div>
         <svg
-          className={`w-4 h-4 text-gray-500 transition-transform ${
+          className={`w-4 h-4 text-gray-500 transition-transform flex-shrink-0 ${
             isOpen ? "rotate-180" : ""
           }`}
           fill="none"
@@ -143,15 +157,17 @@ export function LinkDashboard() {
   return (
     <>
       <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">Connect</h1>
-              <span className="ml-3 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          <div className="flex justify-between items-center h-16 gap-2">
+            <div className="flex items-center min-w-0 flex-1">
+              <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
+                Connect
+              </h1>
+              <span className="ml-2 sm:ml-3 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded whitespace-nowrap flex-shrink-0">
                 Enlace Municipal
               </span>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
               <UserMenu />
             </div>
           </div>
