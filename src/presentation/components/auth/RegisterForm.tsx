@@ -18,6 +18,10 @@ import {
   formatColombianId,
 } from "@/src/shared/utils/validation";
 import { Stepper } from "@/src/presentation/components/ui/Stepper";
+import {
+  Loader,
+  LoaderWithText,
+} from "@/src/presentation/components/ui/Loader";
 import { HabeasDataCheckbox } from "@/src/presentation/components/legal/HabeasDataCheckbox";
 import { WhatsAppConsentCheckbox } from "@/src/presentation/components/legal/WhatsAppConsentCheckbox";
 import { loadGoogleMaps } from "@/src/infrastructure/api/GoogleMapsLoader";
@@ -94,8 +98,8 @@ export function RegisterForm({
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingPreResiger, setLoadingPreResiger] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [step1Completed, setStep1Completed] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -362,6 +366,56 @@ export function RegisterForm({
     return isValid;
   };
 
+  const handlePreRegisterUser = async () => {
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
+
+    // PASO 1: Crear usuario parcial en Firestore (sin autenticación aún)
+    console.log(
+      "💾 [REGISTRO] PASO 1: Creando usuario parcial en Firestore (sin autenticación)"
+    );
+    setLoadingPreResiger(true);
+    try {
+      const partialUserData = {
+        firstName,
+        lastName,
+        documentNumber: documentNumber.replace(/\D/g, ""),
+        phoneNumber: normalizedPhone,
+        leaderId,
+        leaderName,
+        campaignId,
+      };
+      console.log("📋 [REGISTRO] Datos del paso 1 a guardar:", partialUserData);
+
+      await createPartialUserUseCase.execute(partialUserData);
+      console.log(
+        "✅ [REGISTRO] PASO 1 COMPLETADO: Usuario parcial creado en Firestore con ID temporal (teléfono)"
+      );
+      setLoadingPreResiger(false);
+    } catch (partialUserError: any) {
+      console.error("❌ [REGISTRO] Error al guardar datos del paso 1:", {
+        error: partialUserError,
+        message: partialUserError?.message || "Error desconocido",
+        code: partialUserError?.code,
+        stack: partialUserError?.stack,
+        data: {
+          firstName,
+          lastName,
+          documentNumber: documentNumber.replace(/\D/g, ""),
+          phoneNumber: normalizedPhone,
+          leaderId,
+          leaderName,
+          campaignId,
+        },
+      });
+      // Continuar con el envío del OTP aunque falle el guardado parcial
+      // El registro completo se hará después de verificar el OTP
+      console.warn(
+        "⚠️ [REGISTRO] Continuando con envío de OTP a pesar del error"
+      );
+      setLoadingPreResiger(false);
+    }
+  };
+
   // Enviar OTP para verificación de teléfono
   const handleSendOtp = async () => {
     console.log("📱 [REGISTRO] Iniciando envío de código OTP");
@@ -380,52 +434,6 @@ export function RegisterForm({
 
     try {
       const normalizedPhone = normalizePhoneNumber(phoneNumber);
-
-      // PASO 1: Crear usuario parcial en Firestore (sin autenticación aún)
-      console.log(
-        "💾 [REGISTRO] PASO 1: Creando usuario parcial en Firestore (sin autenticación)"
-      );
-      try {
-        const partialUserData = {
-          firstName,
-          lastName,
-          documentNumber: documentNumber.replace(/\D/g, ""),
-          phoneNumber: normalizedPhone,
-          leaderId,
-          leaderName,
-          campaignId,
-        };
-        console.log(
-          "📋 [REGISTRO] Datos del paso 1 a guardar:",
-          partialUserData
-        );
-
-        await createPartialUserUseCase.execute(partialUserData);
-        console.log(
-          "✅ [REGISTRO] PASO 1 COMPLETADO: Usuario parcial creado en Firestore con ID temporal (teléfono)"
-        );
-      } catch (partialUserError: any) {
-        console.error("❌ [REGISTRO] Error al guardar datos del paso 1:", {
-          error: partialUserError,
-          message: partialUserError?.message || "Error desconocido",
-          code: partialUserError?.code,
-          stack: partialUserError?.stack,
-          data: {
-            firstName,
-            lastName,
-            documentNumber: documentNumber.replace(/\D/g, ""),
-            phoneNumber: normalizedPhone,
-            leaderId,
-            leaderName,
-            campaignId,
-          },
-        });
-        // Continuar con el envío del OTP aunque falle el guardado parcial
-        // El registro completo se hará después de verificar el OTP
-        console.warn(
-          "⚠️ [REGISTRO] Continuando con envío de OTP a pesar del error"
-        );
-      }
 
       console.log("📤 [REGISTRO] Enviando OTP al número:", normalizedPhone);
       let response;
@@ -598,10 +606,11 @@ export function RegisterForm({
   };
 
   // Avanzar al siguiente paso
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
+    console.log("ON NEXT STEP FORM 1");
     if (currentStep === 1 && validateStep1()) {
-      setStep1Completed(true);
-      handleSendOtp();
+      await handlePreRegisterUser();
+      // await handleSendOtp();
     }
   };
 
@@ -894,17 +903,21 @@ export function RegisterForm({
                   placeholder="(123)-456-7890"
                 />
                 <p className="mt-2 text-sm text-gray-500">
-                  Te enviaremos un código de verificación por WhatsApp
+                  Te enviaremos un código de verificación por SMS
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={handleNextStep}
-                disabled={!validateStep1()}
+                disabled={!validateStep1() || loadingPreResiger}
                 className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Continuar
+                {loadingPreResiger ? (
+                  <LoaderWithText text="Procesando..." color="white" />
+                ) : (
+                  "Continuar"
+                )}
               </button>
             </div>
           </div>
@@ -965,7 +978,11 @@ export function RegisterForm({
                   disabled={loading || otpCode.length !== 6}
                   className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loading ? "Verificando..." : "Verificar Código"}
+                  {loading ? (
+                    <LoaderWithText text="Verificando..." color="white" />
+                  ) : (
+                    "Verificar Código"
+                  )}
                 </button>
               </div>
             </div>
@@ -1190,7 +1207,11 @@ export function RegisterForm({
                   disabled={loading || !validateStep3()}
                   className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loading ? "Registrando..." : "Registrarse"}
+                  {loading ? (
+                    <LoaderWithText text="Registrando..." color="white" />
+                  ) : (
+                    "Registrarse"
+                  )}
                 </button>
               </div>
             </div>

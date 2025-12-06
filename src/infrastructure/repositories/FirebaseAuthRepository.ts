@@ -11,11 +11,8 @@ import { auth, db } from "@/src/infrastructure/firebase";
 import {
   signInWithPhoneNumber,
   ConfirmationResult,
-  PhoneAuthProvider,
-  signInWithCredential,
   signOut as firebaseSignOut,
   onAuthStateChanged,
-  User as FirebaseUser,
 } from "firebase/auth";
 import {
   doc,
@@ -41,13 +38,7 @@ function waitForRecaptcha(): Promise<void> {
   return new Promise((resolve, reject) => {
     // Verificar si grecaptcha está disponible
     const checkRecaptcha = () => {
-      const hasRecaptcha = typeof (window as any).grecaptcha !== "undefined";
-
-      if (hasRecaptcha) {
-        console.log("✅ [DEBUG] reCAPTCHA v3 disponible");
-        return true;
-      }
-      return false;
+      return typeof (window as any).grecaptcha !== "undefined";
     };
 
     // Verificar inmediatamente
@@ -62,11 +53,6 @@ function waitForRecaptcha(): Promise<void> {
     const checkInterval = setInterval(() => {
       attempts++;
       if (checkRecaptcha()) {
-        console.log(
-          "✅ [DEBUG] reCAPTCHA cargado después de",
-          attempts * 100,
-          "ms"
-        );
         clearInterval(checkInterval);
         resolve();
       } else if (attempts >= maxAttempts) {
@@ -87,15 +73,12 @@ async function initializeRecaptcha(): Promise<RecaptchaVerifier> {
     throw new Error("Firebase Auth no está inicializado");
   }
 
-  console.log("🔐 [DEBUG] Iniciando inicialización de reCAPTCHA...");
-
   // Limpiar verifier anterior si existe
   if (recaptchaVerifier) {
     try {
-      console.log("🧹 [DEBUG] Limpiando verifier anterior...");
       recaptchaVerifier.clear();
     } catch (error) {
-      console.warn("⚠️ [DEBUG] Error al limpiar verifier anterior:", error);
+      // Ignorar errores al limpiar verifier anterior
     }
     recaptchaVerifier = null;
   }
@@ -108,17 +91,11 @@ async function initializeRecaptcha(): Promise<RecaptchaVerifier> {
     );
   }
 
-  console.log("✅ [DEBUG] Contenedor de reCAPTCHA encontrado");
-
   // Esperar a que reCAPTCHA esté disponible
   try {
-    console.log("⏳ [DEBUG] Esperando a que reCAPTCHA esté disponible...");
     await waitForRecaptcha();
   } catch (error) {
-    console.warn(
-      "⚠️ [DEBUG] No se pudo verificar reCAPTCHA, continuando de todas formas:",
-      error
-    );
+    // Continuar aunque no se pueda verificar reCAPTCHA
   }
 
   // Esperar un momento adicional para asegurar que el DOM está completamente cargado
@@ -130,50 +107,31 @@ async function initializeRecaptcha(): Promise<RecaptchaVerifier> {
     // El RecaptchaVerifier de Firebase maneja la integración con reCAPTCHA v3
     // El site key (6LdtfCIsAAAAAGKD9vHbGG-HBRmYTbEp17_S9xhC) debe estar vinculado
     // al proyecto en Firebase Console > Authentication > Settings
-    console.log("🔐 [DEBUG] Creando nuevo RecaptchaVerifier...");
-    console.log("🔐 [DEBUG] Auth instance:", auth);
-    console.log("🔐 [DEBUG] Container ID: recaptcha-container");
-    console.log("🔐 [DEBUG] reCAPTCHA Site Key:", RECAPTCHA_SITE_KEY);
-
     recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
       size: "invisible",
       callback: () => {
         // reCAPTCHA resuelto
-        console.log("✅ [DEBUG] reCAPTCHA verificado para lait-connect");
       },
       "expired-callback": () => {
         // reCAPTCHA expirado
-        console.error("❌ [DEBUG] reCAPTCHA expirado");
         recaptchaVerifier = null;
       },
     });
-
-    console.log("✅ [DEBUG] RecaptchaVerifier creado exitosamente");
 
     // El reCAPTCHA se renderiza automáticamente cuando se crea el verifier
     // Esperar un momento para asegurar que esté completamente inicializado
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    console.log("✅ [DEBUG] reCAPTCHA listo para usar");
-
     return recaptchaVerifier;
   } catch (error: any) {
-    console.error("❌ [DEBUG] Error al inicializar reCAPTCHA:", {
-      error,
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-    });
+    console.error("Error al inicializar reCAPTCHA:", error.message);
 
     // Si hay un error, limpiar el verifier
     if (recaptchaVerifier) {
       try {
         recaptchaVerifier.clear();
       } catch (clearError) {
-        console.error(
-          "Error al limpiar verifier después de error:",
-          clearError
-        );
+        // Ignorar errores al limpiar
       }
       recaptchaVerifier = null;
     }
@@ -204,15 +162,8 @@ async function initializeRecaptcha(): Promise<RecaptchaVerifier> {
 // Formatear número de teléfono al formato internacional (+57 para Colombia)
 // Formato esperado: +57XXXXXXXXXX (57 + 10 dígitos = 12 dígitos totales)
 function formatPhoneNumberForFirebase(phoneNumber: string): string {
-  console.log("📞 [DEBUG] Formateando número de teléfono:", phoneNumber);
-
   // Remover todos los caracteres no numéricos
   const numbers = phoneNumber.replace(/\D/g, "");
-  console.log(
-    "📞 [DEBUG] Número sin caracteres especiales:",
-    numbers,
-    `(${numbers.length} dígitos)`
-  );
 
   let formattedNumber: string;
 
@@ -221,17 +172,9 @@ function formatPhoneNumberForFirebase(phoneNumber: string): string {
     // Verificar que tenga exactamente 12 dígitos (57 + 10 dígitos del teléfono)
     if (numbers.length === 12) {
       formattedNumber = `+${numbers}`;
-      console.log(
-        "✅ [DEBUG] Número ya tiene código de país 57, formato correcto:",
-        formattedNumber
-      );
     } else if (numbers.length > 12) {
       // Si tiene más de 12 dígitos, tomar solo los primeros 12
       formattedNumber = `+${numbers.substring(0, 12)}`;
-      console.warn(
-        "⚠️ [DEBUG] Número tenía más de 12 dígitos, truncado a:",
-        formattedNumber
-      );
     } else if (numbers.length > 2 && numbers.length < 12) {
       // Si tiene 57 pero menos de 12 dígitos, es inválido
       throw new Error(
@@ -248,10 +191,6 @@ function formatPhoneNumberForFirebase(phoneNumber: string): string {
     // Verificar que tenga exactamente 10 dígitos (número colombiano sin código de país)
     if (numbers.length === 10) {
       formattedNumber = `+57${numbers}`;
-      console.log(
-        "✅ [DEBUG] Número de 10 dígitos, agregado código +57:",
-        formattedNumber
-      );
     } else if (numbers.length < 10) {
       throw new Error(
         `Número de teléfono inválido. Debe tener 10 dígitos. Se recibieron ${numbers.length} dígitos.`
@@ -261,10 +200,6 @@ function formatPhoneNumberForFirebase(phoneNumber: string): string {
       // Por seguridad, solo tomamos los últimos 10 dígitos y agregamos +57
       const lastTenDigits = numbers.substring(numbers.length - 10);
       formattedNumber = `+57${lastTenDigits}`;
-      console.warn(
-        "⚠️ [DEBUG] Número tenía más de 10 dígitos, usando últimos 10:",
-        formattedNumber
-      );
     }
   }
 
@@ -283,79 +218,46 @@ function formatPhoneNumberForFirebase(phoneNumber: string): string {
     );
   }
 
-  console.log("✅ [DEBUG] Número formateado correctamente:", formattedNumber);
   return formattedNumber;
 }
 
 export class FirebaseAuthRepository implements IAuthRepository {
   async sendOtp(credentials: LoginCredentials): Promise<OtpResponse> {
-    console.log("🔵 [DEBUG] sendOtp iniciado", {
-      phoneNumber: credentials.phoneNumber,
-    });
-
     try {
       if (!auth) {
-        console.error("❌ [DEBUG] Firebase Auth no está inicializado");
         throw new Error("Firebase Auth no está inicializado");
       }
-
-      console.log("✅ [DEBUG] Firebase Auth está inicializado");
 
       const formattedPhone = formatPhoneNumberForFirebase(
         credentials.phoneNumber
       );
-      console.log("📱 [DEBUG] Número formateado:", {
-        original: credentials.phoneNumber,
-        formatted: formattedPhone,
-      });
 
       // Validación final antes de enviar a Firebase
       // El número debe tener formato: +57XXXXXXXXXX (12 dígitos después del +)
       const phoneDigits = formattedPhone.replace(/\D/g, "");
       if (!formattedPhone.startsWith("+57") || phoneDigits.length !== 12) {
-        const errorMsg = `Número de teléfono con formato inválido para Firebase. Esperado: +57XXXXXXXXXX (12 dígitos). Recibido: ${formattedPhone} (${phoneDigits.length} dígitos)`;
-        console.error("❌ [DEBUG]", errorMsg);
-        throw new Error(errorMsg);
+        throw new Error(
+          `Número de teléfono con formato inválido para Firebase. Esperado: +57XXXXXXXXXX (12 dígitos). Recibido: ${formattedPhone} (${phoneDigits.length} dígitos)`
+        );
       }
 
-      console.log("✅ [DEBUG] Validación de formato exitosa:", {
-        formato: formattedPhone,
-        digitos: phoneDigits.length,
-        codigoPais: formattedPhone.substring(0, 3),
-        numero: formattedPhone.substring(3),
-      });
-
       // Inicializar reCAPTCHA si no está inicializado
-      console.log("🔐 [DEBUG] Inicializando reCAPTCHA...");
       const verifier = await initializeRecaptcha();
-      console.log("✅ [DEBUG] reCAPTCHA inicializado correctamente");
 
       // Enviar código OTP
-      console.log("📤 [DEBUG] Enviando código OTP a Firebase:", formattedPhone);
-      console.log("📤 [DEBUG] Formato verificado: +57 seguido de 10 dígitos");
-
       try {
         confirmationResult = await signInWithPhoneNumber(
           auth,
           formattedPhone,
           verifier
         );
-        console.log("✅ [DEBUG] Código OTP enviado exitosamente", {
-          verificationId: confirmationResult.verificationId,
-        });
       } catch (signInError: any) {
-        console.error("❌ [DEBUG] Error al enviar código OTP:", {
-          error: signInError,
-          code: signInError.code,
-          message: signInError.message,
-        });
-
         // Limpiar verifier en caso de error
         if (recaptchaVerifier) {
           try {
             recaptchaVerifier.clear();
           } catch (clearError) {
-            console.error("Error al limpiar verifier:", clearError);
+            // Ignorar errores al limpiar
           }
           recaptchaVerifier = null;
         }
@@ -379,29 +281,18 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // Nota: Esto solo funciona en el emulador de Firebase
       let devOtpCode: string | undefined;
       if (process.env.NODE_ENV === "development") {
-        console.log(
-          "🔧 [DEBUG] Modo desarrollo - verificando código OTP en emulador"
-        );
         // En desarrollo, Firebase Auth emulator puede proporcionar el código
         // Por ahora, retornamos éxito sin código
         devOtpCode = undefined;
       }
 
-      const response = {
+      return {
         success: true,
         message: "Código OTP enviado exitosamente",
         otpCode: devOtpCode,
       };
-      console.log("✅ [DEBUG] Respuesta final:", response);
-
-      return response;
     } catch (error: any) {
-      console.error("❌ [DEBUG] Error sending OTP:", {
-        error,
-        message: error.message,
-        code: error.code,
-        stack: error.stack,
-      });
+      console.error("Error sending OTP:", error.message);
 
       return {
         success: false,
@@ -412,68 +303,37 @@ export class FirebaseAuthRepository implements IAuthRepository {
   }
 
   async verifyOtp(verification: OtpVerification): Promise<AuthUser> {
-    console.log("🔵 [DEBUG] verifyOtp iniciado", {
-      phoneNumber: verification.phoneNumber,
-      otpCodeLength: verification.otpCode.length,
-    });
-
     try {
       if (!confirmationResult) {
-        console.error("❌ [DEBUG] No hay confirmationResult pendiente");
         throw new Error(
           "No hay una verificación pendiente. Por favor, solicita un nuevo código."
         );
       }
 
-      console.log("✅ [DEBUG] confirmationResult encontrado", {
-        verificationId: confirmationResult.verificationId,
-      });
-
       if (!auth) {
-        console.error("❌ [DEBUG] Firebase Auth no está inicializado");
         throw new Error("Firebase Auth no está inicializado");
       }
-
-      console.log("🔐 [DEBUG] Verificando código OTP:", {
-        code: verification.otpCode,
-        phoneNumber: verification.phoneNumber,
-      });
 
       // Verificar el código OTP
       const userCredential = await confirmationResult.confirm(
         verification.otpCode
       );
       const firebaseUser = userCredential.user;
-      console.log("✅ [DEBUG] Código OTP verificado exitosamente", {
-        uid: firebaseUser.uid,
-        phoneNumber: firebaseUser.phoneNumber,
-      });
 
       // Limpiar el confirmationResult
       confirmationResult = null;
-      console.log("🧹 [DEBUG] confirmationResult limpiado");
 
       // Obtener el documento del usuario en Firestore
       // NOTA: El documento parcial ya fue creado en el paso 1, aquí solo lo obtenemos
       // Si no existe, significa que el flujo no siguió el orden correcto
-      console.log(
-        "📄 [REGISTRO] Obteniendo datos del usuario de Firestore...",
-        {
-          uid: firebaseUser.uid,
-        }
-      );
       const userDocRef = doc(db!, "users", firebaseUser.uid);
       const userDoc = await getDoc(userDocRef);
 
       let user: User;
 
       if (userDoc.exists()) {
-        console.log(
-          "✅ [REGISTRO] Usuario existe en Firestore (documento parcial del paso 1)"
-        );
         // Usuario existe (fue creado en paso 1), obtener datos de Firestore
         const userData = userDoc.data();
-        console.log("📋 [REGISTRO] Datos del usuario parcial:", userData);
         user = {
           id: firebaseUser.uid,
           phoneNumber: firebaseUser.phoneNumber || verification.phoneNumber,
@@ -494,12 +354,6 @@ export class FirebaseAuthRepository implements IAuthRepository {
       } else {
         // Si no existe el documento, significa que el paso 1 no se ejecutó correctamente
         // En este caso, creamos un documento mínimo para que el flujo continúe
-        console.warn(
-          "⚠️ [REGISTRO] Usuario no existe en Firestore. El paso 1 podría no haberse ejecutado correctamente."
-        );
-        console.log(
-          "🆕 [REGISTRO] Creando documento básico para continuar el flujo"
-        );
         const newUser: User = {
           id: firebaseUser.uid,
           phoneNumber: firebaseUser.phoneNumber || verification.phoneNumber,
@@ -511,36 +365,21 @@ export class FirebaseAuthRepository implements IAuthRepository {
           ...newUser,
           createdAt: serverTimestamp(),
         });
-        console.log("✅ [REGISTRO] Documento básico creado en Firestore");
 
         user = newUser;
       }
 
       // Obtener el token de acceso
-      console.log("🔑 [DEBUG] Obteniendo token de acceso...");
       const idToken = await firebaseUser.getIdToken();
-      console.log("✅ [DEBUG] Token obtenido (longitud):", idToken.length);
 
-      const authUser: AuthUser = {
+      return {
         user,
         tokens: {
           accessToken: idToken,
         },
       };
-
-      console.log("✅ [DEBUG] verifyOtp completado exitosamente", {
-        userId: user.id,
-        userName: user.name,
-      });
-
-      return authUser;
     } catch (error: any) {
-      console.error("❌ [DEBUG] Error verifying OTP:", {
-        error,
-        message: error.message,
-        code: error.code,
-        stack: error.stack,
-      });
+      console.error("Error verifying OTP:", error.message);
       confirmationResult = null;
       throw new Error(
         error.message || "Código OTP inválido. Por favor, intenta nuevamente."
@@ -548,107 +387,58 @@ export class FirebaseAuthRepository implements IAuthRepository {
     }
   }
 
-  async createPartialUser(credentials: PartialUserCredentials): Promise<void> {
-    console.log(
-      "📝 [REGISTRO] Iniciando creación de usuario parcial en Firestore"
-    );
-    console.log("📝 [REGISTRO] Datos recibidos:", {
-      firstName: credentials.firstName,
-      lastName: credentials.lastName,
-      documentNumber: credentials.documentNumber,
-      phoneNumber: credentials.phoneNumber,
-      leaderId: credentials.leaderId,
-      leaderName: credentials.leaderName,
-      campaignId: credentials.campaignId,
-    });
+  async validateUserExists(credentials: PartialUserCredentials): Promise<void> {
+    if (credentials.documentNumber) {
+      try {
+        if (!db) {
+          throw new Error("Firestore no está inicializado");
+        }
+        let userId = credentials.phoneNumber.replace(/\D/g, "");
 
+        const usersRef = collection(db, "users");
+        const q = query(
+          usersRef,
+          where("documentNumber", "==", credentials.documentNumber)
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          // Verificar que no sea el mismo usuario
+          const existingUser = querySnapshot.docs[0];
+          if (existingUser.id !== userId) {
+            throw new Error(
+              "Ya existe un usuario registrado con este número de cédula"
+            );
+          }
+        }
+      } catch (validationError: any) {
+        // Re-lanzar el error si es de validación de duplicado
+        if (validationError.message.includes("Ya existe")) {
+          throw validationError;
+        }
+
+        // Si es otro error, continuar sin lanzar
+      }
+    }
+  }
+
+  async createPartialUser(credentials: PartialUserCredentials): Promise<void> {
     try {
       if (!db) {
-        console.error("❌ [REGISTRO] Firestore no está inicializado");
         throw new Error("Firestore no está inicializado");
       }
 
       // Si hay usuario autenticado, usar su UID, si no, usar el teléfono como ID temporal
-      let userId: string;
-      let isAuthenticated = false;
-
-      if (auth && auth.currentUser) {
-        userId = auth.currentUser.uid;
-        isAuthenticated = true;
-        console.log("✅ [REGISTRO] Usuario autenticado en Firebase Auth:", {
-          uid: userId,
-          phoneNumber: auth.currentUser.phoneNumber,
-        });
-      } else {
-        // Usar el teléfono como ID temporal antes de autenticar
-        userId = credentials.phoneNumber.replace(/\D/g, "");
-        console.log(
-          "📝 [REGISTRO] Usuario no autenticado, usando teléfono como ID temporal:",
-          userId
-        );
-      }
+      let userId = credentials.phoneNumber.replace(/\D/g, "");
 
       // Verificar si el documento de identidad ya existe
-      if (credentials.documentNumber) {
-        try {
-          console.log(
-            "🔍 [REGISTRO] Verificando si existe usuario con cédula:",
-            credentials.documentNumber
-          );
-          const usersRef = collection(db, "users");
-          const q = query(
-            usersRef,
-            where("documentNumber", "==", credentials.documentNumber)
-          );
-          const querySnapshot = await getDocs(q);
-
-          if (!querySnapshot.empty) {
-            // Verificar que no sea el mismo usuario
-            const existingUser = querySnapshot.docs[0];
-            console.log("⚠️ [REGISTRO] Usuario encontrado con misma cédula:", {
-              existingUserId: existingUser.id,
-              currentUserId: userId,
-            });
-            if (existingUser.id !== userId) {
-              console.error(
-                "❌ [REGISTRO] Ya existe otro usuario con esta cédula"
-              );
-              throw new Error(
-                "Ya existe un usuario registrado con este número de cédula"
-              );
-            }
-            console.log("✅ [REGISTRO] Es el mismo usuario, continuando...");
-          } else {
-            console.log(
-              "✅ [REGISTRO] No existe usuario con esta cédula, puede continuar"
-            );
-          }
-        } catch (validationError: any) {
-          console.error("❌ [REGISTRO] Error al verificar cédula duplicada:", {
-            error: validationError.message,
-            code: validationError.code,
-            stack: validationError.stack,
-            documentNumber: credentials.documentNumber,
-          });
-          // Re-lanzar el error si es de validación de duplicado
-          if (validationError.message.includes("Ya existe")) {
-            throw validationError;
-          }
-          // Si es otro error, solo loguearlo pero continuar
-          console.warn(
-            "⚠️ [REGISTRO] Continuando a pesar del error de validación"
-          );
-        }
-      }
+      await this.validateUserExists(credentials);
 
       // Crear o actualizar el documento del usuario en Firestore con datos parciales
       const userDocRef = doc(db, "users", userId);
       const userData: any = {
         id: userId,
-        phoneNumber:
-          isAuthenticated && auth && auth.currentUser?.phoneNumber
-            ? auth.currentUser.phoneNumber
-            : credentials.phoneNumber,
+        phoneNumber: credentials.phoneNumber,
         name: `${credentials.firstName} ${credentials.lastName}`,
         firstName: credentials.firstName,
         lastName: credentials.lastName,
@@ -658,127 +448,13 @@ export class FirebaseAuthRepository implements IAuthRepository {
         campaignId: credentials.campaignId,
         role: "MULTIPLIER" as UserRole, // Rol por defecto para nuevos usuarios registrados
         updatedAt: serverTimestamp(),
-        // Si no está autenticado, marcar como pendiente
-        pendingAuth: !isAuthenticated,
+        pendingAuth: true,
       };
 
-      // Si está autenticado, establecer createdAt si es nuevo
-      try {
-        if (isAuthenticated) {
-          console.log("🔍 [REGISTRO] Verificando si el documento ya existe...");
-          const existingDoc = await getDoc(userDocRef);
-          if (!existingDoc.exists()) {
-            console.log(
-              "🆕 [REGISTRO] Documento nuevo, estableciendo createdAt"
-            );
-            userData.createdAt = serverTimestamp();
-          } else {
-            console.log(
-              "🔄 [REGISTRO] Documento existente, preservando createdAt"
-            );
-          }
-        } else {
-          // Si no está autenticado, establecer createdAt para el documento temporal
-          console.log(
-            "📝 [REGISTRO] Usuario no autenticado, estableciendo createdAt"
-          );
-          userData.createdAt = serverTimestamp();
-        }
-      } catch (checkError: any) {
-        console.error("❌ [REGISTRO] Error al verificar documento existente:", {
-          error: checkError.message,
-          code: checkError.code,
-          stack: checkError.stack,
-          userId,
-        });
-        // Continuar y establecer createdAt de todas formas
-        userData.createdAt = serverTimestamp();
-      }
-
-      console.log("💾 [REGISTRO] Guardando usuario en Firestore:", {
-        collection: "users",
-        documentId: userId,
-        isAuthenticated,
-        data: {
-          ...userData,
-          createdAt: userData.createdAt
-            ? "[serverTimestamp]"
-            : "[no establecido]",
-          updatedAt: "[serverTimestamp]",
-        },
-      });
-
       // Usar merge: true para actualizar solo los campos proporcionados
-      try {
-        await setDoc(userDocRef, userData, { merge: true });
-        console.log("✅ [REGISTRO] setDoc ejecutado exitosamente");
-      } catch (setDocError: any) {
-        console.error("❌ [REGISTRO] Error al ejecutar setDoc:", {
-          error: setDocError.message,
-          code: setDocError.code,
-          stack: setDocError.stack,
-          userId,
-          collection: "users",
-          dataKeys: Object.keys(userData),
-        });
-        throw setDocError;
-      }
-
-      console.log(
-        "✅ [REGISTRO] Usuario parcial creado/actualizado exitosamente en Firestore"
-      );
-      console.log("✅ [REGISTRO] Detalles del usuario guardado:", {
-        userId,
-        name: userData.name,
-        documentNumber: userData.documentNumber,
-        phoneNumber: userData.phoneNumber,
-        leaderId: userData.leaderId,
-        leaderName: userData.leaderName,
-        campaignId: userData.campaignId,
-        role: userData.role,
-        isAuthenticated,
-        pendingAuth: !isAuthenticated,
-      });
-
-      // Si no estaba autenticado y ahora sí lo está, mover el documento al UID real
-      if (!isAuthenticated && auth && auth.currentUser) {
-        const realUserId = auth.currentUser.uid;
-        if (realUserId !== userId) {
-          console.log(
-            "🔄 [REGISTRO] Moviendo documento temporal al UID real:",
-            {
-              from: userId,
-              to: realUserId,
-            }
-          );
-          const realUserDocRef = doc(db, "users", realUserId);
-          await setDoc(
-            realUserDocRef,
-            {
-              ...userData,
-              id: realUserId,
-              phoneNumber:
-                auth.currentUser.phoneNumber || credentials.phoneNumber,
-              pendingAuth: false,
-              updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-          );
-
-          // Eliminar el documento temporal
-          const tempUserDocRef = doc(db, "users", userId);
-          await setDoc(tempUserDocRef, { deleted: true }, { merge: true });
-          console.log(
-            "✅ [REGISTRO] Documento movido al UID real exitosamente"
-          );
-        }
-      }
+      await setDoc(userDocRef, userData, { merge: true });
     } catch (error: any) {
-      console.error("❌ [REGISTRO] Error al crear usuario parcial:", {
-        error: error.message,
-        code: error.code,
-        stack: error.stack,
-      });
+      console.error("Error al crear usuario parcial:", error.message);
       throw new Error(
         error.message ||
           "Error al crear usuario. Por favor, intenta nuevamente."
@@ -787,49 +463,22 @@ export class FirebaseAuthRepository implements IAuthRepository {
   }
 
   async register(credentials: RegisterCredentials): Promise<AuthUser> {
-    console.log("📝 [REGISTRO] Iniciando registro completo de usuario");
-    console.log("📝 [REGISTRO] Datos completos recibidos:", {
-      firstName: credentials.firstName,
-      lastName: credentials.lastName,
-      documentNumber: credentials.documentNumber,
-      phoneNumber: credentials.phoneNumber,
-      country: credentials.country,
-      department: credentials.department,
-      city: credentials.city,
-      neighborhood: credentials.neighborhood,
-      latitude: credentials.latitude,
-      longitude: credentials.longitude,
-      leaderId: credentials.leaderId,
-      leaderName: credentials.leaderName,
-      campaignId: credentials.campaignId,
-    });
-
     try {
       if (!auth) {
-        console.error("❌ [REGISTRO] Firebase Auth no está inicializado");
         throw new Error("Firebase Auth no está inicializado");
       }
 
       if (!auth.currentUser) {
-        console.error("❌ [REGISTRO] No hay usuario autenticado");
         throw new Error(
           "Debes verificar tu número de teléfono primero. Por favor, inicia sesión."
         );
       }
 
       const firebaseUser = auth.currentUser;
-      console.log("✅ [REGISTRO] Usuario autenticado:", {
-        uid: firebaseUser.uid,
-        phoneNumber: firebaseUser.phoneNumber,
-      });
 
       // Verificar si el documento de identidad ya existe
       if (credentials.documentNumber) {
         try {
-          console.log(
-            "🔍 [REGISTRO] Verificando duplicados de cédula:",
-            credentials.documentNumber
-          );
           const usersRef = collection(db!, "users");
           const q = query(
             usersRef,
@@ -840,33 +489,18 @@ export class FirebaseAuthRepository implements IAuthRepository {
           if (!querySnapshot.empty) {
             // Verificar que no sea el mismo usuario
             const existingUser = querySnapshot.docs[0];
-            console.log("⚠️ [REGISTRO] Usuario encontrado con misma cédula:", {
-              existingUserId: existingUser.id,
-              currentUserId: firebaseUser.uid,
-            });
             if (existingUser.id !== firebaseUser.uid) {
-              console.error("❌ [REGISTRO] Cédula duplicada detectada");
               throw new Error(
                 "Ya existe un usuario registrado con este número de cédula"
               );
             }
-            console.log("✅ [REGISTRO] Es el mismo usuario, continuando...");
           }
         } catch (validationError: any) {
-          console.error("❌ [REGISTRO] Error al verificar cédula duplicada:", {
-            error: validationError.message,
-            code: validationError.code,
-            stack: validationError.stack,
-            documentNumber: credentials.documentNumber,
-          });
           // Re-lanzar el error si es de validación de duplicado
           if (validationError.message.includes("Ya existe")) {
             throw validationError;
           }
-          // Si es otro error, solo loguearlo pero continuar
-          console.warn(
-            "⚠️ [REGISTRO] Continuando a pesar del error de validación"
-          );
+          // Si es otro error, continuar sin lanzar
         }
       }
 
@@ -876,22 +510,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // Verificar si el usuario ya existe para no sobrescribir createdAt
       let userExists = false;
       try {
-        console.log(
-          "🔍 [REGISTRO] Verificando si usuario ya existe en Firestore"
-        );
         const existingUserDoc = await getDoc(userDocRef);
         userExists = existingUserDoc.exists();
-        console.log("📊 [REGISTRO] Estado del usuario:", {
-          exists: userExists,
-          uid: firebaseUser.uid,
-        });
       } catch (checkError: any) {
-        console.error("❌ [REGISTRO] Error al verificar usuario existente:", {
-          error: checkError.message,
-          code: checkError.code,
-          stack: checkError.stack,
-          uid: firebaseUser.uid,
-        });
         // Continuar asumiendo que es nuevo
         userExists = false;
       }
@@ -919,44 +540,10 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
       // Solo establecer createdAt si el usuario no existe
       if (!userExists) {
-        console.log("🆕 [REGISTRO] Usuario nuevo, estableciendo createdAt");
         userData.createdAt = serverTimestamp();
-      } else {
-        console.log("🔄 [REGISTRO] Usuario existente, preservando createdAt");
       }
 
-      console.log(
-        "💾 [REGISTRO] Actualizando usuario en Firestore con datos completos:",
-        {
-          collection: "users",
-          documentId: firebaseUser.uid,
-          isNewUser: !userExists,
-          data: {
-            ...userData,
-            createdAt: userExists ? "[preservado]" : "[serverTimestamp]",
-            updatedAt: "[serverTimestamp]",
-          },
-        }
-      );
-
-      try {
-        await setDoc(userDocRef, userData, { merge: true });
-        console.log("✅ [REGISTRO] setDoc ejecutado exitosamente en register");
-      } catch (setDocError: any) {
-        console.error("❌ [REGISTRO] Error al ejecutar setDoc en register:", {
-          error: setDocError.message,
-          code: setDocError.code,
-          stack: setDocError.stack,
-          uid: firebaseUser.uid,
-          collection: "users",
-          dataKeys: Object.keys(userData),
-        });
-        throw setDocError;
-      }
-
-      console.log(
-        "✅ [REGISTRO] Usuario actualizado exitosamente en Firestore"
-      );
+      await setDoc(userDocRef, userData, { merge: true });
 
       const user: User = {
         id: firebaseUser.uid,
@@ -975,32 +562,17 @@ export class FirebaseAuthRepository implements IAuthRepository {
         createdAt: new Date(),
       };
 
-      console.log("🔑 [REGISTRO] Obteniendo token de acceso");
       // Obtener el token de acceso
       const idToken = await firebaseUser.getIdToken();
-      console.log("✅ [REGISTRO] Token obtenido exitosamente");
 
-      const authUser = {
+      return {
         user,
         tokens: {
           accessToken: idToken,
         },
       };
-
-      console.log("✅ [REGISTRO] Registro completo exitoso:", {
-        userId: user.id,
-        userName: user.name,
-        role: user.role,
-        hasToken: !!authUser.tokens.accessToken,
-      });
-
-      return authUser;
     } catch (error: any) {
-      console.error("❌ [REGISTRO] Error en registro completo:", {
-        error: error.message,
-        code: error.code,
-        stack: error.stack,
-      });
+      console.error("Error en registro completo:", error.message);
       throw new Error(
         error.message || "Error al registrarse. Por favor, intenta nuevamente."
       );
