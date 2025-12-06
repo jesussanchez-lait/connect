@@ -6,6 +6,8 @@ import {
   useState,
   useEffect,
   useRef,
+  useCallback,
+  useMemo,
   ReactNode,
 } from "react";
 import { FirebaseDataSource } from "@/src/infrastructure/firebase/FirebaseDataSource";
@@ -34,15 +36,13 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     null
   );
   const [loading, setLoading] = useState(true);
-  const campaignDataSource = new FirebaseDataSource<Campaign>("campaigns");
+  const campaignDataSource = useMemo(
+    () => new FirebaseDataSource<Campaign>("campaigns"),
+    []
+  );
   const userCampaignIdsRef = useRef<string[]>([]);
 
-  // Mantener referencia actualizada de los campaignIds del usuario
-  useEffect(() => {
-    userCampaignIdsRef.current = user?.campaignIds || [];
-  }, [user?.campaignIds]);
-
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -50,6 +50,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       if (!user) {
         setCampaigns([]);
         setSelectedCampaign(null);
+        setLoading(false);
         return;
       }
 
@@ -60,6 +61,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       if (userCampaignIds.length === 0) {
         setCampaigns([]);
         setSelectedCampaign(null);
+        setLoading(false);
         return;
       }
 
@@ -79,7 +81,32 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, selectedCampaign, campaignDataSource]);
+
+  // Detectar cambios en campaignIds y recargar campañas automáticamente
+  useEffect(() => {
+    const previousIds = userCampaignIdsRef.current;
+    const currentIds = user?.campaignIds || [];
+
+    // Si los IDs cambiaron, necesitamos recargar las campañas
+    const idsChanged =
+      previousIds.length !== currentIds.length ||
+      previousIds.some((id, index) => id !== currentIds[index]) ||
+      currentIds.some((id, index) => id !== previousIds[index]);
+
+    if (idsChanged) {
+      // Actualizar la referencia
+      userCampaignIdsRef.current = currentIds;
+
+      // Si hay usuario y los IDs cambiaron, ejecutar fetchCampaigns
+      if (user) {
+        fetchCampaigns();
+      }
+    } else {
+      // Actualizar la referencia incluso si no cambió (para mantener sincronizado)
+      userCampaignIdsRef.current = currentIds;
+    }
+  }, [user?.campaignIds, user?.id, user, fetchCampaigns]);
 
   // Subscribe to real-time updates for specific campaigns
   useEffect(() => {
@@ -90,10 +117,11 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
 
     const currentUserCampaignIds = userCampaignIdsRef.current;
 
-    // Si no hay IDs de campañas, no suscribirse
+    // Si no hay IDs de campañas, limpiar y no suscribirse
     if (!currentUserCampaignIds || currentUserCampaignIds.length === 0) {
       setCampaigns([]);
       setSelectedCampaign(null);
+      setLoading(false);
       return;
     }
 
@@ -160,19 +188,22 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       unsubscribes.forEach((unsub) => unsub());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, user?.campaignIds, authLoading]);
+  }, [user?.id, user?.campaignIds?.join(","), authLoading]);
 
-  // Cargar campañas cuando el usuario cambie
+  // Cargar campañas cuando el usuario cambie inicialmente
   useEffect(() => {
     if (!authLoading && user) {
-      fetchCampaigns();
+      // Solo cargar si aún no tenemos campañas o si es la primera vez
+      if (campaigns.length === 0) {
+        fetchCampaigns();
+      }
     } else if (!authLoading && !user) {
       setCampaigns([]);
       setSelectedCampaign(null);
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading]);
+  }, [user?.id, authLoading]);
 
   // Update selected campaign when campaigns change
   useEffect(() => {

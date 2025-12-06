@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { User } from "@/src/domain/entities/User";
-import {
-  getCurrentUserUseCase,
-  logoutUseCase,
-} from "@/src/shared/di/container";
+import { User, UserRole } from "@/src/domain/entities/User";
+import { logoutUseCase } from "@/src/shared/di/container";
 import { useRouter } from "next/navigation";
+import { auth, db } from "@/src/infrastructure/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
+import type { Unsubscribe } from "firebase/firestore";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -14,31 +15,87 @@ export function useAuth() {
   const router = useRouter();
 
   useEffect(() => {
-    checkAuth();
+    if (!auth || !db) {
+      setLoading(false);
+      return;
+    }
+
+    const dbInstance = db; // TypeScript guard
+    let unsubscribeUser: Unsubscribe | null = null;
+
+    // Escuchar cambios en el estado de autenticación
+    const unsubscribeAuth = onAuthStateChanged(
+      auth,
+      (firebaseUser) => {
+        // Limpiar suscripción anterior si existe
+        if (unsubscribeUser) {
+          unsubscribeUser();
+          unsubscribeUser = null;
+        }
+
+        if (!firebaseUser) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        // Suscribirse al documento del usuario en Firestore
+        const userDocRef = doc(dbInstance, "users", firebaseUser.uid);
+
+        unsubscribeUser = onSnapshot(
+          userDocRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              const userData = docSnap.data();
+              const user: User = {
+                id: firebaseUser.uid,
+                phoneNumber: firebaseUser.phoneNumber || undefined,
+                name: userData.name || "",
+                role: userData.role as UserRole | undefined,
+                documentNumber: userData.documentNumber,
+                country: userData.country,
+                department: userData.department,
+                city: userData.city,
+                neighborhood: userData.neighborhood,
+                latitude: userData.latitude,
+                longitude: userData.longitude,
+                leaderId: userData.leaderId,
+                leaderName: userData.leaderName,
+                campaignIds: userData.campaignIds || [],
+                createdAt: userData.createdAt?.toDate() || new Date(),
+              };
+              setUser(user);
+            } else {
+              setUser(null);
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error("Error subscribing to user document:", error);
+            setUser(null);
+            setLoading(false);
+          }
+        );
+      },
+      (error) => {
+        console.error("Error in auth state change:", error);
+        setUser(null);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeUser) {
+        unsubscribeUser();
+      }
+    };
   }, []);
 
   const checkAuth = useCallback(async () => {
-    try {
-      const currentUser = await getCurrentUserUseCase.execute();
-      if (currentUser) {
-        // Convertir createdAt de string a Date si es necesario
-        const userWithDate = {
-          ...currentUser,
-          createdAt:
-            currentUser.createdAt instanceof Date
-              ? currentUser.createdAt
-              : new Date(currentUser.createdAt),
-        };
-        setUser(userWithDate);
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error("Error checking auth:", error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+    // Esta función ya no es necesaria porque el stream se encarga de todo
+    // Pero la mantenemos para compatibilidad con código existente
+    // El stream ya actualiza automáticamente
   }, []);
 
   const logout = useCallback(async () => {
