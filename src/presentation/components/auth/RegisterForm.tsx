@@ -8,6 +8,7 @@ import {
   verifyOtpUseCase,
   createPartialUserUseCase,
 } from "@/src/shared/di/container";
+import { useAuth } from "@/src/presentation/hooks/useAuth";
 import {
   RegisterCredentials,
   OtpVerification,
@@ -59,6 +60,7 @@ export function RegisterForm({
   campaignId,
 }: RegisterFormProps) {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const {
     departments,
     cities,
@@ -517,13 +519,15 @@ export function RegisterForm({
         throw registerError;
       }
 
-      try {
-        router.push("/dashboard");
-      } catch (routerError: any) {
-        setError(
-          "Registro exitoso, pero hubo un error al redirigir. Por favor, inicia sesión."
-        );
-      }
+      // Pequeño delay para asegurar que el token se guarde en localStorage
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Refrescar el contexto de autenticación para obtener el usuario actualizado
+      await refreshUser();
+
+      // Redirigir al dashboard (que mostrará MultiplierDashboard para usuarios MULTIPLIER)
+      router.push("/dashboard");
+      router.refresh(); // Forzar refresh de la página para actualizar el contexto de rol
     } catch (err: any) {
       setError(err instanceof Error ? err.message : "Error al registrarse");
     } finally {
