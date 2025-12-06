@@ -332,6 +332,53 @@ export class FirebaseDataSource<T extends DocumentData> {
   }
 
   /**
+   * Get multiple documents by their IDs
+   */
+  async getByIds(ids: string[]): Promise<T[]> {
+    if (!db) {
+      throw new Error("Firestore no está inicializado");
+    }
+
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+
+    try {
+      if (!db) {
+        throw new Error("Firestore no está inicializado");
+      }
+
+      const dbInstance = db; // TypeScript guard
+
+      // Obtener cada documento por su ID en paralelo
+      const docPromises = ids.map((id) => {
+        const docRef = doc(dbInstance, this.collectionName, id);
+        return getDoc(docRef);
+      });
+
+      const docSnaps = await Promise.all(docPromises);
+
+      // Mapear solo los documentos que existen
+      const documents = docSnaps
+        .filter((docSnap) => docSnap.exists())
+        .map((docSnap) =>
+          this.mapDocument(docSnap as QueryDocumentSnapshot<DocumentData>)
+        );
+
+      return documents;
+    } catch (error: any) {
+      console.error(
+        `Error getting documents by IDs from ${this.collectionName}:`,
+        error
+      );
+      throw new Error(
+        error.message ||
+          `Error al obtener documentos por IDs de ${this.collectionName}`
+      );
+    }
+  }
+
+  /**
    * Helper methods for common query constraints
    */
   static where(

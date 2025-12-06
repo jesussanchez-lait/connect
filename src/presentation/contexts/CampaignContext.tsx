@@ -5,10 +5,15 @@ import {
   useContext,
   useState,
   useEffect,
+  useRef,
   ReactNode,
 } from "react";
 import { FirebaseDataSource } from "@/src/infrastructure/firebase/FirebaseDataSource";
 import { Campaign } from "@/src/domain/entities/Campaign";
+import { useAuth } from "@/src/presentation/hooks/useAuth";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { db } from "@/src/infrastructure/firebase";
+import type { Unsubscribe } from "firebase/firestore";
 
 interface CampaignContextType {
   campaigns: Campaign[];
@@ -23,22 +28,51 @@ const CampaignContext = createContext<CampaignContextType | undefined>(
 );
 
 export function CampaignProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const campaignDataSource = new FirebaseDataSource<Campaign>("campaigns");
+  const userCampaignIdsRef = useRef<string[]>([]);
+
+  // Mantener referencia actualizada de los campaignIds del usuario
+  useEffect(() => {
+    userCampaignIdsRef.current = user?.campaignIds || [];
+  }, [user?.campaignIds]);
 
   const fetchCampaigns = async () => {
     try {
       setLoading(true);
-      const data = await campaignDataSource.getAll();
-      setCampaigns(data);
+
+      // Si no hay usuario, no cargar campañas
+      if (!user) {
+        setCampaigns([]);
+        setSelectedCampaign(null);
+        return;
+      }
+
+      // Obtener los IDs de campañas del usuario
+      const userCampaignIds = user.campaignIds || [];
+
+      // Si no hay IDs, no hay campañas
+      if (userCampaignIds.length === 0) {
+        setCampaigns([]);
+        setSelectedCampaign(null);
+        return;
+      }
+
+      // Traer solo las campañas específicas por sus IDs
+      const userCampaigns = await campaignDataSource.getByIds(userCampaignIds);
+
+      setCampaigns(userCampaigns);
 
       // Auto-select first campaign if available and none selected
-      if (data.length > 0 && !selectedCampaign) {
-        setSelectedCampaign(data[0]);
+      if (userCampaigns.length > 0 && !selectedCampaign) {
+        setSelectedCampaign(userCampaigns[0]);
+      } else if (userCampaigns.length === 0) {
+        setSelectedCampaign(null);
       }
     } catch (error) {
       console.error("Error fetching campaigns:", error);
@@ -47,29 +81,105 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Subscribe to real-time updates
+  // Subscribe to real-time updates for specific campaigns
   useEffect(() => {
-    const unsubscribe = campaignDataSource.subscribeToCollection(
-      (updatedCampaigns) => {
-        setCampaigns(updatedCampaigns);
+    // No suscribirse si no hay usuario
+    if (!user || authLoading || !db) {
+      return;
+    }
 
-        // Auto-select first campaign if available and none selected
-        if (updatedCampaigns.length > 0 && !selectedCampaign) {
-          setSelectedCampaign(updatedCampaigns[0]);
-        }
+    const currentUserCampaignIds = userCampaignIdsRef.current;
+
+    // Si no hay IDs de campañas, no suscribirse
+    if (!currentUserCampaignIds || currentUserCampaignIds.length === 0) {
+      setCampaigns([]);
+      setSelectedCampaign(null);
+      return;
+    }
+
+    // Suscribirse a cada campaña específica del usuario individualmente
+    const unsubscribes: Unsubscribe[] = [];
+    const campaignMap = new Map<string, Campaign>();
+
+    const updateCampaigns = () => {
+      // Filtrar solo las que están en la lista actual del usuario
+      const currentIds = userCampaignIdsRef.current;
+      const filtered = Array.from(campaignMap.values()).filter((camp) =>
+        currentIds.includes(camp.id)
+      );
+
+      setCampaigns(filtered);
+
+      // Auto-select first campaign if available and none selected
+      if (filtered.length > 0 && !selectedCampaign) {
+        setSelectedCampaign(filtered[0]);
+      } else if (filtered.length === 0) {
+        setSelectedCampaign(null);
       }
-    );
+    };
+
+    // Suscribirse a cada documento individualmente
+    currentUserCampaignIds.forEach((campaignId) => {
+      if (!db) return;
+
+      const docRef = doc(db, "campaigns", campaignId);
+
+      const unsubscribe = onSnapshot(
+        docRef,
+        (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const campaign: Campaign = {
+              id: docSnap.id,
+              name: data.name,
+              description: data.description,
+              startDate: data.startDate?.toDate() || new Date(),
+              endDate: data.endDate?.toDate() || new Date(),
+              status: data.status || "active",
+              participants: data.participants || 0,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              updatedAt: data.updatedAt?.toDate(),
+            };
+            campaignMap.set(campaign.id, campaign);
+          } else {
+            // Si el documento fue eliminado, removerlo del mapa
+            campaignMap.delete(campaignId);
+          }
+
+          updateCampaigns();
+        },
+        (error) => {
+          console.error(`Error subscribing to campaign ${campaignId}:`, error);
+        }
+      );
+
+      unsubscribes.push(unsubscribe);
+    });
 
     return () => {
-      unsubscribe();
+      unsubscribes.forEach((unsub) => unsub());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.id, user?.campaignIds, authLoading]);
+
+  // Cargar campañas cuando el usuario cambie
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchCampaigns();
+    } else if (!authLoading && !user) {
+      setCampaigns([]);
+      setSelectedCampaign(null);
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading]);
 
   // Update selected campaign when campaigns change
   useEffect(() => {
     if (campaigns.length > 0 && !selectedCampaign) {
       setSelectedCampaign(campaigns[0]);
+    } else if (campaigns.length === 0) {
+      setSelectedCampaign(null);
     }
   }, [campaigns, selectedCampaign]);
 
