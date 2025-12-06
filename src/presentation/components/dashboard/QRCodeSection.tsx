@@ -1,56 +1,44 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import QRCodeSVG from "react-qr-code";
-import { ApiClient } from "@/src/infrastructure/api/ApiClient";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
-
-interface QRCodeData {
-  qrData: string;
-  userId: string;
-  campaignId: string;
-}
+import { useAuth } from "@/src/presentation/hooks/useAuth";
 
 export function QRCodeSection() {
-  const [qrData, setQrData] = useState<QRCodeData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { selectedCampaign } = useCampaign();
   const [shareMessage, setShareMessage] = useState(
     "¡Únete a mi red! Escanea este código QR para registrarte."
   );
-  const apiClientRef = useRef(new ApiClient());
-  const { selectedCampaign } = useCampaign();
+
+  // Generar la URL del QR automáticamente
+  const qrUrl = useMemo(() => {
+    if (!user || !selectedCampaign) {
+      return null;
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+    const registrationUrl = `${baseUrl}/register/?leaderId=${
+      user.id
+    }&leaderName=${encodeURIComponent(user.name || "")}&campaignId=${
+      selectedCampaign.id
+    }`;
+
+    return registrationUrl;
+  }, [user, selectedCampaign]);
 
   useEffect(() => {
     if (selectedCampaign) {
-      fetchQRCode();
       // Reset message when campaign changes
       setShareMessage(
         `¡Únete a mi red en la campaña ${selectedCampaign.name}! Escanea este código QR para registrarte.`
       );
-    } else {
-      setQrData(null);
-      setLoading(false);
     }
   }, [selectedCampaign]);
 
-  const fetchQRCode = async () => {
-    if (!selectedCampaign) return;
-
-    setLoading(true);
-    try {
-      const data = await apiClientRef.current.get<QRCodeData>(
-        `/dashboard/qr-code?campaignId=${selectedCampaign.id}`
-      );
-      setQrData(data);
-    } catch (error) {
-      console.error("Error fetching QR code:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const downloadQR = () => {
-    if (!qrData || !selectedCampaign) return;
+    if (!qrUrl || !selectedCampaign) return;
 
     const svg = document.getElementById("qr-code-svg");
     if (!svg) return;
@@ -79,10 +67,10 @@ export function QRCodeSection() {
   };
 
   const shareOnSocialMedia = (platform: string) => {
-    if (!qrData || !selectedCampaign) return;
+    if (!qrUrl || !selectedCampaign) return;
 
     const text = encodeURIComponent(shareMessage);
-    const url = encodeURIComponent(qrData.qrData);
+    const url = encodeURIComponent(qrUrl);
 
     let shareUrl = "";
     switch (platform) {
@@ -115,25 +103,27 @@ export function QRCodeSection() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!qrData) {
+  if (!user) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Mi Código QR - {selectedCampaign.name}
         </h3>
         <p className="text-gray-500 text-center py-4">
-          Error al cargar código QR
+          Cargando información del usuario...
+        </p>
+      </div>
+    );
+  }
+
+  if (!qrUrl) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Mi Código QR - {selectedCampaign.name}
+        </h3>
+        <p className="text-gray-500 text-center py-4">
+          No se pudo generar el código QR
         </p>
       </div>
     );
@@ -148,12 +138,7 @@ export function QRCodeSection() {
         {/* QR Code Section */}
         <div className="flex flex-col items-center space-y-4 flex-shrink-0">
           <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
-            <QRCodeSVG
-              id="qr-code-svg"
-              value={qrData.qrData}
-              size={200}
-              level="H"
-            />
+            <QRCodeSVG id="qr-code-svg" value={qrUrl} size={200} level="H" />
           </div>
           <button
             onClick={downloadQR}
