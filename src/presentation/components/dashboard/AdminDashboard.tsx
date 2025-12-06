@@ -284,56 +284,6 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          {/* KPIs Adicionales */}
-          {kpis.totalCampaigns > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">
-                  En Progreso
-                </h3>
-                <p className="text-2xl font-bold text-blue-600">
-                  {kpis.campaignsInProgress}
-                </p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">
-                  Completadas
-                </h3>
-                <p className="text-2xl font-bold text-green-600">
-                  {kpis.campaignsCompleted}
-                </p>
-                {kpis.participantsByStatus.completed > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {kpis.participantsByStatus.completed.toLocaleString()}{" "}
-                    participantes
-                  </p>
-                )}
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">
-                  No Iniciadas
-                </h3>
-                <p className="text-2xl font-bold text-gray-600">
-                  {kpis.campaignsNotStarted}
-                </p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">
-                  Inactivas
-                </h3>
-                <p className="text-2xl font-bold text-orange-600">
-                  {kpis.inactiveCampaigns}
-                </p>
-                {kpis.participantsByStatus.inactive > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {kpis.participantsByStatus.inactive.toLocaleString()}{" "}
-                    participantes
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* KPIs de Distribución Geográfica */}
           {kpis.totalCampaigns > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -371,16 +321,6 @@ export function AdminDashboard() {
                       </p>
                     </div>
                   </div>
-                  {kpis.areaTypeDistribution.unknown > 0 && (
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                      <span className="text-xs text-gray-500">
-                        Sin clasificar
-                      </span>
-                      <p className="text-sm font-medium text-gray-600">
-                        {kpis.areaTypeDistribution.unknown.toLocaleString()}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -422,16 +362,6 @@ export function AdminDashboard() {
                       </p>
                     </div>
                   </div>
-                  {kpis.capitalCityDistribution.unknown > 0 && (
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                      <span className="text-xs text-gray-500">
-                        Sin clasificar
-                      </span>
-                      <p className="text-sm font-medium text-gray-600">
-                        {kpis.capitalCityDistribution.unknown.toLocaleString()}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
