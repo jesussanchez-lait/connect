@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { QRCodeSection } from "./QRCodeSection";
 import { TeamList } from "./TeamList";
@@ -9,6 +9,7 @@ import { ActivityHistory } from "./ActivityHistory";
 import { TeamMap } from "./TeamMap";
 import { CampaignSelector } from "./CampaignSelector";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
+import { ApiClient } from "@/src/infrastructure/api/ApiClient";
 
 function DownloadCampaignProposalButton() {
   const [downloading, setDownloading] = useState(false);
@@ -176,7 +177,10 @@ export function MultiplierDashboard() {
   const { user } = useAuth();
   const { selectedCampaign } = useCampaign();
   const [hasLeader, setHasLeader] = useState(true);
+  const [hasTeam, setHasTeam] = useState(false);
+  const [checkingTeam, setCheckingTeam] = useState(true);
   const leaderContainerRef = useRef<HTMLDivElement>(null);
+  const apiClientRef = useRef(new ApiClient());
 
   // Detectar si MyLeader está renderizando contenido
   useEffect(() => {
@@ -223,6 +227,44 @@ export function MultiplierDashboard() {
     };
   }, [selectedCampaign, user]);
 
+  // Verificar si el multiplicador tiene equipo
+  const checkTeam = useCallback(async () => {
+    if (!selectedCampaign) {
+      setHasTeam(false);
+      setCheckingTeam(false);
+      return;
+    }
+
+    setCheckingTeam(true);
+    try {
+      const data = await apiClientRef.current.get<any[]>(
+        `/dashboard/my-team?campaignId=${selectedCampaign.id}&limit=1`
+      );
+      setHasTeam(data && data.length > 0);
+    } catch (error) {
+      console.error("Error checking team:", error);
+      setHasTeam(false);
+    } finally {
+      setCheckingTeam(false);
+    }
+  }, [selectedCampaign]);
+
+  useEffect(() => {
+    checkTeam();
+  }, [checkTeam]);
+
+  // Escuchar eventos de actualización del equipo
+  useEffect(() => {
+    const handleTeamUpdate = () => {
+      checkTeam();
+    };
+
+    window.addEventListener("team-updated", handleTeamUpdate);
+    return () => {
+      window.removeEventListener("team-updated", handleTeamUpdate);
+    };
+  }, [checkTeam]);
+
   return (
     <>
       <nav className="bg-white shadow-sm">
@@ -261,20 +303,26 @@ export function MultiplierDashboard() {
             <QRCodeSection />
           </div>
 
-          {/* Lista de equipo - Seguidores reclutados */}
-          <div className="mb-6">
-            <TeamList />
-          </div>
+          {/* Lista de equipo - Seguidores reclutados - Solo mostrar si hay equipo */}
+          {hasTeam && (
+            <div className="mb-6">
+              <TeamList />
+            </div>
+          )}
 
-          {/* Mapa del equipo */}
-          <div className="mb-6">
-            <TeamMap />
-          </div>
+          {/* Mapa del equipo - Solo mostrar si hay equipo */}
+          {hasTeam && (
+            <div className="mb-6">
+              <TeamMap />
+            </div>
+          )}
 
-          {/* Historial de actividades */}
-          <div>
-            <ActivityHistory />
-          </div>
+          {/* Historial de actividades - Solo mostrar si hay equipo */}
+          {hasTeam && (
+            <div>
+              <ActivityHistory />
+            </div>
+          )}
         </div>
       </main>
     </>

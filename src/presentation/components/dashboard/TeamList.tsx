@@ -276,6 +276,8 @@ export function TeamList() {
                 onSuccess={() => {
                   setShowAddForm(false);
                   fetchTeam();
+                  // Disparar evento para notificar al dashboard que el equipo se actualizó
+                  window.dispatchEvent(new CustomEvent("team-updated"));
                 }}
                 onCancel={() => setShowAddForm(false)}
               />
