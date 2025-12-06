@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { QRCodeSection } from "./QRCodeSection";
 import { TeamList } from "./TeamList";
@@ -174,6 +174,54 @@ function UserMenu() {
 
 export function MultiplierDashboard() {
   const { user } = useAuth();
+  const { selectedCampaign } = useCampaign();
+  const [hasLeader, setHasLeader] = useState(true);
+  const leaderContainerRef = useRef<HTMLDivElement>(null);
+
+  // Detectar si MyLeader está renderizando contenido
+  useEffect(() => {
+    // Si es MULTIPLIER sin leaderId, definitivamente no hay líder
+    if (user?.role === "MULTIPLIER" && !user.leaderId) {
+      setHasLeader(false);
+      return;
+    }
+
+    // Si no hay usuario o campaña seleccionada, asumir que no hay líder
+    if (!user || !selectedCampaign) {
+      setHasLeader(false);
+      return;
+    }
+
+    // Para otros casos, verificar si hay contenido renderizado después de que React renderice
+    const checkLeader = () => {
+      if (leaderContainerRef.current) {
+        // Verificar si hay algún elemento hijo (MyLeader renderiza un div cuando hay contenido)
+        // Cuando retorna null, no hay hijos
+        const hasContent = leaderContainerRef.current.children.length > 0;
+        setHasLeader(hasContent);
+      }
+    };
+
+    // Usar requestAnimationFrame para verificar después del render
+    const rafId = requestAnimationFrame(() => {
+      checkLeader();
+    });
+
+    // También usar MutationObserver para detectar cambios dinámicos
+    const observer = new MutationObserver(checkLeader);
+
+    if (leaderContainerRef.current) {
+      observer.observe(leaderContainerRef.current, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      observer.disconnect();
+    };
+  }, [selectedCampaign, user]);
 
   return (
     <>
@@ -197,9 +245,15 @@ export function MultiplierDashboard() {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           {/* Selector de Campaña y Multiplicador */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div
+            className={`grid grid-cols-1 gap-6 mb-6 ${
+              hasLeader ? "lg:grid-cols-2" : "lg:grid-cols-1"
+            }`}
+          >
             <CampaignSelector />
-            <MyLeader />
+            <div ref={leaderContainerRef}>
+              <MyLeader />
+            </div>
           </div>
 
           {/* Código QR - Solo Multiplicadores tienen QR */}

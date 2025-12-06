@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
+import { useAuth } from "@/src/presentation/hooks/useAuth";
+import { FirebaseDataSource } from "@/src/infrastructure/firebase/FirebaseDataSource";
+import { User } from "@/src/domain/entities/User";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/src/infrastructure/firebase/config";
+import Image from "next/image";
 
 interface Leader {
   id: string;
@@ -16,11 +21,22 @@ interface Leader {
 export function MyLeader() {
   const [leader, setLeader] = useState<Leader | null>(null);
   const [loading, setLoading] = useState(true);
-  const apiClientRef = useRef(new ApiClient());
   const { selectedCampaign } = useCampaign();
+  const { user } = useAuth();
+  const userDataSource = useMemo(
+    () => new FirebaseDataSource<User>("users"),
+    []
+  );
 
   const fetchLeader = useCallback(async () => {
-    if (!selectedCampaign) {
+    if (!selectedCampaign || !user) {
+      setLeader(null);
+      setLoading(false);
+      return;
+    }
+
+    // Si no tiene leaderId, no hay líder
+    if (!user.leaderId) {
       setLeader(null);
       setLoading(false);
       return;
@@ -28,17 +44,50 @@ export function MyLeader() {
 
     setLoading(true);
     try {
-      const data = await apiClientRef.current.get<Leader>(
-        `/dashboard/my-leader?campaignId=${selectedCampaign.id}`
-      );
-      setLeader(data);
+      // Obtener el usuario líder desde Firestore
+      const leaderUser = await userDataSource.getById(user.leaderId);
+
+      if (!leaderUser) {
+        setLeader(null);
+        setLoading(false);
+        return;
+      }
+
+      // Contar cuántos usuarios tienen este leaderId y están en la campaña actual
+      let teamSize = 0;
+      if (db) {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("leaderId", "==", user.leaderId));
+        const querySnapshot = await getDocs(q);
+
+        // Filtrar solo los que tienen la campaña actual en su campaignIds
+        querySnapshot.forEach((doc) => {
+          const userData = doc.data();
+          const campaignIds = userData.campaignIds || [];
+          if (campaignIds.includes(selectedCampaign.id)) {
+            teamSize++;
+          }
+        });
+      }
+
+      // Mapear a la interfaz Leader
+      const leaderData: Leader = {
+        id: leaderUser.id,
+        name: leaderUser.name,
+        phoneNumber: leaderUser.phoneNumber || "",
+        email: leaderUser.email,
+        photo: undefined, // El User entity no tiene photo, pero lo dejamos por si se agrega después
+        teamSize,
+      };
+
+      setLeader(leaderData);
     } catch (error) {
       console.error("Error fetching leader:", error);
       setLeader(null);
     } finally {
       setLoading(false);
     }
-  }, [selectedCampaign]);
+  }, [selectedCampaign, user, userDataSource]);
 
   useEffect(() => {
     fetchLeader();
@@ -75,6 +124,12 @@ export function MyLeader() {
   }
 
   if (!leader) {
+    // Si es MULTIPLIER y no tiene líder, no mostrar nada
+    if (user?.role === "MULTIPLIER") {
+      return null;
+    }
+
+    // Para otros roles, mostrar mensaje
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -95,9 +150,11 @@ export function MyLeader() {
       <div className="flex items-center space-x-4">
         <div className="flex-shrink-0">
           {leader.photo ? (
-            <img
+            <Image
               src={leader.photo}
               alt={leader.name}
+              width={64}
+              height={64}
               className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
             />
           ) : (
