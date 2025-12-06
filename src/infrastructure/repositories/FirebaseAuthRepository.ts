@@ -18,11 +18,13 @@ import {
   doc,
   setDoc,
   getDoc,
+  updateDoc,
   serverTimestamp,
   query,
   where,
   getDocs,
   collection,
+  increment,
 } from "firebase/firestore";
 import { RecaptchaVerifier } from "firebase/auth";
 
@@ -623,7 +625,33 @@ export class FirebaseAuthRepository implements IAuthRepository {
         userData.createdAt = serverTimestamp();
       }
 
+      // Verificar si es una nueva campaña para este usuario
+      const isNewCampaign =
+        credentials.campaignId &&
+        !existingCampaignIds.includes(credentials.campaignId);
+
       await setDoc(userDocRef, userData, { merge: true });
+
+      // Incrementar el contador de participants de la campaña si es una nueva campaña
+      if (isNewCampaign && credentials.campaignId) {
+        try {
+          const campaignDocRef = doc(db!, "campaigns", credentials.campaignId);
+          await updateDoc(campaignDocRef, {
+            participants: increment(1),
+            updatedAt: serverTimestamp(),
+          });
+          console.log(
+            `✅ Contador de participants incrementado para campaña ${credentials.campaignId}`
+          );
+        } catch (campaignError: any) {
+          // No fallar el registro si hay error al actualizar la campaña
+          // Solo loguear el error
+          console.error(
+            `⚠️ Error al incrementar participants de la campaña ${credentials.campaignId}:`,
+            campaignError.message
+          );
+        }
+      }
 
       const user: User = {
         id: firebaseUser.uid,

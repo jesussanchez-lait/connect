@@ -150,12 +150,28 @@ export const authHandlers = {
       }
     }
 
+    // Verificar si es una nueva campaña para este usuario
+    const isNewCampaign =
+      credentials.campaignId && !campaignIds.includes(credentials.campaignId);
+
     // Si hay una nueva campaña, agregarla a la lista
-    if (
-      credentials.campaignId &&
-      !campaignIds.includes(credentials.campaignId)
-    ) {
+    if (isNewCampaign && credentials.campaignId) {
       campaignIds.push(credentials.campaignId);
+
+      // Incrementar el contador de participants de la campaña
+      const campaign = MOCK_CAMPAIGNS.find(
+        (c) => c.id === credentials.campaignId
+      );
+      if (campaign) {
+        campaign.participants = (campaign.participants || 0) + 1;
+        console.log(
+          `[Mock] ✅ Contador de participants incrementado para campaña ${credentials.campaignId}. Nuevo total: ${campaign.participants}`
+        );
+      } else {
+        console.warn(
+          `[Mock] ⚠️ Campaña ${credentials.campaignId} no encontrada en MOCK_CAMPAIGNS`
+        );
+      }
     }
 
     // Crear o actualizar usuario MULTIPLIER
