@@ -59,6 +59,8 @@ export function useAuth() {
                 neighborhood: userData.neighborhood,
                 latitude: userData.latitude,
                 longitude: userData.longitude,
+                areaType: userData.areaType,
+                fromCapitalCity: userData.fromCapitalCity,
                 leaderId: userData.leaderId,
                 leaderName: userData.leaderName,
                 campaignIds: userData.campaignIds || [],

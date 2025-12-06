@@ -334,6 +334,109 @@ export function AdminDashboard() {
             </div>
           )}
 
+          {/* KPIs de Distribución Geográfica */}
+          {kpis.totalCampaigns > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Distribución Urbano/Rural */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-4">
+                  Distribución Urbano/Rural
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                      <span className="text-sm text-gray-700">Urbano</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-gray-900">
+                        {kpis.areaTypeDistribution.urban.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {kpis.areaTypePercentages.urban}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                      <span className="text-sm text-gray-700">Rural</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-gray-900">
+                        {kpis.areaTypeDistribution.rural.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {kpis.areaTypePercentages.rural}%
+                      </p>
+                    </div>
+                  </div>
+                  {kpis.areaTypeDistribution.unknown > 0 && (
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                      <span className="text-xs text-gray-500">
+                        Sin clasificar
+                      </span>
+                      <p className="text-sm font-medium text-gray-600">
+                        {kpis.areaTypeDistribution.unknown.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Distribución Capital/No Capital */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-4">
+                  Distribución Capital/No Capital
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
+                      <span className="text-sm text-gray-700">
+                        Desde Capital
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-gray-900">
+                        {kpis.capitalCityDistribution.fromCapital.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {kpis.capitalCityPercentages.fromCapital}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-orange-500 mr-2"></div>
+                      <span className="text-sm text-gray-700">
+                        Fuera de Capital
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-gray-900">
+                        {kpis.capitalCityDistribution.notFromCapital.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {kpis.capitalCityPercentages.notFromCapital}%
+                      </p>
+                    </div>
+                  </div>
+                  {kpis.capitalCityDistribution.unknown > 0 && (
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                      <span className="text-xs text-gray-500">
+                        Sin clasificar
+                      </span>
+                      <p className="text-sm font-medium text-gray-600">
+                        {kpis.capitalCityDistribution.unknown.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Mensaje cuando no hay campañas seleccionadas */}
           {kpis.totalCampaigns === 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">

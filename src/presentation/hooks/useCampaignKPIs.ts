@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Campaign } from "@/src/domain/entities/Campaign";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
+import { useCampaignUsers } from "./useCampaignUsers";
 
 export interface CampaignKPIs {
   // Métricas básicas
@@ -24,6 +25,26 @@ export interface CampaignKPIs {
     inactive: number;
     completed: number;
   };
+
+  // Métricas de área geográfica
+  areaTypeDistribution: {
+    urban: number;
+    rural: number;
+    unknown: number;
+  };
+  areaTypePercentages: {
+    urban: number;
+    rural: number;
+  };
+  capitalCityDistribution: {
+    fromCapital: number;
+    notFromCapital: number;
+    unknown: number;
+  };
+  capitalCityPercentages: {
+    fromCapital: number;
+    notFromCapital: number;
+  };
 }
 
 /**
@@ -31,6 +52,7 @@ export interface CampaignKPIs {
  */
 export function useCampaignKPIs(): CampaignKPIs {
   const { selectedCampaigns } = useCampaign();
+  const { users } = useCampaignUsers(selectedCampaigns);
 
   const kpis = useMemo(() => {
     if (selectedCampaigns.length === 0) {
@@ -48,6 +70,24 @@ export function useCampaignKPIs(): CampaignKPIs {
           active: 0,
           inactive: 0,
           completed: 0,
+        },
+        areaTypeDistribution: {
+          urban: 0,
+          rural: 0,
+          unknown: 0,
+        },
+        areaTypePercentages: {
+          urban: 0,
+          rural: 0,
+        },
+        capitalCityDistribution: {
+          fromCapital: 0,
+          notFromCapital: 0,
+          unknown: 0,
+        },
+        capitalCityPercentages: {
+          fromCapital: 0,
+          notFromCapital: 0,
         },
       };
     }
@@ -108,6 +148,75 @@ export function useCampaignKPIs(): CampaignKPIs {
         ? totalParticipants / selectedCampaigns.length
         : 0;
 
+    // Calcular distribución por área (URBAN/RURAL)
+    const areaTypeDistribution = users.reduce(
+      (acc, user) => {
+        if (user.areaType === "URBAN") {
+          acc.urban++;
+        } else if (user.areaType === "RURAL") {
+          acc.rural++;
+        } else {
+          acc.unknown++;
+        }
+        return acc;
+      },
+      { urban: 0, rural: 0, unknown: 0 }
+    );
+
+    const totalUsersWithAreaType =
+      areaTypeDistribution.urban + areaTypeDistribution.rural;
+    const areaTypePercentages = {
+      urban:
+        totalUsersWithAreaType > 0
+          ? Math.round(
+              (areaTypeDistribution.urban / totalUsersWithAreaType) * 100
+            )
+          : 0,
+      rural:
+        totalUsersWithAreaType > 0
+          ? Math.round(
+              (areaTypeDistribution.rural / totalUsersWithAreaType) * 100
+            )
+          : 0,
+    };
+
+    // Calcular distribución por capital
+    const capitalCityDistribution = users.reduce(
+      (acc, user) => {
+        if (user.fromCapitalCity === true) {
+          acc.fromCapital++;
+        } else if (user.fromCapitalCity === false) {
+          acc.notFromCapital++;
+        } else {
+          acc.unknown++;
+        }
+        return acc;
+      },
+      { fromCapital: 0, notFromCapital: 0, unknown: 0 }
+    );
+
+    const totalUsersWithCapitalInfo =
+      capitalCityDistribution.fromCapital +
+      capitalCityDistribution.notFromCapital;
+    const capitalCityPercentages = {
+      fromCapital:
+        totalUsersWithCapitalInfo > 0
+          ? Math.round(
+              (capitalCityDistribution.fromCapital /
+                totalUsersWithCapitalInfo) *
+                100
+            )
+          : 0,
+      notFromCapital:
+        totalUsersWithCapitalInfo > 0
+          ? Math.round(
+              (capitalCityDistribution.notFromCapital /
+                totalUsersWithCapitalInfo) *
+                100
+            )
+          : 0,
+    };
+
     return {
       totalCampaigns: selectedCampaigns.length,
       totalParticipants,
@@ -120,8 +229,12 @@ export function useCampaignKPIs(): CampaignKPIs {
       campaignsCompleted: completedCampaigns,
       campaignsNotStarted,
       participantsByStatus,
+      areaTypeDistribution,
+      areaTypePercentages,
+      capitalCityDistribution,
+      capitalCityPercentages,
     };
-  }, [selectedCampaigns]);
+  }, [selectedCampaigns, users]);
 
   return kpis;
 }
