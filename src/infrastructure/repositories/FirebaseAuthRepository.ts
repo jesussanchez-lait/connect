@@ -477,11 +477,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
       };
 
       // Solo incluir datos de campaña/multiplicador si existen
+      // IMPORTANTE: Solo guardar leaderId, no leaderName (es solo para UI)
       if (credentials.leaderId) {
         userData.leaderId = credentials.leaderId;
-      }
-      if (credentials.leaderName) {
-        userData.leaderName = credentials.leaderName;
       }
       if (credentials.campaignId) {
         // Agregar la campaña a la lista de campañas del usuario
@@ -603,11 +601,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
       };
 
       // Solo incluir datos de campaña/multiplicador si existen
+      // IMPORTANTE: Solo guardar leaderId, no leaderName (es solo para UI)
       if (credentials.leaderId) {
         userData.leaderId = credentials.leaderId;
-      }
-      if (credentials.leaderName) {
-        userData.leaderName = credentials.leaderName;
       }
       if (credentials.campaignId) {
         // Agregar la campaña a la lista de campañas del usuario
@@ -646,11 +642,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
       };
 
       // Solo incluir datos de campaña/multiplicador si existen
+      // IMPORTANTE: Solo guardar leaderId, no leaderName (es solo para UI)
       if (credentials.leaderId) {
         user.leaderId = credentials.leaderId;
-      }
-      if (credentials.leaderName) {
-        user.leaderName = credentials.leaderName;
       }
 
       // Obtener el token de acceso
