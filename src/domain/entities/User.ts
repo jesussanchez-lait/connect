@@ -23,6 +23,7 @@ export interface User {
   leaderId?: string;
   leaderName?: string;
   campaignIds?: string[]; // Lista de IDs de campañas asociadas al usuario
+  participants?: number; // Cantidad de personas registradas bajo este multiplicador
   createdAt: Date;
 }
 

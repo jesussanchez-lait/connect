@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { FirebaseDataSource } from "@/src/infrastructure/firebase/FirebaseDataSource";
 import { User } from "@/src/domain/entities/User";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/src/infrastructure/firebase/config";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/src/infrastructure/firebase";
 import Image from "next/image";
+import type { Unsubscribe } from "firebase/firestore";
 
 interface Leader {
   id: string;
@@ -15,7 +16,7 @@ interface Leader {
   phoneNumber: string;
   email?: string;
   photo?: string;
-  teamSize: number; // Cantidad de personas bajo su código QR en esta campaña
+  participants: number; // Cantidad de personas registradas bajo este multiplicador
 }
 
 export function MyLeader() {
@@ -28,7 +29,8 @@ export function MyLeader() {
     []
   );
 
-  const fetchLeader = useCallback(async () => {
+  // Cargar datos iniciales del líder
+  useEffect(() => {
     if (!selectedCampaign || !user) {
       setLeader(null);
       setLoading(false);
@@ -43,55 +45,101 @@ export function MyLeader() {
     }
 
     setLoading(true);
-    try {
-      // Obtener el usuario líder desde Firestore
-      const leaderUser = await userDataSource.getById(user.leaderId);
+    // Cargar datos iniciales del líder
+    userDataSource
+      .getById(user.leaderId)
+      .then((leaderUser) => {
+        if (!leaderUser) {
+          setLeader(null);
+          setLoading(false);
+          return;
+        }
 
-      if (!leaderUser) {
+        // Mapear a la interfaz Leader usando participants del usuario
+        const leaderData: Leader = {
+          id: leaderUser.id,
+          name: leaderUser.name,
+          phoneNumber: leaderUser.phoneNumber || "",
+          email: leaderUser.email,
+          photo: undefined, // El User entity no tiene photo, pero lo dejamos por si se agrega después
+          participants: leaderUser.participants || 0,
+        };
+
+        setLeader(leaderData);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error fetching leader:", error);
         setLeader(null);
         setLoading(false);
-        return;
-      }
-
-      // Contar cuántos usuarios tienen este leaderId y están en la campaña actual
-      let teamSize = 0;
-      if (db) {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("leaderId", "==", user.leaderId));
-        const querySnapshot = await getDocs(q);
-
-        // Filtrar solo los que tienen la campaña actual en su campaignIds
-        querySnapshot.forEach((doc) => {
-          const userData = doc.data();
-          const campaignIds = userData.campaignIds || [];
-          if (campaignIds.includes(selectedCampaign.id)) {
-            teamSize++;
-          }
-        });
-      }
-
-      // Mapear a la interfaz Leader
-      const leaderData: Leader = {
-        id: leaderUser.id,
-        name: leaderUser.name,
-        phoneNumber: leaderUser.phoneNumber || "",
-        email: leaderUser.email,
-        photo: undefined, // El User entity no tiene photo, pero lo dejamos por si se agrega después
-        teamSize,
-      };
-
-      setLeader(leaderData);
-    } catch (error) {
-      console.error("Error fetching leader:", error);
-      setLeader(null);
-    } finally {
-      setLoading(false);
-    }
+      });
   }, [selectedCampaign, user, userDataSource]);
 
+  // Escuchar el stream del líder para actualizaciones en tiempo real
   useEffect(() => {
-    fetchLeader();
-  }, [fetchLeader]);
+    if (!user?.leaderId || !db) {
+      return;
+    }
+
+    const leaderId = user.leaderId;
+    const docRef = doc(db, "users", leaderId);
+
+    console.log(
+      `📡 [MyLeader] Suscribiéndose al stream del multiplicador: ${leaderId}`
+    );
+
+    const unsubscribe: Unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const updatedLeader: Leader = {
+            id: docSnap.id,
+            name: data.name || "",
+            phoneNumber: data.phoneNumber || "",
+            email: data.email,
+            photo: undefined,
+            participants: data.participants || 0,
+          };
+
+          console.log(
+            `✅ [MyLeader] Multiplicador ${leaderId} actualizado. Participants: ${updatedLeader.participants}`
+          );
+
+          setLeader((prev) => {
+            // Solo actualizar si realmente cambió algo
+            if (
+              !prev ||
+              prev.participants !== updatedLeader.participants ||
+              prev.name !== updatedLeader.name
+            ) {
+              return updatedLeader;
+            }
+            return prev;
+          });
+        } else {
+          console.warn(
+            `⚠️ [MyLeader] Multiplicador ${leaderId} no existe en Firestore`
+          );
+          setLeader(null);
+        }
+      },
+      (error) => {
+        console.error(
+          `❌ [MyLeader] Error en stream del multiplicador ${leaderId}:`,
+          error
+        );
+      }
+    );
+
+    // Cleanup: desuscribirse cuando cambie el líder o se desmonte el componente
+    return () => {
+      console.log(
+        `🔌 [MyLeader] Desuscribiéndose del stream del multiplicador: ${leaderId}`
+      );
+      unsubscribe();
+    };
+  }, [user?.leaderId]);
 
   if (!selectedCampaign) {
     return (
@@ -173,12 +221,12 @@ export function MyLeader() {
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-700">Equipo:</span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                {leader.teamSize}{" "}
-                {leader.teamSize === 1 ? "persona" : "personas"}
+                {leader.participants}{" "}
+                {leader.participants === 1 ? "persona" : "personas"}
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Registradas bajo su código QR en esta campaña
+              Registradas bajo su código QR
             </p>
           </div>
         </div>

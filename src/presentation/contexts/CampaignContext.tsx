@@ -205,14 +205,96 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, authLoading]);
 
-  // Update selected campaign when campaigns change
+  // Update selected campaign when campaigns change (solo para auto-selección inicial)
   useEffect(() => {
     if (campaigns.length > 0 && !selectedCampaign) {
       setSelectedCampaign(campaigns[0]);
     } else if (campaigns.length === 0) {
       setSelectedCampaign(null);
     }
-  }, [campaigns, selectedCampaign]);
+    // No actualizar selectedCampaign si ya existe - el stream se encargará de eso
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaigns.length]);
+
+  // Stream específico para la campaña seleccionada - actualiza en tiempo real
+  useEffect(() => {
+    // No suscribirse si no hay campaña seleccionada o no hay db
+    if (!selectedCampaign?.id || !db) {
+      return;
+    }
+
+    const campaignId = selectedCampaign.id;
+    const docRef = doc(db, "campaigns", campaignId);
+
+    console.log(
+      `📡 [CampaignContext] Suscribiéndose al stream de campaña: ${campaignId}`
+    );
+
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const updatedCampaign: Campaign = {
+            id: docSnap.id,
+            name: data.name,
+            description: data.description,
+            startDate: data.startDate?.toDate() || new Date(),
+            endDate: data.endDate?.toDate() || new Date(),
+            status: data.status || "active",
+            participants: data.participants || 0,
+            createdAt: data.createdAt?.toDate() || new Date(),
+            updatedAt: data.updatedAt?.toDate(),
+          };
+
+          console.log(
+            `✅ [CampaignContext] Campaña ${campaignId} actualizada. Participants: ${updatedCampaign.participants}`
+          );
+
+          // Actualizar la campaña seleccionada con los datos más recientes
+          setSelectedCampaign((prev) => {
+            // Solo actualizar si realmente cambió algo para evitar re-renders innecesarios
+            if (
+              !prev ||
+              prev.participants !== updatedCampaign.participants ||
+              prev.name !== updatedCampaign.name ||
+              prev.status !== updatedCampaign.status
+            ) {
+              return updatedCampaign;
+            }
+            return prev;
+          });
+
+          // También actualizar en la lista de campañas
+          setCampaigns((prevCampaigns) =>
+            prevCampaigns.map((camp) =>
+              camp.id === campaignId ? updatedCampaign : camp
+            )
+          );
+        } else {
+          console.warn(
+            `⚠️ [CampaignContext] Campaña ${campaignId} no existe en Firestore`
+          );
+          // Si la campaña fue eliminada, limpiar la selección
+          setSelectedCampaign(null);
+        }
+      },
+      (error) => {
+        console.error(
+          `❌ [CampaignContext] Error en stream de campaña ${campaignId}:`,
+          error
+        );
+      }
+    );
+
+    // Cleanup: desuscribirse cuando cambie la campaña seleccionada o se desmonte el componente
+    return () => {
+      console.log(
+        `🔌 [CampaignContext] Desuscribiéndose del stream de campaña: ${campaignId}`
+      );
+      unsubscribe();
+    };
+  }, [selectedCampaign?.id]);
 
   return (
     <CampaignContext.Provider

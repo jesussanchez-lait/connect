@@ -653,6 +653,27 @@ export class FirebaseAuthRepository implements IAuthRepository {
         }
       }
 
+      // Incrementar el contador de participants del multiplicador (líder) si existe
+      if (credentials.leaderId) {
+        try {
+          const leaderDocRef = doc(db!, "users", credentials.leaderId);
+          await updateDoc(leaderDocRef, {
+            participants: increment(1),
+            updatedAt: serverTimestamp(),
+          });
+          console.log(
+            `✅ Contador de participants incrementado para multiplicador ${credentials.leaderId}`
+          );
+        } catch (leaderError: any) {
+          // No fallar el registro si hay error al actualizar el líder
+          // Solo loguear el error
+          console.error(
+            `⚠️ Error al incrementar participants del multiplicador ${credentials.leaderId}:`,
+            leaderError.message
+          );
+        }
+      }
+
       const user: User = {
         id: firebaseUser.uid,
         phoneNumber: firebaseUser.phoneNumber || credentials.phoneNumber,

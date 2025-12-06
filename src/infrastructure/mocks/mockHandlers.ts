@@ -174,6 +174,23 @@ export const authHandlers = {
       }
     }
 
+    // Incrementar el contador de participants del multiplicador (líder) si existe
+    if (credentials.leaderId) {
+      const leader = Object.values(MOCK_USERS).find(
+        (u: any) => u.id === credentials.leaderId
+      ) as any;
+      if (leader) {
+        leader.participants = (leader.participants || 0) + 1;
+        console.log(
+          `[Mock] ✅ Contador de participants incrementado para multiplicador ${credentials.leaderId}. Nuevo total: ${leader.participants}`
+        );
+      } else {
+        console.warn(
+          `[Mock] ⚠️ Multiplicador ${credentials.leaderId} no encontrado en MOCK_USERS`
+        );
+      }
+    }
+
     // Crear o actualizar usuario MULTIPLIER
     const newUser = {
       id: existingUser?.id || `user-${Date.now()}`,
