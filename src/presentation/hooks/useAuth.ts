@@ -47,7 +47,7 @@ export function useAuth() {
           (docSnap) => {
             if (docSnap.exists()) {
               const userData = docSnap.data();
-              const user: User = {
+              const user: User & { pendingAuth?: boolean } = {
                 id: firebaseUser.uid,
                 phoneNumber: firebaseUser.phoneNumber || undefined,
                 name: userData.name || "",
@@ -63,6 +63,7 @@ export function useAuth() {
                 leaderName: userData.leaderName,
                 campaignIds: userData.campaignIds || [],
                 createdAt: userData.createdAt?.toDate() || new Date(),
+                pendingAuth: userData.pendingAuth || false,
               };
               setUser(user);
             } else {

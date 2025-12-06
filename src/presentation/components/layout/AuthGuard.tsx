@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 
 interface AuthGuardProps {
@@ -10,18 +10,31 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children, requireAuth = true }: AuthGuardProps) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading) {
       if (requireAuth && !isAuthenticated) {
         router.push("/login");
       } else if (!requireAuth && isAuthenticated) {
-        router.push("/dashboard");
+        // No redirigir al dashboard si:
+        // 1. El usuario está en la página de registro (permite completar el registro)
+        // 2. El usuario tiene pendingAuth (registro incompleto)
+        // 3. El usuario no tiene datos completos (address, department, city)
+        const isOnRegisterPage = pathname === "/register";
+        const hasPendingAuth = (user as any)?.pendingAuth === true;
+        const hasIncompleteData =
+          user && (!user.address || !user.department || !user.city);
+
+        // Solo redirigir si el usuario está completamente registrado y no está en registro
+        if (!isOnRegisterPage && !hasPendingAuth && !hasIncompleteData) {
+          router.push("/dashboard");
+        }
       }
     }
-  }, [isAuthenticated, loading, requireAuth, router]);
+  }, [isAuthenticated, loading, requireAuth, router, pathname, user]);
 
   // Durante la carga, mostrar el contenido con un overlay sutil
   // Esto evita pantallas en blanco durante la transición
@@ -43,7 +56,20 @@ export function AuthGuard({ children, requireAuth = true }: AuthGuardProps) {
     return null;
   }
 
+  // Si requireAuth es false (página pública) y el usuario está autenticado,
+  // verificar si está en proceso de registro antes de ocultar contenido
   if (!requireAuth && isAuthenticated) {
+    const isOnRegisterPage = pathname === "/register";
+    const hasPendingAuth = (user as any)?.pendingAuth === true;
+    const hasIncompleteData =
+      user && (!user.address || !user.department || !user.city);
+
+    // Si está en registro o tiene registro incompleto, mostrar el contenido
+    if (isOnRegisterPage || hasPendingAuth || hasIncompleteData) {
+      return <>{children}</>;
+    }
+
+    // Si está completamente registrado, ocultar contenido (será redirigido)
     return null;
   }
 

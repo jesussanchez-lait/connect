@@ -599,6 +599,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         longitude: credentials.longitude || null,
         role: userRole,
         updatedAt: serverTimestamp(),
+        pendingAuth: false, // Marcar como registro completo
       };
 
       // Solo incluir datos de campaña/multiplicador si existen
