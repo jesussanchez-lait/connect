@@ -46,6 +46,8 @@ export async function POST(request: NextRequest) {
       neighborhood: body.neighborhood,
       latitude: body.latitude,
       longitude: body.longitude,
+      areaType: body.areaType,
+      fromCapitalCity: body.fromCapitalCity,
       leaderId: body.leaderId,
       leaderName: body.leaderName,
       campaignId: body.campaignId,

@@ -508,6 +508,22 @@ export function RegisterForm({
       );
       const selectedCity = cities.find((c) => c.id.toString() === cityId);
 
+      // Calcular fromCapitalCity: true si la ciudad es la capital del departamento
+      const fromCapitalCity =
+        selectedDepartment?.cityCapitalId !== undefined &&
+        selectedCity?.id !== undefined &&
+        selectedDepartment.cityCapitalId === selectedCity.id;
+
+      // Calcular areaType: URBAN si es capital, tiene postalCode o tiene population; RURAL en caso contrario
+      let areaType: "URBAN" | "RURAL" = "RURAL";
+      if (
+        fromCapitalCity ||
+        (selectedCity?.postalCode && selectedCity.postalCode.trim() !== "") ||
+        (selectedCity?.population && selectedCity.population > 0)
+      ) {
+        areaType = "URBAN";
+      }
+
       const credentials: RegisterCredentials = {
         firstName,
         lastName,
@@ -520,6 +536,8 @@ export function RegisterForm({
         neighborhood: neighborhood, // Barrio
         latitude,
         longitude,
+        areaType,
+        fromCapitalCity,
       };
 
       // Solo incluir datos de campaña/multiplicador si no es admin

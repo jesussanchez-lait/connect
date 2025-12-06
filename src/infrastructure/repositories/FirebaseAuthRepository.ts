@@ -597,6 +597,8 @@ export class FirebaseAuthRepository implements IAuthRepository {
         neighborhood: credentials.neighborhood,
         latitude: credentials.latitude || null,
         longitude: credentials.longitude || null,
+        areaType: credentials.areaType || null,
+        fromCapitalCity: credentials.fromCapitalCity ?? null,
         role: userRole,
         updatedAt: serverTimestamp(),
         pendingAuth: false, // Marcar como registro completo

@@ -9,6 +9,7 @@ export interface Department {
   population?: number;
   phonePrefix?: string;
   capital?: string;
+  cityCapitalId?: number; // ID de la ciudad capital del departamento
   region?: string;
 }
 

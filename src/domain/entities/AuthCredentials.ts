@@ -13,6 +13,8 @@ export interface OtpResponse {
   otpCode?: string; // Solo en desarrollo
 }
 
+import { AreaType } from "./User";
+
 export interface RegisterCredentials {
   // Datos personales
   firstName: string;
@@ -28,6 +30,8 @@ export interface RegisterCredentials {
   neighborhood: string; // Barrio / Vereda
   latitude?: number;
   longitude?: number;
+  areaType?: AreaType; // URBAN o RURAL basado en la ciudad
+  fromCapitalCity?: boolean; // true si la ciudad es la capital del departamento
 
   // Datos del multiplicador (opcionales para admin)
   leaderId?: string;

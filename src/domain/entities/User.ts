@@ -6,6 +6,8 @@ export type UserRole =
   | "MULTIPLIER"
   | "FOLLOWER";
 
+export type AreaType = "URBAN" | "RURAL";
+
 export interface User {
   id: string;
   email?: string;
@@ -20,6 +22,8 @@ export interface User {
   neighborhood?: string; // Barrio / Vereda
   latitude?: number;
   longitude?: number;
+  areaType?: AreaType; // URBAN o RURAL basado en la ciudad
+  fromCapitalCity?: boolean; // true si la ciudad es la capital del departamento
   leaderId?: string;
   leaderName?: string;
   campaignIds?: string[]; // Lista de IDs de campañas asociadas al usuario
