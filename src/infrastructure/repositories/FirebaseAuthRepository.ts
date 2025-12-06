@@ -464,6 +464,11 @@ export class FirebaseAuthRepository implements IAuthRepository {
       }
       if (credentials.campaignId) {
         userData.campaignId = credentials.campaignId;
+        // Agregar también a campaignIds si existe campaignId
+        userData.campaignIds = [credentials.campaignId];
+      } else {
+        // Inicializar campaignIds como array vacío si no hay campaignId
+        userData.campaignIds = [];
       }
 
       // Usar merge: true para actualizar solo los campos proporcionados
@@ -565,6 +570,11 @@ export class FirebaseAuthRepository implements IAuthRepository {
       }
       if (credentials.campaignId) {
         userData.campaignId = credentials.campaignId;
+        // Agregar también a campaignIds si existe campaignId
+        userData.campaignIds = [credentials.campaignId];
+      } else {
+        // Inicializar campaignIds como array vacío si no hay campaignId
+        userData.campaignIds = [];
       }
 
       // Solo establecer createdAt si el usuario no existe
@@ -586,6 +596,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         latitude: credentials.latitude,
         longitude: credentials.longitude,
         role: userRole,
+        campaignIds: credentials.campaignId ? [credentials.campaignId] : [],
         createdAt: new Date(),
       };
 
@@ -680,6 +691,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
                 longitude: userData.longitude,
                 leaderId: userData.leaderId,
                 leaderName: userData.leaderName,
+                campaignIds: userData.campaignIds || [],
                 createdAt: userData.createdAt?.toDate() || new Date(),
               };
 

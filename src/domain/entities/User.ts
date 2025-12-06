@@ -22,6 +22,7 @@ export interface User {
   longitude?: number;
   leaderId?: string;
   leaderName?: string;
+  campaignIds?: string[]; // Lista de IDs de campañas asociadas al usuario
   createdAt: Date;
 }
 

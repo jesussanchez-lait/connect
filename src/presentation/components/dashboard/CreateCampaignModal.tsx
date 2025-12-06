@@ -2,8 +2,10 @@
 
 import { useState, FormEvent } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
+import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { FirebaseDataSource } from "@/src/infrastructure/firebase/FirebaseDataSource";
 import { Campaign } from "@/src/domain/entities/Campaign";
+import { User } from "@/src/domain/entities/User";
 import { LoaderWithText } from "@/src/presentation/components/ui/Loader";
 
 interface CreateCampaignModalProps {
@@ -23,6 +25,7 @@ export function CreateCampaignModal({
   onClose,
 }: CreateCampaignModalProps) {
   const { refreshCampaigns } = useCampaign();
+  const { user, refreshUser } = useAuth();
   const [formData, setFormData] = useState<CampaignFormData>({
     name: "",
     description: "",
@@ -32,6 +35,7 @@ export function CreateCampaignModal({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const campaignDataSource = new FirebaseDataSource<Campaign>("campaigns");
+  const userDataSource = new FirebaseDataSource<User>("users");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -67,7 +71,12 @@ export function CreateCampaignModal({
     }
 
     try {
-      await campaignDataSource.create({
+      if (!user) {
+        throw new Error("Usuario no autenticado");
+      }
+
+      // Crear la campaña
+      const newCampaign = await campaignDataSource.create({
         name: formData.name.trim(),
         description: formData.description.trim(),
         startDate: new Date(formData.startDate),
@@ -75,6 +84,32 @@ export function CreateCampaignModal({
         status: "active",
         participants: 0,
       });
+
+      // Actualizar el usuario en Firestore agregando el ID de la campaña a su lista
+      const currentCampaignIds = user.campaignIds || [];
+      if (!currentCampaignIds.includes(newCampaign.id)) {
+        const updatedCampaignIds = [...currentCampaignIds, newCampaign.id];
+
+        // Actualizar en Firestore
+        await userDataSource.update(user.id, {
+          campaignIds: updatedCampaignIds,
+        });
+
+        // Verificar que se actualizó correctamente leyendo de Firestore
+        const updatedUser = await userDataSource.getById(user.id);
+        if (updatedUser && !updatedUser.campaignIds?.includes(newCampaign.id)) {
+          console.warn(
+            "⚠️ La campaña no se agregó correctamente al usuario en Firestore"
+          );
+        } else {
+          console.log(
+            "✅ Campaña agregada correctamente al usuario en Firestore"
+          );
+        }
+
+        // Refrescar el usuario para obtener los datos actualizados
+        await refreshUser();
+      }
 
       // Resetear formulario
       setFormData({
