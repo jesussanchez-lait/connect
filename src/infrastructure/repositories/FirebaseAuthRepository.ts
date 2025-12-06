@@ -458,11 +458,11 @@ export class FirebaseAuthRepository implements IAuthRepository {
         existingCampaignIds = [];
       }
 
-      // Determinar el rol: ADMIN si no hay leaderId/campaignId, MULTIPLIER en caso contrario
-      const userRole: UserRole =
-        !credentials.leaderId || !credentials.campaignId
-          ? "ADMIN"
-          : "MULTIPLIER";
+      // Determinar el rol: MULTIPLIER si hay campaignId (puede ser el primero del árbol sin leaderId)
+      // ADMIN solo si no hay campaignId
+      const userRole: UserRole = credentials.campaignId
+        ? "MULTIPLIER"
+        : "ADMIN";
 
       const userData: any = {
         id: userId,
@@ -575,11 +575,11 @@ export class FirebaseAuthRepository implements IAuthRepository {
         userExists = false;
       }
 
-      // Determinar el rol: ADMIN si no hay leaderId/campaignId, MULTIPLIER en caso contrario
-      const userRole: UserRole =
-        !credentials.leaderId || !credentials.campaignId
-          ? "ADMIN"
-          : "MULTIPLIER";
+      // Determinar el rol: MULTIPLIER si hay campaignId (puede ser el primero del árbol sin leaderId)
+      // ADMIN solo si no hay campaignId
+      const userRole: UserRole = credentials.campaignId
+        ? "MULTIPLIER"
+        : "ADMIN";
 
       const userData: any = {
         id: firebaseUser.uid,

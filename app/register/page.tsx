@@ -13,8 +13,8 @@ function RegisterContent() {
   const campaignId = searchParams.get("campaignId") || "";
 
   // Si es admin, no requiere parámetros de QR
-  // Si no es admin, requiere todos los parámetros del QR
-  if (!isAdmin && (!leaderId || !leaderName || !campaignId)) {
+  // Si no es admin, solo requiere campaignId (puede ser el primer multiplicador del árbol)
+  if (!isAdmin && !campaignId) {
     return (
       <AuthGuard requireAuth={false}>
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -22,8 +22,7 @@ function RegisterContent() {
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               <p className="font-semibold">Error: Código QR inválido</p>
               <p className="text-sm mt-1">
-                Por favor, escanea el código QR proporcionado por tu
-                multiplicador.
+                Por favor, escanea el código QR de la campaña para registrarte.
               </p>
             </div>
           </div>

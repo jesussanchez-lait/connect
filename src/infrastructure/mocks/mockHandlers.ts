@@ -164,10 +164,9 @@ export const authHandlers = {
       name: `${credentials.firstName} ${credentials.lastName}`,
       phoneNumber: credentials.phoneNumber,
       email: existingUser?.email || undefined,
-      role:
-        credentials.leaderId && credentials.campaignId
-          ? ("MULTIPLIER" as const)
-          : ("ADMIN" as const),
+      role: credentials.campaignId
+        ? ("MULTIPLIER" as const)
+        : ("ADMIN" as const),
       documentNumber: credentials.documentNumber,
       country: credentials.country,
       department: credentials.department,

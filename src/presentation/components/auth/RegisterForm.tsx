@@ -382,10 +382,15 @@ export function RegisterForm({
       };
 
       // Solo incluir datos de campaña/multiplicador si no es admin
+      // leaderId es opcional: un multiplicador puede ser el primero del árbol
       if (!isAdmin) {
-        partialUserData.leaderId = leaderId;
-        partialUserData.leaderName = leaderName;
         partialUserData.campaignId = campaignId;
+        if (leaderId) {
+          partialUserData.leaderId = leaderId;
+        }
+        if (leaderName) {
+          partialUserData.leaderName = leaderName;
+        }
       }
 
       await createPartialUserUseCase.execute(partialUserData);
@@ -518,10 +523,15 @@ export function RegisterForm({
       };
 
       // Solo incluir datos de campaña/multiplicador si no es admin
+      // leaderId es opcional: un multiplicador puede ser el primero del árbol
       if (!isAdmin) {
-        credentials.leaderId = leaderId;
-        credentials.leaderName = leaderName;
         credentials.campaignId = campaignId;
+        if (leaderId) {
+          credentials.leaderId = leaderId;
+        }
+        if (leaderName) {
+          credentials.leaderName = leaderName;
+        }
       }
 
       try {
@@ -593,6 +603,15 @@ export function RegisterForm({
           <p className="text-sm font-medium">
             Te estás registrando bajo el Multiplicador{" "}
             <span className="font-bold">{leaderName}</span>
+          </p>
+        </div>
+      )}
+      {!isAdmin && !leaderName && campaignId && (
+        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+          <p className="text-sm font-medium">
+            Estás creando tu cuenta como{" "}
+            <span className="font-bold">Multiplicador</span> de esta campaña.
+            Serás el primero de tu árbol.
           </p>
         </div>
       )}
