@@ -9,6 +9,7 @@ import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { useRole } from "@/src/presentation/hooks/useRole";
 import { useCampaignKPIs } from "@/src/presentation/hooks/useCampaignKPIs";
 import { ROLES } from "@/src/presentation/contexts/RoleContext";
+import { CampaignsMap } from "./CampaignsMap";
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -364,6 +365,13 @@ export function AdminDashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Mapa de Participantes - Solo mostrar si hay campañas seleccionadas */}
+          {kpis.totalCampaigns > 0 && (
+            <div className="mb-6">
+              <CampaignsMap />
             </div>
           )}
 
