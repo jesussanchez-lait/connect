@@ -7,6 +7,7 @@ import { CampaignSelector } from "./CampaignSelector";
 import { CreateCampaignModal } from "./CreateCampaignModal";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { useRole } from "@/src/presentation/hooks/useRole";
+import { useCampaignKPIs } from "@/src/presentation/hooks/useCampaignKPIs";
 import { ROLES } from "@/src/presentation/contexts/RoleContext";
 
 function UserMenu() {
@@ -152,7 +153,8 @@ export function AdminDashboard() {
   const { user } = useAuth();
   const { role } = useRole();
   const router = useRouter();
-  const { campaigns, selectedCampaign, setSelectedCampaign } = useCampaign();
+  const { campaigns, selectedCampaigns } = useCampaign();
+  const kpis = useCampaignKPIs();
 
   const handleExportData = () => {
     // TODO: Implementar exportación con máscaras DLP
@@ -236,90 +238,131 @@ export function AdminDashboard() {
             <CampaignSelector />
           </div>
 
-          {/* Métricas Globales */}
+          {/* Métricas Globales - Calculadas basadas en campañas seleccionadas */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">
-                Total de Campañas
+                Campañas Seleccionadas
               </h3>
               <p className="text-3xl font-bold text-gray-900">
-                {campaigns.length}
+                {kpis.totalCampaigns}
               </p>
+              {kpis.totalCampaigns > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {kpis.activeCampaigns} activas, {kpis.inactiveCampaigns}{" "}
+                  inactivas
+                </p>
+              )}
             </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">
                 Total de Participantes
               </h3>
               <p className="text-3xl font-bold text-gray-900">
-                {campaigns.reduce((sum, c) => sum + c.participants, 0)}
+                {kpis.totalParticipants.toLocaleString()}
               </p>
+              {kpis.totalCampaigns > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Promedio:{" "}
+                  {kpis.averageParticipantsPerCampaign.toLocaleString()} por
+                  campaña
+                </p>
+              )}
             </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">
-                Campañas Activas
+                Participantes Activos
               </h3>
-              <p className="text-3xl font-bold text-gray-900">
-                {campaigns.filter((c) => c.status === "active").length}
+              <p className="text-3xl font-bold text-indigo-600">
+                {kpis.totalActiveParticipants.toLocaleString()}
               </p>
+              {kpis.totalCampaigns > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  En campañas activas
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Lista de Campañas */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Todas las Campañas
-            </h3>
-            <div className="space-y-3">
-              {campaigns.map((campaign) => (
-                <div
-                  key={campaign.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => {
-                    setSelectedCampaign(campaign);
-                    router.push(`/dashboard/campaigns/${campaign.id}`);
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">
-                        {campaign.name}
-                      </h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {campaign.description}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {campaign.participants} participantes
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${
-                          campaign.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {campaign.status === "active" ? "Activa" : "Inactiva"}
-                      </span>
-                      <svg
-                        className="w-5 h-5 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              ))}
+          {/* KPIs Adicionales */}
+          {kpis.totalCampaigns > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">
+                  En Progreso
+                </h3>
+                <p className="text-2xl font-bold text-blue-600">
+                  {kpis.campaignsInProgress}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">
+                  Completadas
+                </h3>
+                <p className="text-2xl font-bold text-green-600">
+                  {kpis.campaignsCompleted}
+                </p>
+                {kpis.participantsByStatus.completed > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {kpis.participantsByStatus.completed.toLocaleString()}{" "}
+                    participantes
+                  </p>
+                )}
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">
+                  No Iniciadas
+                </h3>
+                <p className="text-2xl font-bold text-gray-600">
+                  {kpis.campaignsNotStarted}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">
+                  Inactivas
+                </h3>
+                <p className="text-2xl font-bold text-orange-600">
+                  {kpis.inactiveCampaigns}
+                </p>
+                {kpis.participantsByStatus.inactive > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {kpis.participantsByStatus.inactive.toLocaleString()}{" "}
+                    participantes
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Mensaje cuando no hay campañas seleccionadas */}
+          {kpis.totalCampaigns === 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+              <div className="flex items-start">
+                <svg
+                  className="w-5 h-5 text-yellow-600 mt-0.5 mr-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <div>
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    No hay campañas seleccionadas
+                  </h3>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Selecciona una o más campañas arriba para ver los KPIs y
+                    métricas agregadas.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </>

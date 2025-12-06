@@ -20,7 +20,10 @@ import type { Unsubscribe } from "firebase/firestore";
 interface CampaignContextType {
   campaigns: Campaign[];
   selectedCampaign: Campaign | null;
+  selectedCampaigns: Campaign[];
   setSelectedCampaign: (campaign: Campaign | null) => void;
+  setSelectedCampaigns: (campaigns: Campaign[]) => void;
+  toggleCampaignSelection: (campaignId: string) => void;
   loading: boolean;
   refreshCampaigns: () => Promise<void>;
 }
@@ -35,6 +38,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
     null
   );
+  const [selectedCampaigns, setSelectedCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const campaignDataSource = useMemo(
     () => new FirebaseDataSource<Campaign>("campaigns"),
@@ -73,8 +77,10 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       // Auto-select first campaign if available and none selected
       if (userCampaigns.length > 0 && !selectedCampaign) {
         setSelectedCampaign(userCampaigns[0]);
+        setSelectedCampaigns([userCampaigns[0]]);
       } else if (userCampaigns.length === 0) {
         setSelectedCampaign(null);
+        setSelectedCampaigns([]);
       }
     } catch (error) {
       console.error("Error fetching campaigns:", error);
@@ -138,11 +144,23 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
 
       setCampaigns(filtered);
 
+      // Actualizar selectedCampaigns con las versiones actualizadas de las campañas seleccionadas
+      setSelectedCampaigns((prev) =>
+        prev
+          .map((selectedCamp) => {
+            const updated = filtered.find((c) => c.id === selectedCamp.id);
+            return updated || selectedCamp;
+          })
+          .filter((camp) => currentIds.includes(camp.id))
+      );
+
       // Auto-select first campaign if available and none selected
       if (filtered.length > 0 && !selectedCampaign) {
         setSelectedCampaign(filtered[0]);
+        setSelectedCampaigns([filtered[0]]);
       } else if (filtered.length === 0) {
         setSelectedCampaign(null);
+        setSelectedCampaigns([]);
       }
     };
 
@@ -209,12 +227,39 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (campaigns.length > 0 && !selectedCampaign) {
       setSelectedCampaign(campaigns[0]);
+      setSelectedCampaigns([campaigns[0]]);
     } else if (campaigns.length === 0) {
       setSelectedCampaign(null);
+      setSelectedCampaigns([]);
     }
     // No actualizar selectedCampaign si ya existe - el stream se encargará de eso
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaigns.length]);
+
+  // Función para alternar la selección de una campaña
+  const toggleCampaignSelection = useCallback(
+    (campaignId: string) => {
+      setSelectedCampaigns((prev) => {
+        const campaign = campaigns.find((c) => c.id === campaignId);
+        if (!campaign) return prev;
+
+        const isSelected = prev.some((c) => c.id === campaignId);
+        if (isSelected) {
+          // Deseleccionar
+          const filtered = prev.filter((c) => c.id !== campaignId);
+          // Si se deseleccionó la última, mantener al menos una si hay campañas disponibles
+          if (filtered.length === 0 && campaigns.length > 0) {
+            return [campaigns[0]];
+          }
+          return filtered;
+        } else {
+          // Seleccionar
+          return [...prev, campaign];
+        }
+      });
+    },
+    [campaigns]
+  );
 
   // Stream específico para la campaña seleccionada - actualiza en tiempo real
   useEffect(() => {
@@ -271,6 +316,13 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
               camp.id === campaignId ? updatedCampaign : camp
             )
           );
+
+          // Actualizar también en selectedCampaigns si está seleccionada
+          setSelectedCampaigns((prev) =>
+            prev.map((camp) =>
+              camp.id === campaignId ? updatedCampaign : camp
+            )
+          );
         } else {
           console.warn(
             `⚠️ [CampaignContext] Campaña ${campaignId} no existe en Firestore`
@@ -301,7 +353,10 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
       value={{
         campaigns,
         selectedCampaign,
+        selectedCampaigns,
         setSelectedCampaign,
+        setSelectedCampaigns,
+        toggleCampaignSelection,
         loading,
         refreshCampaigns: fetchCampaigns,
       }}
