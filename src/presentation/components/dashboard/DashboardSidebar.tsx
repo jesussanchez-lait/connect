@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
   useDashboardConfig,
   DASHBOARD_WIDGETS,
-} from "@/src/presentation/hooks/useDashboardConfig";
+} from "@/src/presentation/contexts/DashboardConfigContext";
 
 interface DashboardSidebarProps {
   isOpen: boolean;
@@ -70,9 +70,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
       <div
         className={`fixed right-0 top-0 h-full bg-white shadow-xl z-50 overflow-hidden transition-all duration-300 ease-in-out lg:sticky lg:top-3 lg:h-[calc(100vh-1.5rem)] lg:z-auto lg:shadow-none lg:rounded-lg lg:border lg:border-gray-200 ${
           isOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
-        } ${
-          isMinimized ? "w-14 lg:w-14" : "w-80"
-        }`}
+        } ${isMinimized ? "w-14 lg:w-14" : "w-80"}`}
       >
         {/* Contenido cuando está minimizado - Solo icono */}
         {isMinimized ? (

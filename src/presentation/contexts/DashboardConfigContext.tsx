@@ -1,63 +1,42 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuth } from "./useAuth";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
+import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { doc, updateDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/src/infrastructure/firebase";
+import {
+  DashboardConfig,
+  DASHBOARD_WIDGETS,
+  DEFAULT_CONFIG,
+} from "@/src/presentation/hooks/useDashboardConfig";
 
-export interface DashboardWidget {
-  id: string;
-  label: string;
-  category: string;
+// Re-exportar para compatibilidad
+export { DEFAULT_CONFIG, DASHBOARD_WIDGETS, type DashboardConfig };
+
+interface DashboardConfigContextType {
+  config: DashboardConfig;
+  loading: boolean;
+  toggleWidget: (widgetId: string) => void;
+  isWidgetVisible: (widgetId: string) => boolean;
+  widgets: typeof DASHBOARD_WIDGETS;
 }
 
-export const DASHBOARD_WIDGETS: DashboardWidget[] = [
-  {
-    id: "area-type-pie",
-    label: "Distribución Urbano/Rural",
-    category: "Geografía",
-  },
-  { id: "gender-pie", label: "Distribución por Sexo", category: "Demografía" },
-  { id: "status-area", label: "Participantes por Estado", category: "Estado" },
-  {
-    id: "campaign-status-line",
-    label: "Estado de Campañas",
-    category: "Estado",
-  },
-  { id: "professions-bar", label: "Top Profesiones", category: "Demografía" },
-  {
-    id: "department-bar",
-    label: "Distribución por Departamento",
-    category: "Geografía",
-  },
-  { id: "city-bar", label: "Distribución por Ciudad", category: "Geografía" },
-  { id: "role-bar", label: "Distribución por Rol", category: "Roles" },
-  { id: "team-tree", label: "Árbol de Participantes", category: "Estructura" },
-  {
-    id: "campaigns-map",
-    label: "Mapa de Participantes",
-    category: "Geografía",
-  },
-];
+const DashboardConfigContext = createContext<
+  DashboardConfigContextType | undefined
+>(undefined);
 
-export interface DashboardConfig {
-  [widgetId: string]: boolean;
-}
-
-export const DEFAULT_CONFIG: DashboardConfig = {
-  "area-type-pie": true,
-  "gender-pie": true,
-  "status-area": true,
-  "campaign-status-line": true,
-  "professions-bar": true,
-  "department-bar": true,
-  "city-bar": true,
-  "role-bar": true,
-  "team-tree": true,
-  "campaigns-map": true,
-};
-
-export function useDashboardConfig() {
+export function DashboardConfigProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { user } = useAuth();
   const [config, setConfig] = useState<DashboardConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
@@ -117,9 +96,6 @@ export function useDashboardConfig() {
         clearTimeout(debounceTimerRef.current);
       }
 
-      // Actualizar estado inmediatamente
-      setConfig(newConfig);
-
       // Guardar en Firebase después de 1 segundo
       debounceTimerRef.current = setTimeout(async () => {
         try {
@@ -147,31 +123,11 @@ export function useDashboardConfig() {
           [widgetId]: !currentConfig[widgetId],
         };
         // Guardar en Firebase con debounce
-        if (user?.id && db) {
-          // Limpiar timer anterior
-          if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-          }
-
-          // Guardar en Firebase después de 1 segundo
-          debounceTimerRef.current = setTimeout(async () => {
-            try {
-              if (!db || !user?.id) return;
-              const userDocRef = doc(db, "users", user.id);
-              await updateDoc(userDocRef, {
-                dashboardConfig: newConfig,
-                updatedAt: serverTimestamp(),
-              });
-              console.log("✅ Dashboard config guardada en Firebase");
-            } catch (error) {
-              console.error("Error saving dashboard config:", error);
-            }
-          }, 1000);
-        }
+        saveConfig(newConfig);
         return newConfig;
       });
     },
-    [user?.id]
+    [saveConfig]
   );
 
   // Verificar si un widget está visible
@@ -191,11 +147,27 @@ export function useDashboardConfig() {
     };
   }, []);
 
-  return {
-    config,
-    loading,
-    toggleWidget,
-    isWidgetVisible,
-    widgets: DASHBOARD_WIDGETS,
-  };
+  return (
+    <DashboardConfigContext.Provider
+      value={{
+        config,
+        loading,
+        toggleWidget,
+        isWidgetVisible,
+        widgets: DASHBOARD_WIDGETS,
+      }}
+    >
+      {children}
+    </DashboardConfigContext.Provider>
+  );
+}
+
+export function useDashboardConfig() {
+  const context = useContext(DashboardConfigContext);
+  if (context === undefined) {
+    throw new Error(
+      "useDashboardConfig must be used within a DashboardConfigProvider"
+    );
+  }
+  return context;
 }

@@ -7,6 +7,7 @@ import {
   useRole,
   ROLES,
 } from "@/src/presentation/contexts/RoleContext";
+import { DashboardConfigProvider } from "@/src/presentation/contexts/DashboardConfigContext";
 import { MultiplierDashboard } from "@/src/presentation/components/dashboard/MultiplierDashboard";
 import { AdminDashboard } from "@/src/presentation/components/dashboard/AdminDashboard";
 
@@ -53,9 +54,11 @@ export default function DashboardPage() {
     <AuthGuard requireAuth={true}>
       <RoleProvider>
         <CampaignProvider>
-          <div className="min-h-screen bg-gray-50">
-            <DashboardRouter />
-          </div>
+          <DashboardConfigProvider>
+            <div className="min-h-screen bg-gray-50">
+              <DashboardRouter />
+            </div>
+          </DashboardConfigProvider>
         </CampaignProvider>
       </RoleProvider>
     </AuthGuard>
