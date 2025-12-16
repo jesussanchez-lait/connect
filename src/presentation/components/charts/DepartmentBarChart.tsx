@@ -29,18 +29,18 @@ export function DepartmentBarChart({ data }: DepartmentBarChartProps) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
+    <ResponsiveContainer width="100%" height={300}>
       <BarChart
         data={data}
-        margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
+        margin={{ top: 5, right: 20, left: 20, bottom: 50 }}
       >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
           dataKey="department"
           angle={-45}
           textAnchor="end"
-          height={100}
-          tick={{ fontSize: 11 }}
+          height={80}
+          tick={{ fontSize: 10 }}
         />
         <YAxis />
         <Tooltip />

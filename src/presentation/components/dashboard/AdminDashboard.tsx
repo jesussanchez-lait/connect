@@ -254,10 +254,10 @@ export function AdminDashboard() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+      <main className="max-w-7xl mx-auto py-3 sm:px-4 lg:px-6">
+        <div className="px-3 py-3 sm:px-0">
           {/* Información para Admin */}
-          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-3">
             <div className="flex items-start">
               <svg
                 className="w-5 h-5 text-indigo-600 mt-0.5 mr-3"
@@ -286,43 +286,43 @@ export function AdminDashboard() {
           </div>
 
           {/* Selector de Campaña */}
-          <div className="mb-4">
+          <div className="mb-3">
             <CampaignSelector />
           </div>
 
           {/* Árbol de Participantes */}
           {kpis.totalCampaigns > 0 && (
-            <div className="mb-4">
+            <div className="mb-3">
               <TeamTreeCanvas />
             </div>
           )}
 
           {/* KPIs con Gráficas */}
           {kpis.totalCampaigns > 0 && (
-            <div className="space-y-6 mb-4">
+            <div className="space-y-3 mb-3">
               {/* Gráficas de Distribución - Primera Fila */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {/* Distribución Urbano/Rural - Pie Chart */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="bg-white rounded-lg shadow p-3">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Distribución Urbano/Rural
                   </h3>
                   <AreaTypePieChart data={kpis.areaTypeDistribution} />
-                  <div className="mt-4 grid grid-cols-2 gap-4 text-center">
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-center">
                     <div>
-                      <p className="text-2xl font-bold text-blue-600">
+                      <p className="text-xl font-bold text-blue-600">
                         {kpis.areaTypeDistribution.urban.toLocaleString()}
                       </p>
-                      <p className="text-sm text-gray-600">Urbano</p>
+                      <p className="text-xs text-gray-600">Urbano</p>
                       <p className="text-xs text-gray-500">
                         {kpis.areaTypePercentages.urban}%
                       </p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-green-600">
+                      <p className="text-xl font-bold text-green-600">
                         {kpis.areaTypeDistribution.rural.toLocaleString()}
                       </p>
-                      <p className="text-sm text-gray-600">Rural</p>
+                      <p className="text-xs text-gray-600">Rural</p>
                       <p className="text-xs text-gray-500">
                         {kpis.areaTypePercentages.rural}%
                       </p>
@@ -331,26 +331,26 @@ export function AdminDashboard() {
                 </div>
 
                 {/* Distribución por Sexo - Pie Chart */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="bg-white rounded-lg shadow p-3">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Distribución por Sexo
                   </h3>
                   <GenderPieChart data={kpis.genderDistribution} />
-                  <div className="mt-4 grid grid-cols-2 gap-4 text-center">
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-center">
                     <div>
-                      <p className="text-2xl font-bold text-blue-600">
+                      <p className="text-xl font-bold text-blue-600">
                         {kpis.genderDistribution.male.toLocaleString()}
                       </p>
-                      <p className="text-sm text-gray-600">Masculino</p>
+                      <p className="text-xs text-gray-600">Masculino</p>
                       <p className="text-xs text-gray-500">
                         {kpis.genderPercentages.male}%
                       </p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-pink-600">
+                      <p className="text-xl font-bold text-pink-600">
                         {kpis.genderDistribution.female.toLocaleString()}
                       </p>
-                      <p className="text-sm text-gray-600">Femenino</p>
+                      <p className="text-xs text-gray-600">Femenino</p>
                       <p className="text-xs text-gray-500">
                         {kpis.genderPercentages.female}%
                       </p>
@@ -360,18 +360,18 @@ export function AdminDashboard() {
               </div>
 
               {/* Gráficas de Estado - Segunda Fila */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {/* Participantes por Estado - Area Chart */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="bg-white rounded-lg shadow p-3">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Participantes por Estado
                   </h3>
                   <StatusAreaChart data={kpis.participantsByStatus} />
                 </div>
 
                 {/* Estado de Campañas - Line Chart */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="bg-white rounded-lg shadow p-3">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Estado de Campañas
                   </h3>
                   <CampaignStatusLineChart
@@ -386,8 +386,8 @@ export function AdminDashboard() {
 
               {/* Top Profesiones - Bar Chart Horizontal */}
               {kpis.topProfessions.length > 0 && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="bg-white rounded-lg shadow p-3">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Top Profesiones
                   </h3>
                   <ProfessionsBarChart data={kpis.topProfessions} />
@@ -396,8 +396,8 @@ export function AdminDashboard() {
 
               {/* Distribución por Departamento - Bar Chart */}
               {kpis.departmentDistribution.length > 0 && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="bg-white rounded-lg shadow p-3">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Distribución por Departamento
                   </h3>
                   <DepartmentBarChart data={kpis.departmentDistribution} />
@@ -406,8 +406,8 @@ export function AdminDashboard() {
 
               {/* Distribución por Ciudad - Bar Chart */}
               {kpis.cityDistribution.length > 0 && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="bg-white rounded-lg shadow p-3">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Distribución por Ciudad
                   </h3>
                   <CityBarChart data={kpis.cityDistribution} />
@@ -416,8 +416,8 @@ export function AdminDashboard() {
 
               {/* Distribución por Rol - Bar Chart */}
               {kpis.roleDistribution.length > 0 && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="bg-white rounded-lg shadow p-3">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Distribución por Rol
                   </h3>
                   <RoleBarChart data={kpis.roleDistribution} />
@@ -428,7 +428,7 @@ export function AdminDashboard() {
 
           {/* Mapa de Participantes - Solo mostrar si hay campañas seleccionadas */}
           {kpis.totalCampaigns > 0 && (
-            <div className="mb-4">
+            <div className="mb-3">
               <CampaignsMap />
             </div>
           )}
