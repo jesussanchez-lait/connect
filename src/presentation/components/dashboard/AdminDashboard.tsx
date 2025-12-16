@@ -427,15 +427,20 @@ export function AdminDashboard() {
 
                     if (widgets.length === 0) return null;
 
-                    // Renderizar cada widget según su ID (sin tarjeta individual, solo contenido)
-                    const renderWidget = (widgetId: string) => {
+                    // Renderizar cada widget según su ID (sin título si hay un solo widget)
+                    const renderWidget = (
+                      widgetId: string,
+                      showTitle: boolean
+                    ) => {
                       switch (widgetId) {
                         case "area-type-pie":
                           return (
-                            <div>
-                              <h3 className="text-base font-semibold text-gray-900 mb-2">
-                                Distribución Urbano/Rural
-                              </h3>
+                            <>
+                              {showTitle && (
+                                <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                  Distribución Urbano/Rural
+                                </h3>
+                              )}
                               <AreaTypePieChart
                                 data={kpis.areaTypeDistribution}
                               />
@@ -461,15 +466,17 @@ export function AdminDashboard() {
                                   </p>
                                 </div>
                               </div>
-                            </div>
+                            </>
                           );
 
                         case "gender-pie":
                           return (
-                            <div>
-                              <h3 className="text-base font-semibold text-gray-900 mb-2">
-                                Distribución por Sexo
-                              </h3>
+                            <>
+                              {showTitle && (
+                                <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                  Distribución por Sexo
+                                </h3>
+                              )}
                               <GenderPieChart data={kpis.genderDistribution} />
                               <div className="mt-2 grid grid-cols-2 gap-2 text-center">
                                 <div>
@@ -495,15 +502,17 @@ export function AdminDashboard() {
                                   </p>
                                 </div>
                               </div>
-                            </div>
+                            </>
                           );
 
                         case "campaign-status-line":
                           return (
-                            <div>
-                              <h3 className="text-base font-semibold text-gray-900 mb-2">
-                                Estado de Campañas
-                              </h3>
+                            <>
+                              {showTitle && (
+                                <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                  Estado de Campañas
+                                </h3>
+                              )}
                               <CampaignStatusLineChart
                                 data={{
                                   inProgress: kpis.campaignsInProgress,
@@ -511,60 +520,61 @@ export function AdminDashboard() {
                                   notStarted: kpis.campaignsNotStarted,
                                 }}
                               />
-                            </div>
+                            </>
                           );
 
                         case "professions-bar":
                           return (
-                            <div>
-                              <h3 className="text-base font-semibold text-gray-900 mb-2">
-                                Top Profesiones
-                              </h3>
+                            <>
+                              {showTitle && (
+                                <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                  Top Profesiones
+                                </h3>
+                              )}
                               <ProfessionsBarChart data={kpis.topProfessions} />
-                            </div>
+                            </>
                           );
 
                         case "department-bar":
                           return (
-                            <div>
-                              <h3 className="text-base font-semibold text-gray-900 mb-2">
-                                Distribución por Departamento
-                              </h3>
+                            <>
+                              {showTitle && (
+                                <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                  Distribución por Departamento
+                                </h3>
+                              )}
                               <DepartmentBarChart
                                 data={kpis.departmentDistribution}
                               />
-                            </div>
+                            </>
                           );
 
                         case "city-bar":
                           return (
-                            <div>
-                              <h3 className="text-base font-semibold text-gray-900 mb-2">
-                                Distribución por Ciudad
-                              </h3>
+                            <>
+                              {showTitle && (
+                                <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                  Distribución por Ciudad
+                                </h3>
+                              )}
                               <CityBarChart data={kpis.cityDistribution} />
-                            </div>
+                            </>
                           );
 
                         case "role-bar":
                           return (
-                            <div>
-                              <h3 className="text-base font-semibold text-gray-900 mb-2">
-                                Distribución por Rol
-                              </h3>
+                            <>
+                              {showTitle && (
+                                <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                  Distribución por Rol
+                                </h3>
+                              )}
                               <RoleBarChart data={kpis.roleDistribution} />
-                            </div>
+                            </>
                           );
 
                         case "team-tree":
-                          return (
-                            <div>
-                              <h3 className="text-base font-semibold text-gray-900 mb-2">
-                                Árbol de Participantes
-                              </h3>
-                              <TeamTreeCanvas />
-                            </div>
-                          );
+                          return <TeamTreeCanvas />;
 
                         default:
                           return null;
@@ -594,7 +604,7 @@ export function AdminDashboard() {
                         <div className={`p-4 grid ${colsClass} gap-4`}>
                           {widgets.map((widget) => (
                             <div key={widget.id} className="min-w-0">
-                              {renderWidget(widget.id)}
+                              {renderWidget(widget.id, widgets.length > 1)}
                             </div>
                           ))}
                         </div>

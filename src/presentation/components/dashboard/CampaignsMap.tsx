@@ -145,11 +145,7 @@ export function CampaignsMap() {
       : `${selectedCampaigns.length} campañas`;
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Mapa de Multiplicadores - {campaignsNames} ({validUsers.length}{" "}
-        ubicaciones)
-      </h3>
+    <>
       {validUsers.length === 0 ? (
         <div className="bg-gray-100 rounded-lg p-8 text-center">
           <p className="text-gray-500">
@@ -191,6 +187,6 @@ export function CampaignsMap() {
           ))}
         </GoogleMap>
       )}
-    </div>
+    </>
   );
 }

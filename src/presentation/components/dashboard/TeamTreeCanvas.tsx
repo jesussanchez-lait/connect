@@ -310,41 +310,36 @@ export function TeamTreeCanvas() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Árbol de Participantes
-      </h3>
-      <div className="h-[600px] w-full border border-gray-200 rounded-lg overflow-hidden">
-        <ReactFlowProvider>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            fitView
-            fitViewOptions={{
-              padding: 0.2,
-              maxZoom: 1.5,
-              minZoom: 0.5,
+    <div className="h-[600px] w-full overflow-hidden">
+      <ReactFlowProvider>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          fitView
+          fitViewOptions={{
+            padding: 0.2,
+            maxZoom: 1.5,
+            minZoom: 0.5,
+          }}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          nodesDraggable={true}
+          nodesConnectable={false}
+          elementsSelectable={true}
+          panOnDrag={true}
+          zoomOnScroll={true}
+          zoomOnPinch={true}
+        >
+          <Background color="#e5e7eb" gap={16} />
+          <Controls />
+          <MiniMap
+            nodeColor={(node) => {
+              if (node.id === "campaign-root") return "#6366f1";
+              return "#8b5cf6";
             }}
-            defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-            nodesDraggable={true}
-            nodesConnectable={false}
-            elementsSelectable={true}
-            panOnDrag={true}
-            zoomOnScroll={true}
-            zoomOnPinch={true}
-          >
-            <Background color="#e5e7eb" gap={16} />
-            <Controls />
-            <MiniMap
-              nodeColor={(node) => {
-                if (node.id === "campaign-root") return "#6366f1";
-                return "#8b5cf6";
-              }}
-              maskColor="rgba(0, 0, 0, 0.1)"
-            />
-          </ReactFlow>
-        </ReactFlowProvider>
-      </div>
+            maskColor="rgba(0, 0, 0, 0.1)"
+          />
+        </ReactFlow>
+      </ReactFlowProvider>
     </div>
   );
 }
