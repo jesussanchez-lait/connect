@@ -18,7 +18,6 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     category: "Geografía",
   },
   { id: "gender-pie", label: "Distribución por Sexo", category: "Demografía" },
-  { id: "status-area", label: "Participantes por Estado", category: "Estado" },
   {
     id: "campaign-status-line",
     label: "Estado de Campañas",
@@ -47,7 +46,6 @@ export interface DashboardConfig {
 export const DEFAULT_CONFIG: DashboardConfig = {
   "area-type-pie": true,
   "gender-pie": true,
-  "status-area": true,
   "campaign-status-line": true,
   "professions-bar": true,
   "department-bar": true,

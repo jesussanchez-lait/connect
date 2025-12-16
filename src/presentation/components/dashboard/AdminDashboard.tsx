@@ -19,10 +19,12 @@ import { ProfessionsBarChart } from "@/src/presentation/components/charts/Profes
 import { DepartmentBarChart } from "@/src/presentation/components/charts/DepartmentBarChart";
 import { CityBarChart } from "@/src/presentation/components/charts/CityBarChart";
 import { RoleBarChart } from "@/src/presentation/components/charts/RoleBarChart";
-import { StatusAreaChart } from "@/src/presentation/components/charts/StatusAreaChart";
 import { CampaignStatusLineChart } from "@/src/presentation/components/charts/CampaignStatusLineChart";
 import { DashboardSidebar } from "./DashboardSidebar";
-import { useDashboardConfig } from "@/src/presentation/contexts/DashboardConfigContext";
+import {
+  useDashboardConfig,
+  DASHBOARD_WIDGETS,
+} from "@/src/presentation/contexts/DashboardConfigContext";
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -183,7 +185,6 @@ export function AdminDashboard() {
     return {
       "area-type-pie": getWidgetVisibility("area-type-pie"),
       "gender-pie": getWidgetVisibility("gender-pie"),
-      "status-area": getWidgetVisibility("status-area"),
       "campaign-status-line": getWidgetVisibility("campaign-status-line"),
       "professions-bar":
         getWidgetVisibility("professions-bar") &&
@@ -206,20 +207,37 @@ export function AdminDashboard() {
     kpis.roleDistribution.length,
   ]);
 
-  // Contar widgets visibles en cada categoría
-  const pieChartsVisible = useMemo(() => {
-    return [
-      visibleWidgets["area-type-pie"],
-      visibleWidgets["gender-pie"],
-    ].filter(Boolean).length;
+  // Agrupar widgets por categoría
+  const widgetsByCategory = useMemo(() => {
+    const grouped: Record<
+      string,
+      Array<{ id: string; label: string; visible: boolean }>
+    > = {};
+
+    DASHBOARD_WIDGETS.forEach((widget) => {
+      if (!grouped[widget.category]) {
+        grouped[widget.category] = [];
+      }
+      const isVisible =
+        (visibleWidgets as Record<string, boolean>)[widget.id] ?? false;
+      grouped[widget.category].push({
+        id: widget.id,
+        label: widget.label,
+        visible: isVisible,
+      });
+    });
+
+    return grouped;
   }, [visibleWidgets]);
 
-  const statusChartsVisible = useMemo(() => {
-    return [
-      visibleWidgets["status-area"],
-      visibleWidgets["campaign-status-line"],
-    ].filter(Boolean).length;
-  }, [visibleWidgets]);
+  // Orden de categorías para mostrar
+  const categoryOrder = [
+    "Geografía",
+    "Demografía",
+    "Estado",
+    "Roles",
+    "Estructura",
+  ];
 
   const handleExportData = async () => {
     if (selectedCampaigns.length === 0) {
@@ -383,203 +401,193 @@ export function AdminDashboard() {
                 <CampaignSelector />
               </div>
 
-              {/* Árbol de Participantes */}
-              {kpis.totalCampaigns > 0 && visibleWidgets["team-tree"] && (
-                <div className="mb-3">
-                  <TeamTreeCanvas />
-                </div>
-              )}
-
-              {/* KPIs con Gráficas */}
+              {/* KPIs con Gráficas agrupadas por categorías */}
               {kpis.totalCampaigns > 0 && (
-                <div className="space-y-3 mb-3">
-                  {/* Gráficas de Distribución - Primera Fila */}
-                  {pieChartsVisible > 0 && (
-                    <div
-                      className={`grid gap-3 ${
-                        pieChartsVisible === 1
-                          ? "grid-cols-1 lg:grid-cols-1"
-                          : "grid-cols-1 lg:grid-cols-2"
-                      }`}
-                    >
-                      {/* Distribución Urbano/Rural - Pie Chart */}
-                      {visibleWidgets["area-type-pie"] && (
-                        <div className="bg-white rounded-lg shadow p-3">
-                          <h3 className="text-base font-semibold text-gray-900 mb-2">
-                            Distribución Urbano/Rural
-                          </h3>
-                          <AreaTypePieChart data={kpis.areaTypeDistribution} />
-                          <div className="mt-2 grid grid-cols-2 gap-2 text-center">
-                            <div>
-                              <p className="text-xl font-bold text-blue-600">
-                                {kpis.areaTypeDistribution.urban.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-gray-600">Urbano</p>
-                              <p className="text-xs text-gray-500">
-                                {kpis.areaTypePercentages.urban}%
-                              </p>
+                <div className="space-y-6 mb-3">
+                  {categoryOrder.map((category) => {
+                    const widgets =
+                      widgetsByCategory[category]?.filter((w) => w.visible) ||
+                      [];
+
+                    if (widgets.length === 0) return null;
+
+                    // Renderizar cada widget según su ID
+                    const renderWidget = (widgetId: string) => {
+                      switch (widgetId) {
+                        case "area-type-pie":
+                          return (
+                            <div className="bg-white rounded-lg shadow p-3">
+                              <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                Distribución Urbano/Rural
+                              </h3>
+                              <AreaTypePieChart
+                                data={kpis.areaTypeDistribution}
+                              />
+                              <div className="mt-2 grid grid-cols-2 gap-2 text-center">
+                                <div>
+                                  <p className="text-xl font-bold text-blue-600">
+                                    {kpis.areaTypeDistribution.urban.toLocaleString()}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    Urbano
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {kpis.areaTypePercentages.urban}%
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xl font-bold text-green-600">
+                                    {kpis.areaTypeDistribution.rural.toLocaleString()}
+                                  </p>
+                                  <p className="text-xs text-gray-600">Rural</p>
+                                  <p className="text-xs text-gray-500">
+                                    {kpis.areaTypePercentages.rural}%
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-xl font-bold text-green-600">
-                                {kpis.areaTypeDistribution.rural.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-gray-600">Rural</p>
-                              <p className="text-xs text-gray-500">
-                                {kpis.areaTypePercentages.rural}%
-                              </p>
+                          );
+
+                        case "gender-pie":
+                          return (
+                            <div className="bg-white rounded-lg shadow p-3">
+                              <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                Distribución por Sexo
+                              </h3>
+                              <GenderPieChart data={kpis.genderDistribution} />
+                              <div className="mt-2 grid grid-cols-2 gap-2 text-center">
+                                <div>
+                                  <p className="text-xl font-bold text-blue-600">
+                                    {kpis.genderDistribution.male.toLocaleString()}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    Masculino
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {kpis.genderPercentages.male}%
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xl font-bold text-pink-600">
+                                    {kpis.genderDistribution.female.toLocaleString()}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    Femenino
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {kpis.genderPercentages.female}%
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      )}
+                          );
 
-                      {/* Distribución por Sexo - Pie Chart */}
-                      {visibleWidgets["gender-pie"] && (
-                        <div className="bg-white rounded-lg shadow p-3">
-                          <h3 className="text-base font-semibold text-gray-900 mb-2">
-                            Distribución por Sexo
-                          </h3>
-                          <GenderPieChart data={kpis.genderDistribution} />
-                          <div className="mt-2 grid grid-cols-2 gap-2 text-center">
-                            <div>
-                              <p className="text-xl font-bold text-blue-600">
-                                {kpis.genderDistribution.male.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-gray-600">Masculino</p>
-                              <p className="text-xs text-gray-500">
-                                {kpis.genderPercentages.male}%
-                              </p>
+                        case "campaign-status-line":
+                          return (
+                            <div className="bg-white rounded-lg shadow p-3">
+                              <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                Estado de Campañas
+                              </h3>
+                              <CampaignStatusLineChart
+                                data={{
+                                  inProgress: kpis.campaignsInProgress,
+                                  completed: kpis.campaignsCompleted,
+                                  notStarted: kpis.campaignsNotStarted,
+                                }}
+                              />
                             </div>
-                            <div>
-                              <p className="text-xl font-bold text-pink-600">
-                                {kpis.genderDistribution.female.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-gray-600">Femenino</p>
-                              <p className="text-xs text-gray-500">
-                                {kpis.genderPercentages.female}%
-                              </p>
+                          );
+
+                        case "professions-bar":
+                          return (
+                            <div className="bg-white rounded-lg shadow p-3">
+                              <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                Top Profesiones
+                              </h3>
+                              <ProfessionsBarChart data={kpis.topProfessions} />
                             </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                          );
 
-                  {/* Gráficas de Estado - Segunda Fila */}
-                  {statusChartsVisible > 0 && (
-                    <div
-                      className={`grid gap-3 ${
-                        statusChartsVisible === 1
-                          ? "grid-cols-1 lg:grid-cols-1"
-                          : "grid-cols-1 lg:grid-cols-2"
-                      }`}
-                    >
-                      {/* Participantes por Estado - Area Chart */}
-                      {visibleWidgets["status-area"] && (
-                        <div className="bg-white rounded-lg shadow p-3">
-                          <h3 className="text-base font-semibold text-gray-900 mb-2">
-                            Participantes por Estado
-                          </h3>
-                          <StatusAreaChart data={kpis.participantsByStatus} />
-                        </div>
-                      )}
+                        case "department-bar":
+                          return (
+                            <div className="bg-white rounded-lg shadow p-3">
+                              <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                Distribución por Departamento
+                              </h3>
+                              <DepartmentBarChart
+                                data={kpis.departmentDistribution}
+                              />
+                            </div>
+                          );
 
-                      {/* Estado de Campañas - Line Chart */}
-                      {visibleWidgets["campaign-status-line"] && (
-                        <div className="bg-white rounded-lg shadow p-3">
-                          <h3 className="text-base font-semibold text-gray-900 mb-2">
-                            Estado de Campañas
-                          </h3>
-                          <CampaignStatusLineChart
-                            data={{
-                              inProgress: kpis.campaignsInProgress,
-                              completed: kpis.campaignsCompleted,
-                              notStarted: kpis.campaignsNotStarted,
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        case "city-bar":
+                          return (
+                            <div className="bg-white rounded-lg shadow p-3">
+                              <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                Distribución por Ciudad
+                              </h3>
+                              <CityBarChart data={kpis.cityDistribution} />
+                            </div>
+                          );
 
-                  {/* Gráficas de barras - Layout dinámico */}
-                  {(() => {
-                    const barCharts = [
-                      visibleWidgets["professions-bar"] && {
-                        id: "professions-bar",
-                        component: (
-                          <div className="bg-white rounded-lg shadow p-3">
-                            <h3 className="text-base font-semibold text-gray-900 mb-2">
-                              Top Profesiones
-                            </h3>
-                            <ProfessionsBarChart data={kpis.topProfessions} />
-                          </div>
-                        ),
-                      },
-                      visibleWidgets["department-bar"] && {
-                        id: "department-bar",
-                        component: (
-                          <div className="bg-white rounded-lg shadow p-3">
-                            <h3 className="text-base font-semibold text-gray-900 mb-2">
-                              Distribución por Departamento
-                            </h3>
-                            <DepartmentBarChart
-                              data={kpis.departmentDistribution}
-                            />
-                          </div>
-                        ),
-                      },
-                      visibleWidgets["city-bar"] && {
-                        id: "city-bar",
-                        component: (
-                          <div className="bg-white rounded-lg shadow p-3">
-                            <h3 className="text-base font-semibold text-gray-900 mb-2">
-                              Distribución por Ciudad
-                            </h3>
-                            <CityBarChart data={kpis.cityDistribution} />
-                          </div>
-                        ),
-                      },
-                      visibleWidgets["role-bar"] && {
-                        id: "role-bar",
-                        component: (
-                          <div className="bg-white rounded-lg shadow p-3">
-                            <h3 className="text-base font-semibold text-gray-900 mb-2">
-                              Distribución por Rol
-                            </h3>
-                            <RoleBarChart data={kpis.roleDistribution} />
-                          </div>
-                        ),
-                      },
-                    ].filter(Boolean) as Array<{
-                      id: string;
-                      component: JSX.Element;
-                    }>;
+                        case "role-bar":
+                          return (
+                            <div className="bg-white rounded-lg shadow p-3">
+                              <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                Distribución por Rol
+                              </h3>
+                              <RoleBarChart data={kpis.roleDistribution} />
+                            </div>
+                          );
 
-                    if (barCharts.length === 0) return null;
+                        case "team-tree":
+                          return (
+                            <div className="bg-white rounded-lg shadow p-3">
+                              <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                Árbol de Participantes
+                              </h3>
+                              <TeamTreeCanvas />
+                            </div>
+                          );
 
-                    // Layout dinámico: 1 columna si hay 1-2 elementos, 2 columnas si hay más
+                        case "campaigns-map":
+                          return (
+                            <div className="bg-white rounded-lg shadow p-3">
+                              <h3 className="text-base font-semibold text-gray-900 mb-2">
+                                Mapa de Participantes
+                              </h3>
+                              <CampaignsMap />
+                            </div>
+                          );
+
+                        default:
+                          return null;
+                      }
+                    };
+
+                    // Determinar layout según cantidad de widgets
                     const colsClass =
-                      barCharts.length === 1
+                      widgets.length === 1
                         ? "grid-cols-1"
-                        : barCharts.length === 2
+                        : widgets.length === 2
                         ? "grid-cols-1 lg:grid-cols-2"
                         : "grid-cols-1 lg:grid-cols-2";
 
                     return (
-                      <div className={`grid ${colsClass} gap-3`}>
-                        {barCharts.map((chart) => (
-                          <div key={chart.id}>{chart.component}</div>
-                        ))}
+                      <div key={category} className="space-y-3">
+                        {/* Título de categoría */}
+                        <h2 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
+                          {category}
+                        </h2>
+                        {/* Grid de widgets */}
+                        <div className={`grid ${colsClass} gap-3`}>
+                          {widgets.map((widget) => (
+                            <div key={widget.id}>{renderWidget(widget.id)}</div>
+                          ))}
+                        </div>
                       </div>
                     );
-                  })()}
-                </div>
-              )}
-
-              {/* Mapa de Participantes - Solo mostrar si hay campañas seleccionadas */}
-              {kpis.totalCampaigns > 0 && visibleWidgets["campaigns-map"] && (
-                <div className="mb-3">
-                  <CampaignsMap />
+                  })}
                 </div>
               )}
 
