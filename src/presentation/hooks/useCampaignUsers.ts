@@ -51,6 +51,8 @@ export function useCampaignUsers(selectedCampaigns: Campaign[]) {
                 name: data.name || "",
                 role: data.role,
                 documentNumber: data.documentNumber,
+                gender: data.gender,
+                profession: data.profession,
                 country: data.country,
                 department: data.department,
                 city: data.city,

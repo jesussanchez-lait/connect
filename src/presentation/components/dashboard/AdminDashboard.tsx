@@ -289,15 +289,15 @@ export function AdminDashboard() {
             </div>
           )}
 
-          {/* KPIs de Distribución Geográfica */}
+          {/* KPIs */}
           {kpis.totalCampaigns > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
               {/* Distribución Urbano/Rural */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-sm font-medium text-gray-500 mb-4">
                   Distribución Urbano/Rural
                 </h3>
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
@@ -329,46 +329,115 @@ export function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Distribución Capital/No Capital */}
+              {/* Distribución por Sexo */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-sm font-medium text-gray-500 mb-4">
-                  Distribución Capital/No Capital
+                  Distribución por Sexo
                 </h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
-                      <span className="text-sm text-gray-700">
-                        Desde Capital
-                      </span>
+                      <div className="w-3 h-3 rounded-full bg-blue-600 mr-2"></div>
+                      <span className="text-sm text-gray-700">Masculino</span>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-gray-900">
-                        {kpis.capitalCityDistribution.fromCapital.toLocaleString()}
+                        {kpis.genderDistribution.male.toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {kpis.capitalCityPercentages.fromCapital}%
+                        {kpis.genderPercentages.male}%
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-orange-500 mr-2"></div>
-                      <span className="text-sm text-gray-700">
-                        Fuera de Capital
-                      </span>
+                      <div className="w-3 h-3 rounded-full bg-pink-500 mr-2"></div>
+                      <span className="text-sm text-gray-700">Femenino</span>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-gray-900">
-                        {kpis.capitalCityDistribution.notFromCapital.toLocaleString()}
+                        {kpis.genderDistribution.female.toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {kpis.capitalCityPercentages.notFromCapital}%
+                        {kpis.genderPercentages.female}%
                       </p>
                     </div>
                   </div>
+                  {(kpis.genderDistribution.other > 0 ||
+                    kpis.genderDistribution.preferNotToSay > 0) && (
+                    <div className="pt-2 border-t border-gray-200 space-y-2">
+                      {kpis.genderDistribution.other > 0 && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
+                            <span className="text-sm text-gray-700">Otro</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {kpis.genderDistribution.other.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {kpis.genderPercentages.other}%
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {kpis.genderDistribution.preferNotToSay > 0 && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
+                            <span className="text-sm text-gray-700">
+                              Prefiero no decir
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {kpis.genderDistribution.preferNotToSay.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {kpis.genderPercentages.preferNotToSay}%
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Top Profesiones */}
+              {kpis.topProfessions.length > 0 && (
+                <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
+                  <h3 className="text-sm font-medium text-gray-500 mb-4">
+                    Top Profesiones
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {kpis.topProfessions.map((prof, index) => (
+                      <div
+                        key={prof.profession}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center flex-1 min-w-0">
+                          <span className="text-xs font-semibold text-gray-500 mr-2">
+                            #{index + 1}
+                          </span>
+                          <span className="text-sm text-gray-900 truncate">
+                            {prof.profession}
+                          </span>
+                        </div>
+                        <div className="text-right ml-2 flex-shrink-0">
+                          <p className="text-sm font-bold text-gray-900">
+                            {prof.count}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {prof.percentage}%
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

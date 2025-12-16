@@ -13,7 +13,7 @@ export interface OtpResponse {
   otpCode?: string; // Solo en desarrollo
 }
 
-import { AreaType } from "./User";
+import { AreaType, Gender } from "./User";
 
 export interface RegisterCredentials {
   // Datos personales
@@ -21,6 +21,8 @@ export interface RegisterCredentials {
   lastName: string;
   documentNumber: string; // Cédula
   phoneNumber: string; // WhatsApp
+  gender?: Gender; // Sexo del usuario
+  profession?: string; // Profesión del usuario
 
   // Datos territoriales
   country: string;

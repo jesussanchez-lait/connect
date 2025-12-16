@@ -7,6 +7,7 @@ export type UserRole =
   | "FOLLOWER";
 
 export type AreaType = "URBAN" | "RURAL";
+export type Gender = "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY";
 
 export interface User {
   id: string;
@@ -15,6 +16,8 @@ export interface User {
   name: string;
   role?: UserRole; // Rol del usuario en el sistema
   documentNumber?: string;
+  gender?: Gender; // Sexo del usuario
+  profession?: string; // Profesión del usuario
   country?: string;
   department?: string;
   city?: string;

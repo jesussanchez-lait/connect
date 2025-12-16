@@ -26,6 +26,8 @@ import {
 import { HabeasDataCheckbox } from "@/src/presentation/components/legal/HabeasDataCheckbox";
 import { WhatsAppConsentCheckbox } from "@/src/presentation/components/legal/WhatsAppConsentCheckbox";
 import { loadGoogleMaps } from "@/src/infrastructure/api/GoogleMapsLoader";
+import { ProfessionAutocomplete } from "@/src/presentation/components/ui/ProfessionAutocomplete";
+import { Gender } from "@/src/domain/entities/User";
 
 // Función para formatear número de teléfono al formato (xxx)-xxx-xxxx
 function formatPhoneNumber(value: string): string {
@@ -78,6 +80,8 @@ export function RegisterForm({
   const [documentNumberDisplay, setDocumentNumberDisplay] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneNumberDisplay, setPhoneNumberDisplay] = useState("");
+  const [gender, setGender] = useState<Gender | "">("");
+  const [profession, setProfession] = useState("");
 
   // Datos territoriales
   const [country, setCountry] = useState("Colombia");
@@ -529,6 +533,8 @@ export function RegisterForm({
         lastName,
         documentNumber: documentNumber.replace(/\D/g, ""),
         phoneNumber: normalizedPhone,
+        gender: gender || undefined,
+        profession: profession.trim() || undefined,
         country,
         department: selectedDepartment?.name || "",
         city: selectedCity?.name || "",
@@ -734,6 +740,42 @@ export function RegisterForm({
                 <p className="mt-2 text-sm text-gray-500">
                   Te enviaremos un código de verificación por SMS
                 </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="gender"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Sexo
+                </label>
+                <select
+                  id="gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as Gender | "")}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                >
+                  <option value="">Selecciona una opción</option>
+                  <option value="MALE">Masculino</option>
+                  <option value="FEMALE">Femenino</option>
+                  <option value="OTHER">Otro</option>
+                  <option value="PREFER_NOT_TO_SAY">Prefiero no decir</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="profession"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Profesión
+                </label>
+                <ProfessionAutocomplete
+                  id="profession"
+                  value={profession}
+                  onChange={setProfession}
+                  placeholder="Selecciona o escribe una profesión"
+                />
               </div>
 
               <button

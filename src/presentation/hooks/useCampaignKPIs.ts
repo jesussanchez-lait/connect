@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Campaign } from "@/src/domain/entities/Campaign";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { useCampaignUsers } from "./useCampaignUsers";
+import { Gender } from "@/src/domain/entities/User";
 
 export interface CampaignKPIs {
   // Métricas básicas
@@ -36,15 +37,28 @@ export interface CampaignKPIs {
     urban: number;
     rural: number;
   };
-  capitalCityDistribution: {
-    fromCapital: number;
-    notFromCapital: number;
+
+  // Métricas de sexo
+  genderDistribution: {
+    male: number;
+    female: number;
+    other: number;
+    preferNotToSay: number;
     unknown: number;
   };
-  capitalCityPercentages: {
-    fromCapital: number;
-    notFromCapital: number;
+  genderPercentages: {
+    male: number;
+    female: number;
+    other: number;
+    preferNotToSay: number;
   };
+
+  // Métricas de profesión
+  topProfessions: Array<{
+    profession: string;
+    count: number;
+    percentage: number;
+  }>;
 }
 
 /**
@@ -80,15 +94,20 @@ export function useCampaignKPIs(): CampaignKPIs {
           urban: 0,
           rural: 0,
         },
-        capitalCityDistribution: {
-          fromCapital: 0,
-          notFromCapital: 0,
+        genderDistribution: {
+          male: 0,
+          female: 0,
+          other: 0,
+          preferNotToSay: 0,
           unknown: 0,
         },
-        capitalCityPercentages: {
-          fromCapital: 0,
-          notFromCapital: 0,
+        genderPercentages: {
+          male: 0,
+          female: 0,
+          other: 0,
+          preferNotToSay: 0,
         },
+        topProfessions: [],
       };
     }
 
@@ -195,27 +214,76 @@ export function useCampaignKPIs(): CampaignKPIs {
       { fromCapital: 0, notFromCapital: 0, unknown: 0 }
     );
 
-    const totalUsersWithCapitalInfo =
-      capitalCityDistribution.fromCapital +
-      capitalCityDistribution.notFromCapital;
-    const capitalCityPercentages = {
-      fromCapital:
-        totalUsersWithCapitalInfo > 0
-          ? Math.round(
-              (capitalCityDistribution.fromCapital /
-                totalUsersWithCapitalInfo) *
-                100
-            )
+    // Calcular distribución por sexo
+    const genderDistribution = users.reduce(
+      (acc, user) => {
+        if (user.gender === "MALE") {
+          acc.male++;
+        } else if (user.gender === "FEMALE") {
+          acc.female++;
+        } else if (user.gender === "OTHER") {
+          acc.other++;
+        } else if (user.gender === "PREFER_NOT_TO_SAY") {
+          acc.preferNotToSay++;
+        } else {
+          acc.unknown++;
+        }
+        return acc;
+      },
+      { male: 0, female: 0, other: 0, preferNotToSay: 0, unknown: 0 }
+    );
+
+    const totalUsersWithGender =
+      genderDistribution.male +
+      genderDistribution.female +
+      genderDistribution.other +
+      genderDistribution.preferNotToSay;
+    const genderPercentages = {
+      male:
+        totalUsersWithGender > 0
+          ? Math.round((genderDistribution.male / totalUsersWithGender) * 100)
           : 0,
-      notFromCapital:
-        totalUsersWithCapitalInfo > 0
+      female:
+        totalUsersWithGender > 0
+          ? Math.round((genderDistribution.female / totalUsersWithGender) * 100)
+          : 0,
+      other:
+        totalUsersWithGender > 0
+          ? Math.round((genderDistribution.other / totalUsersWithGender) * 100)
+          : 0,
+      preferNotToSay:
+        totalUsersWithGender > 0
           ? Math.round(
-              (capitalCityDistribution.notFromCapital /
-                totalUsersWithCapitalInfo) *
-                100
+              (genderDistribution.preferNotToSay / totalUsersWithGender) * 100
             )
           : 0,
     };
+
+    // Calcular top profesiones
+    const professionCounts = users.reduce((acc, user) => {
+      if (user.profession && user.profession.trim() !== "") {
+        const profession = user.profession.trim();
+        acc[profession] = (acc[profession] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const totalUsersWithProfession = Object.values(professionCounts).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+
+    const topProfessions = Object.entries(professionCounts)
+      .map(([profession, count]) => ({
+        profession,
+        count,
+        percentage:
+          totalUsersWithProfession > 0
+            ? Math.round((count / totalUsersWithProfession) * 100)
+            : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 profesiones
 
     return {
       totalCampaigns: selectedCampaigns.length,
@@ -231,8 +299,9 @@ export function useCampaignKPIs(): CampaignKPIs {
       participantsByStatus,
       areaTypeDistribution,
       areaTypePercentages,
-      capitalCityDistribution,
-      capitalCityPercentages,
+      genderDistribution,
+      genderPercentages,
+      topProfessions,
     };
   }, [selectedCampaigns, users]);
 

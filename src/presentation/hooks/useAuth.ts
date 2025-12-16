@@ -53,6 +53,8 @@ export function useAuth() {
                 name: userData.name || "",
                 role: userData.role as UserRole | undefined,
                 documentNumber: userData.documentNumber,
+                gender: userData.gender,
+                profession: userData.profession,
                 country: userData.country,
                 department: userData.department,
                 city: userData.city,
