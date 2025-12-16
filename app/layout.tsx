@@ -1,10 +1,31 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Script from "next/script";
+import { ServiceWorkerRegistration } from "@/src/presentation/components/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
-  title: "Connect - Clean Architecture Next.js App",
-  description: "A Next.js application built with clean architecture",
+  title: "Connect - Sistema de Campañas",
+  description: "Sistema de gestión de campañas políticas",
+  manifest: "/manifest.json",
+  themeColor: "#000000",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Connect",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
 };
 
 // Site key de reCAPTCHA v3
@@ -18,6 +39,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Meta tags PWA */}
+        <meta name="application-name" content="Connect" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Connect" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="msapplication-TileColor" content="#000000" />
+        <meta name="msapplication-config" content="/browserconfig.xml" />
+
         {/* Cargar reCAPTCHA v3 */}
         <Script
           src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}
@@ -25,7 +56,10 @@ export default function RootLayout({
         />
         {/* Google Maps ahora se carga dinámicamente usando @googlemaps/js-api-loader */}
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <ServiceWorkerRegistration />
+      </body>
     </html>
   );
 }
