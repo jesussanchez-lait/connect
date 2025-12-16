@@ -7,6 +7,20 @@ env:
     value: production
   - variable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
     value: "AIzaSyC-kQur5bdy8dc1wlynJ0UYdC03Mtrre5o"
+  - variable: NEXT_PUBLIC_API_KEY
+    value: "AIzaSyA0Uodm14Z5rp2xo4QCULr5dwf7RngaWuc"
+  - variable: NEXT_PUBLIC_AUTH_DOMAIN
+    value: "connect-tierra.firebaseapp.com"
+  - variable: NEXT_PUBLIC_PROJECT_ID
+    value: "connect-tierra"
+  - variable: NEXT_PUBLIC_STORAGE_BUCKET
+    value: "connect-tierra.firebasestorage.app"
+  - variable: NEXT_PUBLIC_MESSAGING_SENDER_ID
+    value: "154649592138"
+  - variable: NEXT_PUBLIC_APP_ID
+    value: "1:154649592138:web:400f05f7287012e49741b3"
+  - variable: NEXT_PUBLIC_MEASUREMENT_ID
+    value: "G-Z7V9RRVVL1"
 
 # Build configuration for production
 build:
