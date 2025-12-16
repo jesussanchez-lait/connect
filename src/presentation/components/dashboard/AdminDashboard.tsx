@@ -232,11 +232,11 @@ export function AdminDashboard() {
 
   // Orden de categorías para mostrar
   const categoryOrder = [
+    "Estructura",
     "Geografía",
     "Demografía",
     "Estado",
     "Roles",
-    "Estructura",
   ];
 
   const handleExportData = async () => {
@@ -404,6 +404,20 @@ export function AdminDashboard() {
               {/* KPIs con Gráficas agrupadas por categorías */}
               {kpis.totalCampaigns > 0 && (
                 <div className="space-y-6 mb-3">
+                  {/* Mapa de Participantes - Antes de Geografía */}
+                  {visibleWidgets["campaigns-map"] && (
+                    <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                      <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+                        <h2 className="text-lg font-semibold text-gray-800">
+                          Mapa de Participantes
+                        </h2>
+                      </div>
+                      <div className="p-4">
+                        <CampaignsMap />
+                      </div>
+                    </div>
+                  )}
+
                   {categoryOrder.map((category) => {
                     // Filtrar widgets visibles, excluyendo el mapa que se renderiza por separado
                     const widgets =
@@ -587,18 +601,6 @@ export function AdminDashboard() {
                       </div>
                     );
                   })}
-                </div>
-              )}
-
-              {/* Mapa de Participantes - Siempre ancho completo */}
-              {kpis.totalCampaigns > 0 && visibleWidgets["campaigns-map"] && (
-                <div className="mb-3">
-                  <div className="bg-white rounded-lg shadow p-3">
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">
-                      Mapa de Participantes
-                    </h3>
-                    <CampaignsMap />
-                  </div>
                 </div>
               )}
 
