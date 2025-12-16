@@ -606,7 +606,7 @@ export function RegisterForm({
   const selectedCity = cities.find((c) => c.id.toString() === cityId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Contenedor invisible para reCAPTCHA de Firebase */}
       <div id="recaptcha-container" className="hidden"></div>
       {/* Stepper */}
@@ -648,7 +648,7 @@ export function RegisterForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* PASO 1: DATOS PERSONALES */}
         {currentStep === 1 && (
           <div className="space-y-4">

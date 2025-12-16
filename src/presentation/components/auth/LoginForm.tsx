@@ -114,7 +114,7 @@ export function LoginForm() {
 
   if (otpSent) {
     return (
-      <form onSubmit={handleVerifyOtp} className="space-y-6">
+      <form onSubmit={handleVerifyOtp} className="space-y-4">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
             {error}
@@ -177,7 +177,7 @@ export function LoginForm() {
     <>
       {/* Contenedor invisible para reCAPTCHA de Firebase */}
       <div id="recaptcha-container" className="hidden"></div>
-      <form onSubmit={handleSendOtp} className="space-y-6">
+      <form onSubmit={handleSendOtp} className="space-y-4">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
             {error}

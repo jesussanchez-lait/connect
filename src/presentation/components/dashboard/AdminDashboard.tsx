@@ -403,7 +403,7 @@ export function AdminDashboard() {
 
               {/* KPIs con Gráficas agrupadas por categorías */}
               {kpis.totalCampaigns > 0 && (
-                <div className="space-y-6 mb-3">
+                <div className="space-y-4 mb-3">
                   {/* Mapa de Participantes - Antes de Geografía */}
                   {visibleWidgets["campaigns-map"] && (
                     <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
@@ -589,6 +589,12 @@ export function AdminDashboard() {
                         ? "grid-cols-1 lg:grid-cols-2"
                         : "grid-cols-1 lg:grid-cols-2";
 
+                    // Para Geografía: si hay número impar de widgets, el último ocupa ancho completo
+                    const isGeography = category === "Geografía";
+                    const isOddCount = widgets.length % 2 !== 0;
+                    const shouldSpanFullWidth =
+                      isGeography && isOddCount && widgets.length > 1;
+
                     return (
                       <div
                         key={category}
@@ -602,11 +608,20 @@ export function AdminDashboard() {
                         </div>
                         {/* Contenido de la tarjeta - Grid de widgets */}
                         <div className={`p-4 grid ${colsClass} gap-4`}>
-                          {widgets.map((widget) => (
-                            <div key={widget.id} className="min-w-0">
-                              {renderWidget(widget.id, widgets.length > 1)}
-                            </div>
-                          ))}
+                          {widgets.map((widget, index) => {
+                            const isLast = index === widgets.length - 1;
+                            const spanFullWidth = shouldSpanFullWidth && isLast;
+                            return (
+                              <div
+                                key={widget.id}
+                                className={`min-w-0 ${
+                                  spanFullWidth ? "lg:col-span-2" : ""
+                                }`}
+                              >
+                                {renderWidget(widget.id, widgets.length > 1)}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );

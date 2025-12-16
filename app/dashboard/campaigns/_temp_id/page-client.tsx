@@ -279,7 +279,7 @@ function CampaignDetailContent() {
         {renderNav()}
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
-            <div className="animate-pulse space-y-6">
+            <div className="animate-pulse space-y-4">
               {/* Información General Skeleton */}
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
