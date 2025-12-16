@@ -3,15 +3,12 @@
 
 # Build configuration
 build:
-  # Build command - Next.js will be auto-detected, but we specify it explicitly
-  # Set FIREBASE_APP_HOSTING to enable full Next.js features (API routes, SSR)
   commands:
     - npm ci
     - FIREBASE_APP_HOSTING=true npm run build
 
 # Runtime configuration
 runtime:
-  # Node.js version
   nodeVersion: "20"
 
 # Environment variables
@@ -19,7 +16,4 @@ runtime:
 env:
   - variable: NODE_ENV
     value: production
-  - variable: NEXT_PUBLIC_APP_URL
-    # This will be set per environment
-    value: ""
 

@@ -5,12 +5,8 @@
 env:
   - variable: NODE_ENV
     value: staging
-  - variable: NEXT_PUBLIC_APP_URL
-    # Set this to your staging URL in Firebase Console
-    value: ""
   - variable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-    # Set this in Firebase Console > App Hosting > Environment Variables
-    value: ""
+    secret: google-maps-api-key
 
 # Build configuration for staging
 build:

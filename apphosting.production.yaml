@@ -5,14 +5,8 @@
 env:
   - variable: NODE_ENV
     value: production
-  - variable: NEXT_PUBLIC_APP_URL
-    # Set this to your production URL in Firebase Console
-    # Example: https://connect-tierra-demo.web.app
-    value: ""
   - variable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-    # Set this in Firebase Console > App Hosting > Environment Variables
-    # Do not commit API keys to this file
-    value: ""
+    secret: google-maps-api-key
 
 # Build configuration for production
 build:
