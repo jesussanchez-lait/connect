@@ -5,6 +5,10 @@
 env:
   - variable: NODE_ENV
     value: staging
+  - variable: FIREBASE_APP_HOSTING
+    value: "true"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_HOSTING
+    value: "true"
   - variable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
     value: "AIzaSyC-kQur5bdy8dc1wlynJ0UYdC03Mtrre5o"
   - variable: NEXT_PUBLIC_API_KEY
@@ -26,5 +30,5 @@ env:
 build:
   commands:
     - npm ci --production=false
-    - FIREBASE_APP_HOSTING=true npm run build
+    - npm run build:apphosting
 

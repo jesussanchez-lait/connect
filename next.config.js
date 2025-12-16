@@ -1,8 +1,11 @@
 /** @type {import('next').NextConfig} */
 // Detect if running on Firebase App Hosting
+// Check multiple environment variables to ensure detection works
 const isAppHosting =
   process.env.FIREBASE_APP_HOSTING === "true" ||
-  process.env.NEXT_PUBLIC_FIREBASE_APP_HOSTING === "true";
+  process.env.NEXT_PUBLIC_FIREBASE_APP_HOSTING === "true" ||
+  process.env.FIREBASE_APP_HOSTING === "1" ||
+  process.env.NEXT_PUBLIC_FIREBASE_APP_HOSTING === "1";
 
 const path = require("path");
 
