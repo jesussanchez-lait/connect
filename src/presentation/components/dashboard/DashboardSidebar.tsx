@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useDashboardConfig, DASHBOARD_WIDGETS } from "@/src/presentation/hooks/useDashboardConfig";
+import {
+  useDashboardConfig,
+  DASHBOARD_WIDGETS,
+} from "@/src/presentation/hooks/useDashboardConfig";
 
 interface DashboardSidebarProps {
   isOpen: boolean;
@@ -45,7 +48,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
 
       {/* Sidebar */}
       <div
-        className={`fixed right-0 top-0 h-full w-80 bg-white shadow-xl z-50 overflow-y-auto transition-transform duration-300 ease-in-out lg:relative lg:z-auto lg:shadow-none ${
+        className={`fixed right-0 top-0 h-full w-80 bg-white shadow-xl z-50 overflow-y-auto transition-transform duration-300 ease-in-out lg:sticky lg:top-3 lg:h-[calc(100vh-1.5rem)] lg:z-auto lg:shadow-none lg:rounded-lg lg:border lg:border-gray-200 ${
           isOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
         }`}
       >
@@ -141,4 +144,3 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
     </>
   );
 }
-
