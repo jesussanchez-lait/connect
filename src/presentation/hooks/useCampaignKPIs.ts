@@ -59,6 +59,25 @@ export interface CampaignKPIs {
     count: number;
     percentage: number;
   }>;
+
+  // Métricas de distribución geográfica
+  departmentDistribution: Array<{
+    department: string;
+    count: number;
+    percentage: number;
+  }>;
+  cityDistribution: Array<{
+    city: string;
+    count: number;
+    percentage: number;
+  }>;
+
+  // Métricas de distribución por rol
+  roleDistribution: Array<{
+    role: string;
+    count: number;
+    percentage: number;
+  }>;
 }
 
 /**
@@ -108,6 +127,9 @@ export function useCampaignKPIs(): CampaignKPIs {
           preferNotToSay: 0,
         },
         topProfessions: [],
+        departmentDistribution: [],
+        cityDistribution: [],
+        roleDistribution: [],
       };
     }
 
@@ -285,6 +307,92 @@ export function useCampaignKPIs(): CampaignKPIs {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10 profesiones
 
+    // Calcular distribución por departamento
+    const departmentCounts = users.reduce((acc, user) => {
+      if (user.department && user.department.trim() !== "") {
+        const dept = user.department.trim();
+        acc[dept] = (acc[dept] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const totalUsersWithDepartment = Object.values(departmentCounts).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+
+    const departmentDistribution = Object.entries(departmentCounts)
+      .map(([department, count]) => ({
+        department,
+        count,
+        percentage:
+          totalUsersWithDepartment > 0
+            ? Math.round((count / totalUsersWithDepartment) * 100)
+            : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 departamentos
+
+    // Calcular distribución por ciudad
+    const cityCounts = users.reduce((acc, user) => {
+      if (user.city && user.city.trim() !== "") {
+        const city = user.city.trim();
+        acc[city] = (acc[city] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const totalUsersWithCity = Object.values(cityCounts).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+
+    const cityDistribution = Object.entries(cityCounts)
+      .map(([city, count]) => ({
+        city,
+        count,
+        percentage:
+          totalUsersWithCity > 0
+            ? Math.round((count / totalUsersWithCity) * 100)
+            : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 ciudades
+
+    // Calcular distribución por rol
+    const roleCounts = users.reduce((acc, user) => {
+      if (user.role) {
+        const role = user.role;
+        acc[role] = (acc[role] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const totalUsersWithRole = Object.values(roleCounts).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+
+    const roleLabels: Record<string, string> = {
+      MULTIPLIER: "Multiplicador",
+      FOLLOWER: "Seguidor",
+      LINK: "Enlace",
+      COORDINATOR: "Coordinador",
+      ADMIN: "Administrador",
+      SUPER_ADMIN: "Super Admin",
+    };
+
+    const roleDistribution = Object.entries(roleCounts)
+      .map(([role, count]) => ({
+        role: roleLabels[role] || role,
+        count,
+        percentage:
+          totalUsersWithRole > 0
+            ? Math.round((count / totalUsersWithRole) * 100)
+            : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+
     return {
       totalCampaigns: selectedCampaigns.length,
       totalParticipants,
@@ -302,6 +410,9 @@ export function useCampaignKPIs(): CampaignKPIs {
       genderDistribution,
       genderPercentages,
       topProfessions,
+      departmentDistribution,
+      cityDistribution,
+      roleDistribution,
     };
   }, [selectedCampaigns, users]);
 

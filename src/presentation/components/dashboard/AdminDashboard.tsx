@@ -13,6 +13,14 @@ import { CampaignsMap } from "./CampaignsMap";
 import { TeamTreeCanvas } from "./TeamTreeCanvas";
 import { useCampaignUsers } from "@/src/presentation/hooks/useCampaignUsers";
 import { usersToCSV, downloadCSV } from "@/src/shared/utils/csvExport";
+import { AreaTypePieChart } from "@/src/presentation/components/charts/AreaTypePieChart";
+import { GenderPieChart } from "@/src/presentation/components/charts/GenderPieChart";
+import { ProfessionsBarChart } from "@/src/presentation/components/charts/ProfessionsBarChart";
+import { DepartmentBarChart } from "@/src/presentation/components/charts/DepartmentBarChart";
+import { CityBarChart } from "@/src/presentation/components/charts/CityBarChart";
+import { RoleBarChart } from "@/src/presentation/components/charts/RoleBarChart";
+import { StatusAreaChart } from "@/src/presentation/components/charts/StatusAreaChart";
+import { CampaignStatusLineChart } from "@/src/presentation/components/charts/CampaignStatusLineChart";
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -289,153 +297,130 @@ export function AdminDashboard() {
             </div>
           )}
 
-          {/* KPIs */}
+          {/* KPIs con Gráficas */}
           {kpis.totalCampaigns > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
-              {/* Distribución Urbano/Rural */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-4">
-                  Distribución Urbano/Rural
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
-                      <span className="text-sm text-gray-700">Urbano</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-gray-900">
+            <div className="space-y-6 mb-4">
+              {/* Gráficas de Distribución - Primera Fila */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Distribución Urbano/Rural - Pie Chart */}
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Distribución Urbano/Rural
+                  </h3>
+                  <AreaTypePieChart data={kpis.areaTypeDistribution} />
+                  <div className="mt-4 grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-blue-600">
                         {kpis.areaTypeDistribution.urban.toLocaleString()}
                       </p>
+                      <p className="text-sm text-gray-600">Urbano</p>
                       <p className="text-xs text-gray-500">
                         {kpis.areaTypePercentages.urban}%
                       </p>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                      <span className="text-sm text-gray-700">Rural</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-gray-900">
+                    <div>
+                      <p className="text-2xl font-bold text-green-600">
                         {kpis.areaTypeDistribution.rural.toLocaleString()}
                       </p>
+                      <p className="text-sm text-gray-600">Rural</p>
                       <p className="text-xs text-gray-500">
                         {kpis.areaTypePercentages.rural}%
                       </p>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Distribución por Sexo */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-4">
-                  Distribución por Sexo
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-blue-600 mr-2"></div>
-                      <span className="text-sm text-gray-700">Masculino</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-gray-900">
+                {/* Distribución por Sexo - Pie Chart */}
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Distribución por Sexo
+                  </h3>
+                  <GenderPieChart data={kpis.genderDistribution} />
+                  <div className="mt-4 grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-blue-600">
                         {kpis.genderDistribution.male.toLocaleString()}
                       </p>
+                      <p className="text-sm text-gray-600">Masculino</p>
                       <p className="text-xs text-gray-500">
                         {kpis.genderPercentages.male}%
                       </p>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-pink-500 mr-2"></div>
-                      <span className="text-sm text-gray-700">Femenino</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-gray-900">
+                    <div>
+                      <p className="text-2xl font-bold text-pink-600">
                         {kpis.genderDistribution.female.toLocaleString()}
                       </p>
+                      <p className="text-sm text-gray-600">Femenino</p>
                       <p className="text-xs text-gray-500">
                         {kpis.genderPercentages.female}%
                       </p>
                     </div>
                   </div>
-                  {(kpis.genderDistribution.other > 0 ||
-                    kpis.genderDistribution.preferNotToSay > 0) && (
-                    <div className="pt-2 border-t border-gray-200 space-y-2">
-                      {kpis.genderDistribution.other > 0 && (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
-                            <span className="text-sm text-gray-700">Otro</span>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-gray-900">
-                              {kpis.genderDistribution.other.toLocaleString()}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {kpis.genderPercentages.other}%
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {kpis.genderDistribution.preferNotToSay > 0 && (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
-                            <span className="text-sm text-gray-700">
-                              Prefiero no decir
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-gray-900">
-                              {kpis.genderDistribution.preferNotToSay.toLocaleString()}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {kpis.genderPercentages.preferNotToSay}%
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* Top Profesiones */}
+              {/* Gráficas de Estado - Segunda Fila */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Participantes por Estado - Area Chart */}
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Participantes por Estado
+                  </h3>
+                  <StatusAreaChart data={kpis.participantsByStatus} />
+                </div>
+
+                {/* Estado de Campañas - Line Chart */}
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Estado de Campañas
+                  </h3>
+                  <CampaignStatusLineChart
+                    data={{
+                      inProgress: kpis.campaignsInProgress,
+                      completed: kpis.campaignsCompleted,
+                      notStarted: kpis.campaignsNotStarted,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Top Profesiones - Bar Chart Horizontal */}
               {kpis.topProfessions.length > 0 && (
-                <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
-                  <h3 className="text-sm font-medium text-gray-500 mb-4">
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     Top Profesiones
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {kpis.topProfessions.map((prof, index) => (
-                      <div
-                        key={prof.profession}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                      >
-                        <div className="flex items-center flex-1 min-w-0">
-                          <span className="text-xs font-semibold text-gray-500 mr-2">
-                            #{index + 1}
-                          </span>
-                          <span className="text-sm text-gray-900 truncate">
-                            {prof.profession}
-                          </span>
-                        </div>
-                        <div className="text-right ml-2 flex-shrink-0">
-                          <p className="text-sm font-bold text-gray-900">
-                            {prof.count}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {prof.percentage}%
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <ProfessionsBarChart data={kpis.topProfessions} />
+                </div>
+              )}
+
+              {/* Distribución por Departamento - Bar Chart */}
+              {kpis.departmentDistribution.length > 0 && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Distribución por Departamento
+                  </h3>
+                  <DepartmentBarChart data={kpis.departmentDistribution} />
+                </div>
+              )}
+
+              {/* Distribución por Ciudad - Bar Chart */}
+              {kpis.cityDistribution.length > 0 && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Distribución por Ciudad
+                  </h3>
+                  <CityBarChart data={kpis.cityDistribution} />
+                </div>
+              )}
+
+              {/* Distribución por Rol - Bar Chart */}
+              {kpis.roleDistribution.length > 0 && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Distribución por Rol
+                  </h3>
+                  <RoleBarChart data={kpis.roleDistribution} />
                 </div>
               )}
             </div>
