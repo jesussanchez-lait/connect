@@ -23,8 +23,3 @@ env:
     # This will be set per environment
     value: ""
 
-# Backend configuration (for API routes)
-backend:
-  # Enable backend services
-  enabled: true
-
