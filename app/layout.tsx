@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Script from "next/script";
 import { ServiceWorkerRegistration } from "@/src/presentation/components/ServiceWorkerRegistration";
@@ -7,13 +7,6 @@ export const metadata: Metadata = {
   title: "Connect - Sistema de Campañas",
   description: "Sistema de gestión de campañas políticas",
   manifest: "/manifest.json",
-  themeColor: "#000000",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -26,6 +19,14 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: "#000000",
 };
 
 // Site key de reCAPTCHA v3

@@ -66,7 +66,9 @@ console.log(`📦 Otros: ${otherFiles.length}\n`);
 
 // Verificar archivos críticos
 const criticalFiles = ["index.html", "404.html"];
-const missingFiles = criticalFiles.filter((file) => !files.includes(file));
+const pwaFiles = ["manifest.json", "sw.js", "browserconfig.xml"];
+const allCriticalFiles = [...criticalFiles, ...pwaFiles];
+const missingFiles = allCriticalFiles.filter((file) => !files.includes(file));
 
 if (missingFiles.length > 0) {
   console.error(`❌ Archivos críticos faltantes: ${missingFiles.join(", ")}`);
@@ -75,6 +77,11 @@ if (missingFiles.length > 0) {
 
 console.log("✅ Archivos críticos presentes:");
 criticalFiles.forEach((file) => {
+  console.log(`   - ${file}`);
+});
+
+console.log("\n✅ Archivos PWA presentes:");
+pwaFiles.forEach((file) => {
   console.log(`   - ${file}`);
 });
 

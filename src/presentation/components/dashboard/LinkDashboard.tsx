@@ -220,11 +220,6 @@ export function LinkDashboard() {
                             <p className="text-sm text-gray-600">
                               {multiplier.phoneNumber}
                             </p>
-                            {multiplier.email && (
-                              <p className="text-xs text-gray-500">
-                                {multiplier.email}
-                              </p>
-                            )}
                           </div>
                         </div>
                         <div className="text-right">
