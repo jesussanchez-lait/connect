@@ -186,9 +186,7 @@ export function AdminDashboard() {
       "area-type-pie": getWidgetVisibility("area-type-pie"),
       "gender-pie": getWidgetVisibility("gender-pie"),
       "campaign-status-line": getWidgetVisibility("campaign-status-line"),
-      "professions-bar":
-        getWidgetVisibility("professions-bar") &&
-        kpis.topProfessions.length > 0,
+      "professions-bar": getWidgetVisibility("professions-bar"),
       "department-bar":
         getWidgetVisibility("department-bar") &&
         kpis.departmentDistribution.length > 0,
@@ -201,7 +199,6 @@ export function AdminDashboard() {
     };
   }, [
     config,
-    kpis.topProfessions.length,
     kpis.departmentDistribution.length,
     kpis.cityDistribution.length,
     kpis.roleDistribution.length,
