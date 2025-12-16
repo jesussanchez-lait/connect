@@ -11,6 +11,8 @@ import { useCampaignKPIs } from "@/src/presentation/hooks/useCampaignKPIs";
 import { ROLES } from "@/src/presentation/contexts/RoleContext";
 import { CampaignsMap } from "./CampaignsMap";
 import { TeamTreeCanvas } from "./TeamTreeCanvas";
+import { useCampaignUsers } from "@/src/presentation/hooks/useCampaignUsers";
+import { usersToCSV, downloadCSV } from "@/src/shared/utils/csvExport";
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -157,10 +159,49 @@ export function AdminDashboard() {
   const router = useRouter();
   const { campaigns, selectedCampaigns } = useCampaign();
   const kpis = useCampaignKPIs();
+  const { users, loading: loadingUsers } = useCampaignUsers(selectedCampaigns);
 
-  const handleExportData = () => {
-    // TODO: Implementar exportación con máscaras DLP
-    alert("Funcionalidad de exportación en desarrollo");
+  const handleExportData = async () => {
+    if (selectedCampaigns.length === 0) {
+      alert("Por favor selecciona al menos una campaña para exportar");
+      return;
+    }
+
+    if (loadingUsers) {
+      alert("Por favor espera a que se carguen los datos");
+      return;
+    }
+
+    if (users.length === 0) {
+      alert("No hay participantes en las campañas seleccionadas");
+      return;
+    }
+
+    // Filtrar solo multiplicadores
+    const multipliers = users.filter((user) => user.role === "MULTIPLIER");
+
+    if (multipliers.length === 0) {
+      alert("No hay multiplicadores en las campañas seleccionadas");
+      return;
+    }
+
+    try {
+      // Generar nombre de archivo con fecha y campañas
+      const dateStr = new Date().toISOString().split("T")[0];
+      const campaignNames = selectedCampaigns
+        .map((c) => c.name.replace(/[^a-z0-9]/gi, "-"))
+        .join("_");
+      const filename = `multiplicadores_${campaignNames}_${dateStr}.csv`;
+
+      // Convertir multiplicadores a CSV
+      const csvContent = usersToCSV(multipliers);
+
+      // Descargar archivo
+      downloadCSV(csvContent, filename);
+    } catch (error) {
+      console.error("Error al exportar datos:", error);
+      alert("Error al exportar los datos. Por favor intenta nuevamente.");
+    }
   };
 
   return (
@@ -179,7 +220,8 @@ export function AdminDashboard() {
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
               <button
                 onClick={handleExportData}
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm font-medium"
+                disabled={loadingUsers || selectedCampaigns.length === 0}
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Exportar Datos"
               >
                 <svg
