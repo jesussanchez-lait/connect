@@ -9,7 +9,7 @@ build:
 
 # Runtime configuration
 runtime:
-  nodeVersion: "20"
+  nodeVersion: "22"
 
 # Environment variables
 # These can be overridden in apphosting.production.yaml or apphosting.staging.yaml
