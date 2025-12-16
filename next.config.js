@@ -4,6 +4,8 @@ const isAppHosting =
   process.env.FIREBASE_APP_HOSTING === "true" ||
   process.env.NEXT_PUBLIC_FIREBASE_APP_HOSTING === "true";
 
+const path = require("path");
+
 const nextConfig = {
   reactStrictMode: true,
   // Only use static export for traditional Firebase Hosting
@@ -19,6 +21,14 @@ const nextConfig = {
   // Las rutas dinámicas se manejarán completamente en el cliente
   experimental: {
     missingSuspenseWithCSRBailout: false,
+  },
+  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    // Resolver alias @/ para que apunte a la raíz del proyecto
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@": path.resolve(__dirname),
+    };
+    return config;
   },
 };
 
