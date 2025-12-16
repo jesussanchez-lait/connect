@@ -405,18 +405,20 @@ export function AdminDashboard() {
               {kpis.totalCampaigns > 0 && (
                 <div className="space-y-6 mb-3">
                   {categoryOrder.map((category) => {
+                    // Filtrar widgets visibles, excluyendo el mapa que se renderiza por separado
                     const widgets =
-                      widgetsByCategory[category]?.filter((w) => w.visible) ||
-                      [];
+                      widgetsByCategory[category]?.filter(
+                        (w) => w.visible && w.id !== "campaigns-map"
+                      ) || [];
 
                     if (widgets.length === 0) return null;
 
-                    // Renderizar cada widget según su ID
+                    // Renderizar cada widget según su ID (sin tarjeta individual, solo contenido)
                     const renderWidget = (widgetId: string) => {
                       switch (widgetId) {
                         case "area-type-pie":
                           return (
-                            <div className="bg-white rounded-lg shadow p-3">
+                            <div>
                               <h3 className="text-base font-semibold text-gray-900 mb-2">
                                 Distribución Urbano/Rural
                               </h3>
@@ -450,7 +452,7 @@ export function AdminDashboard() {
 
                         case "gender-pie":
                           return (
-                            <div className="bg-white rounded-lg shadow p-3">
+                            <div>
                               <h3 className="text-base font-semibold text-gray-900 mb-2">
                                 Distribución por Sexo
                               </h3>
@@ -484,7 +486,7 @@ export function AdminDashboard() {
 
                         case "campaign-status-line":
                           return (
-                            <div className="bg-white rounded-lg shadow p-3">
+                            <div>
                               <h3 className="text-base font-semibold text-gray-900 mb-2">
                                 Estado de Campañas
                               </h3>
@@ -500,7 +502,7 @@ export function AdminDashboard() {
 
                         case "professions-bar":
                           return (
-                            <div className="bg-white rounded-lg shadow p-3">
+                            <div>
                               <h3 className="text-base font-semibold text-gray-900 mb-2">
                                 Top Profesiones
                               </h3>
@@ -510,7 +512,7 @@ export function AdminDashboard() {
 
                         case "department-bar":
                           return (
-                            <div className="bg-white rounded-lg shadow p-3">
+                            <div>
                               <h3 className="text-base font-semibold text-gray-900 mb-2">
                                 Distribución por Departamento
                               </h3>
@@ -522,7 +524,7 @@ export function AdminDashboard() {
 
                         case "city-bar":
                           return (
-                            <div className="bg-white rounded-lg shadow p-3">
+                            <div>
                               <h3 className="text-base font-semibold text-gray-900 mb-2">
                                 Distribución por Ciudad
                               </h3>
@@ -532,7 +534,7 @@ export function AdminDashboard() {
 
                         case "role-bar":
                           return (
-                            <div className="bg-white rounded-lg shadow p-3">
+                            <div>
                               <h3 className="text-base font-semibold text-gray-900 mb-2">
                                 Distribución por Rol
                               </h3>
@@ -542,21 +544,11 @@ export function AdminDashboard() {
 
                         case "team-tree":
                           return (
-                            <div className="bg-white rounded-lg shadow p-3">
+                            <div>
                               <h3 className="text-base font-semibold text-gray-900 mb-2">
                                 Árbol de Participantes
                               </h3>
                               <TeamTreeCanvas />
-                            </div>
-                          );
-
-                        case "campaigns-map":
-                          return (
-                            <div className="bg-white rounded-lg shadow p-3">
-                              <h3 className="text-base font-semibold text-gray-900 mb-2">
-                                Mapa de Participantes
-                              </h3>
-                              <CampaignsMap />
                             </div>
                           );
 
@@ -574,20 +566,39 @@ export function AdminDashboard() {
                         : "grid-cols-1 lg:grid-cols-2";
 
                     return (
-                      <div key={category} className="space-y-3">
-                        {/* Título de categoría */}
-                        <h2 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                          {category}
-                        </h2>
-                        {/* Grid de widgets */}
-                        <div className={`grid ${colsClass} gap-3`}>
+                      <div
+                        key={category}
+                        className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden"
+                      >
+                        {/* Header de la tarjeta de categoría */}
+                        <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+                          <h2 className="text-lg font-semibold text-gray-800">
+                            {category}
+                          </h2>
+                        </div>
+                        {/* Contenido de la tarjeta - Grid de widgets */}
+                        <div className={`p-4 grid ${colsClass} gap-4`}>
                           {widgets.map((widget) => (
-                            <div key={widget.id}>{renderWidget(widget.id)}</div>
+                            <div key={widget.id} className="min-w-0">
+                              {renderWidget(widget.id)}
+                            </div>
                           ))}
                         </div>
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {/* Mapa de Participantes - Siempre ancho completo */}
+              {kpis.totalCampaigns > 0 && visibleWidgets["campaigns-map"] && (
+                <div className="mb-3">
+                  <div className="bg-white rounded-lg shadow p-3">
+                    <h3 className="text-base font-semibold text-gray-900 mb-2">
+                      Mapa de Participantes
+                    </h3>
+                    <CampaignsMap />
+                  </div>
                 </div>
               )}
 
