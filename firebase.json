@@ -79,6 +79,11 @@
       }
     ]
   },
+  "apphosting": {
+    "backend": {
+      "serviceAccount": "connect-tierra@appspot.gserviceaccount.com"
+    }
+  },
   "storage": {
     "rules": "storage.rules"
   },

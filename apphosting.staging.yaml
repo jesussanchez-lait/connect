@@ -1,0 +1,20 @@
+# Firebase App Hosting - Staging Environment Configuration
+# This file extends apphosting.yaml with staging-specific settings
+
+# Environment variables for staging
+env:
+  - variable: NODE_ENV
+    value: staging
+  - variable: NEXT_PUBLIC_APP_URL
+    # Set this to your staging URL in Firebase Console
+    value: ""
+  - variable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    # Set this in Firebase Console > App Hosting > Environment Variables
+    value: ""
+
+# Build configuration for staging
+build:
+  commands:
+    - npm ci --production=false
+    - FIREBASE_APP_HOSTING=true npm run build
+

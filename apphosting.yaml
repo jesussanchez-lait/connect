@@ -1,0 +1,30 @@
+# Firebase App Hosting Configuration
+# This file configures Firebase App Hosting for Next.js
+
+# Build configuration
+build:
+  # Build command - Next.js will be auto-detected, but we specify it explicitly
+  # Set FIREBASE_APP_HOSTING to enable full Next.js features (API routes, SSR)
+  commands:
+    - npm ci
+    - FIREBASE_APP_HOSTING=true npm run build
+
+# Runtime configuration
+runtime:
+  # Node.js version
+  nodeVersion: "20"
+
+# Environment variables
+# These can be overridden in apphosting.production.yaml or apphosting.staging.yaml
+env:
+  - variable: NODE_ENV
+    value: production
+  - variable: NEXT_PUBLIC_APP_URL
+    # This will be set per environment
+    value: ""
+
+# Backend configuration (for API routes)
+backend:
+  # Enable backend services
+  enabled: true
+

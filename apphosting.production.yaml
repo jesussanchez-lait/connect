@@ -1,0 +1,22 @@
+# Firebase App Hosting - Production Environment Configuration
+# This file extends apphosting.yaml with production-specific settings
+
+# Environment variables for production
+env:
+  - variable: NODE_ENV
+    value: production
+  - variable: NEXT_PUBLIC_APP_URL
+    # Set this to your production URL in Firebase Console
+    # Example: https://connect-tierra-demo.web.app
+    value: ""
+  - variable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    # Set this in Firebase Console > App Hosting > Environment Variables
+    # Do not commit API keys to this file
+    value: ""
+
+# Build configuration for production
+build:
+  commands:
+    - npm ci --production=false
+    - FIREBASE_APP_HOSTING=true npm run build
+

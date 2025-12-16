@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "build:firebase": "node scripts/prepare-firebase-build.js && next build && node scripts/restore-api-routes.js && node scripts/verify-deploy-files.js",
+    "build:apphosting": "FIREBASE_APP_HOSTING=true next build",
     "deploy:firebase": "npm run build:firebase && firebase deploy --only hosting:connect-tierra-demo",
+    "deploy:apphosting": "firebase deploy --only apphosting",
     "start": "next start",
     "lint": "next lint"
   },
