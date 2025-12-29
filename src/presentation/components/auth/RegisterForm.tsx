@@ -27,6 +27,7 @@ import { HabeasDataCheckbox } from "@/src/presentation/components/legal/HabeasDa
 import { WhatsAppConsentCheckbox } from "@/src/presentation/components/legal/WhatsAppConsentCheckbox";
 import { loadGoogleMaps } from "@/src/infrastructure/api/GoogleMapsLoader";
 import { ProfessionAutocomplete } from "@/src/presentation/components/ui/ProfessionAutocomplete";
+import { GenderSelector } from "@/src/presentation/components/ui/GenderSelector";
 import { Gender } from "@/src/domain/entities/User";
 
 // Función para formatear número de teléfono al formato (xxx)-xxx-xxxx
@@ -749,18 +750,11 @@ export function RegisterForm({
                 >
                   Sexo
                 </label>
-                <select
+                <GenderSelector
                   id="gender"
                   value={gender}
-                  onChange={(e) => setGender(e.target.value as Gender | "")}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
-                >
-                  <option value="">Selecciona una opción</option>
-                  <option value="MALE">Masculino</option>
-                  <option value="FEMALE">Femenino</option>
-                  <option value="OTHER">Otro</option>
-                  <option value="PREFER_NOT_TO_SAY">Prefiero no decir</option>
-                </select>
+                  onChange={setGender}
+                />
               </div>
 
               <div>
