@@ -5,6 +5,7 @@ import {
   OtpResponse,
   RegisterCredentials,
   PartialUserCredentials,
+  EmailPasswordCredentials,
 } from "@/src/domain/entities/AuthCredentials";
 import { AuthUser, User, UserRole } from "@/src/domain/entities/User";
 import { auth, db } from "@/src/infrastructure/firebase";
@@ -13,6 +14,14 @@ import {
   ConfirmationResult,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  linkWithCredential,
+  EmailAuthProvider,
+  OAuthCredential,
+  User as FirebaseUser,
 } from "firebase/auth";
 import {
   doc,
@@ -717,6 +726,570 @@ export class FirebaseAuthRepository implements IAuthRepository {
       console.error("Error en registro completo:", error.message);
       throw new Error(
         error.message || "Error al registrarse. Por favor, intenta nuevamente."
+      );
+    }
+  }
+
+  // Helper function para obtener o crear usuario en Firestore después de autenticación
+  private async getOrCreateFirestoreUser(
+    firebaseUser: FirebaseUser,
+    additionalData?: Partial<User>
+  ): Promise<User> {
+    if (!db) {
+      throw new Error("Firestore no está inicializado");
+    }
+
+    const userDocRef = doc(db, "users", firebaseUser.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    let user: User;
+
+    if (userDoc.exists()) {
+      // Usuario existe, obtener datos de Firestore
+      const userData = userDoc.data();
+      user = {
+        id: firebaseUser.uid,
+        phoneNumber: firebaseUser.phoneNumber || userData.phoneNumber || undefined,
+        email: firebaseUser.email || userData.email || undefined,
+        name: userData.name || firebaseUser.displayName || "",
+        role: userData.role as UserRole | undefined,
+        documentNumber: userData.documentNumber,
+        gender: userData.gender,
+        profession: userData.profession,
+        country: userData.country,
+        department: userData.department,
+        city: userData.city,
+        address: userData.address,
+        neighborhood: userData.neighborhood,
+        latitude: userData.latitude,
+        longitude: userData.longitude,
+        leaderId: userData.leaderId,
+        leaderName: userData.leaderName,
+        campaignIds: userData.campaignIds || [],
+        createdAt: userData.createdAt?.toDate() || new Date(),
+        ...additionalData,
+      };
+
+      // Actualizar email si viene de Firebase Auth y no está en Firestore
+      if (firebaseUser.email && !userData.email) {
+        await updateDoc(userDocRef, {
+          email: firebaseUser.email,
+          updatedAt: serverTimestamp(),
+        });
+        user.email = firebaseUser.email;
+      }
+    } else {
+      // Usuario no existe, crear documento mínimo
+      const newUser: User = {
+        id: firebaseUser.uid,
+        phoneNumber: firebaseUser.phoneNumber || undefined,
+        email: firebaseUser.email || undefined,
+        name: firebaseUser.displayName || "",
+        createdAt: new Date(),
+        ...additionalData,
+      };
+
+      await setDoc(userDocRef, {
+        ...newUser,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      user = newUser;
+    }
+
+    return user;
+  }
+
+  // Helper function para buscar usuario por email en Firestore
+  private async findUserByEmail(email: string): Promise<User | null> {
+    if (!db) {
+      return null;
+    }
+
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+        return {
+          id: userDoc.id,
+          phoneNumber: userData.phoneNumber,
+          email: userData.email,
+          name: userData.name || "",
+          role: userData.role as UserRole | undefined,
+          documentNumber: userData.documentNumber,
+          gender: userData.gender,
+          profession: userData.profession,
+          country: userData.country,
+          department: userData.department,
+          city: userData.city,
+          address: userData.address,
+          neighborhood: userData.neighborhood,
+          latitude: userData.latitude,
+          longitude: userData.longitude,
+          leaderId: userData.leaderId,
+          leaderName: userData.leaderName,
+          campaignIds: userData.campaignIds || [],
+          createdAt: userData.createdAt?.toDate() || new Date(),
+        };
+      }
+    } catch (error) {
+      console.error("Error finding user by email:", error);
+    }
+
+    return null;
+  }
+
+  async signInWithEmailPassword(
+    credentials: EmailPasswordCredentials
+  ): Promise<AuthUser> {
+    try {
+      if (!auth) {
+        throw new Error("Firebase Auth no está inicializado");
+      }
+
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(credentials.email)) {
+        throw new Error("Formato de email inválido");
+      }
+
+      // Validar contraseña (mínimo 6 caracteres para Firebase)
+      if (credentials.password.length < 6) {
+        throw new Error("La contraseña debe tener al menos 6 caracteres");
+      }
+
+      let userCredential;
+      try {
+        userCredential = await signInWithEmailAndPassword(
+          auth,
+          credentials.email,
+          credentials.password
+        );
+      } catch (error: any) {
+        // Manejar errores específicos de Firebase
+        if (error.code === "auth/user-not-found") {
+          throw new Error(
+            "No existe una cuenta con este email. Por favor, regístrate primero."
+          );
+        } else if (error.code === "auth/wrong-password") {
+          throw new Error("Contraseña incorrecta");
+        } else if (error.code === "auth/invalid-email") {
+          throw new Error("Formato de email inválido");
+        } else if (error.code === "auth/user-disabled") {
+          throw new Error("Esta cuenta ha sido deshabilitada");
+        } else if (error.code === "auth/account-exists-with-different-credential") {
+          throw new Error(
+            "Ya existe una cuenta con este email usando otro método de autenticación"
+          );
+        }
+        throw error;
+      }
+
+      const firebaseUser = userCredential.user;
+
+      // Obtener o crear usuario en Firestore
+      const user = await this.getOrCreateFirestoreUser(firebaseUser);
+
+      // Obtener token de acceso
+      const idToken = await firebaseUser.getIdToken();
+
+      return {
+        user,
+        tokens: {
+          accessToken: idToken,
+        },
+      };
+    } catch (error: any) {
+      console.error("Error signing in with email/password:", error.message);
+      throw new Error(
+        error.message || "Error al iniciar sesión. Intenta nuevamente."
+      );
+    }
+  }
+
+  async signInWithGoogle(): Promise<AuthUser> {
+    try {
+      if (!auth) {
+        throw new Error("Firebase Auth no está inicializado");
+      }
+
+      const provider = new GoogleAuthProvider();
+      // Solicitar email y perfil
+      provider.addScope("email");
+      provider.addScope("profile");
+
+      let userCredential;
+      try {
+        userCredential = await signInWithPopup(auth, provider);
+      } catch (error: any) {
+        // Manejar errores específicos
+        if (error.code === "auth/popup-closed-by-user") {
+          throw new Error("Ventana de autenticación cerrada por el usuario");
+        } else if (error.code === "auth/popup-blocked") {
+          throw new Error(
+            "Ventana emergente bloqueada. Por favor, permite ventanas emergentes para este sitio."
+          );
+        } else if (error.code === "auth/account-exists-with-different-credential") {
+          // Intentar vincular cuentas automáticamente
+          const email = error.customData?.email;
+          if (email) {
+            // Buscar usuario por email en Firestore
+            const existingUser = await this.findUserByEmail(email);
+            if (existingUser) {
+              throw new Error(
+                `Ya existe una cuenta con este email (${email}). Por favor, inicia sesión con el método original o contacta soporte para vincular cuentas.`
+              );
+            }
+          }
+          throw new Error(
+            "Ya existe una cuenta con este email usando otro método de autenticación"
+          );
+        }
+        throw error;
+      }
+
+      const firebaseUser = userCredential.user;
+      const email = firebaseUser.email;
+
+      if (!email) {
+        throw new Error("No se pudo obtener el email de la cuenta de Google");
+      }
+
+      // Buscar usuario existente por email en Firestore
+      const existingUser = await this.findUserByEmail(email);
+
+      let user: User;
+
+      if (existingUser && existingUser.id !== firebaseUser.uid) {
+        // Usuario existe en Firestore pero con diferente UID
+        // Intentar vincular la cuenta de Google a la cuenta existente
+        try {
+          // Obtener la credencial de Google
+          const credential = GoogleAuthProvider.credentialFromResult(userCredential);
+          if (!credential) {
+            throw new Error("No se pudo obtener la credencial de Google");
+          }
+
+          // Buscar el usuario de Firebase Auth por email
+          // Nota: Esto requiere que el usuario ya tenga una cuenta de Firebase Auth
+          // Por ahora, creamos una nueva cuenta y actualizamos Firestore
+          // En producción, podrías querer implementar un flujo más sofisticado
+
+          // Actualizar el documento de Firestore para usar el nuevo UID
+          if (db) {
+            const oldUserDocRef = doc(db, "users", existingUser.id);
+            const newUserDocRef = doc(db, "users", firebaseUser.uid);
+
+            // Copiar datos del usuario existente al nuevo documento
+            await setDoc(newUserDocRef, {
+              ...existingUser,
+              id: firebaseUser.uid,
+              email: email,
+              updatedAt: serverTimestamp(),
+            });
+
+            // Opcional: eliminar el documento antiguo o marcarlo como migrado
+            // await deleteDoc(oldUserDocRef);
+          }
+
+          user = {
+            ...existingUser,
+            id: firebaseUser.uid,
+            email: email,
+          };
+        } catch (linkError: any) {
+          console.error("Error linking account:", linkError);
+          // Si falla la vinculación, crear nueva cuenta
+          user = await this.getOrCreateFirestoreUser(firebaseUser, {
+            email: email,
+            name: firebaseUser.displayName || existingUser.name,
+          });
+        }
+      } else {
+        // Usuario no existe o es el mismo, crear/obtener normalmente
+        user = await this.getOrCreateFirestoreUser(firebaseUser, {
+          email: email,
+          name: firebaseUser.displayName || "",
+        });
+      }
+
+      // Obtener token de acceso
+      const idToken = await firebaseUser.getIdToken();
+
+      return {
+        user,
+        tokens: {
+          accessToken: idToken,
+        },
+      };
+    } catch (error: any) {
+      console.error("Error signing in with Google:", error.message);
+      throw new Error(
+        error.message || "Error al iniciar sesión con Google. Intenta nuevamente."
+      );
+    }
+  }
+
+  async registerWithEmailPassword(
+    credentials: RegisterCredentials
+  ): Promise<AuthUser> {
+    try {
+      if (!auth || !db) {
+        throw new Error("Firebase no está inicializado");
+      }
+
+      if (!credentials.email || !credentials.password) {
+        throw new Error("Email y contraseña son requeridos para el registro");
+      }
+
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(credentials.email)) {
+        throw new Error("Formato de email inválido");
+      }
+
+      // Validar contraseña
+      if (credentials.password.length < 6) {
+        throw new Error("La contraseña debe tener al menos 6 caracteres");
+      }
+
+      // Verificar si el email ya está en uso
+      const existingUser = await this.findUserByEmail(credentials.email);
+      if (existingUser) {
+        throw new Error(
+          "Ya existe una cuenta con este email. Por favor, inicia sesión."
+        );
+      }
+
+      // Verificar si el documento de identidad ya existe
+      if (credentials.documentNumber) {
+        try {
+          const usersRef = collection(db, "users");
+          const q = query(
+            usersRef,
+            where("documentNumber", "==", credentials.documentNumber)
+          );
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            const existingUser = querySnapshot.docs[0];
+            throw new Error(
+              "Ya existe un usuario registrado con este número de cédula"
+            );
+          }
+        } catch (validationError: any) {
+          if (validationError.message.includes("Ya existe")) {
+            throw validationError;
+          }
+        }
+      }
+
+      let userCredential;
+      try {
+        userCredential = await createUserWithEmailAndPassword(
+          auth,
+          credentials.email,
+          credentials.password
+        );
+      } catch (error: any) {
+        if (error.code === "auth/email-already-in-use") {
+          throw new Error(
+            "Ya existe una cuenta con este email. Por favor, inicia sesión."
+          );
+        } else if (error.code === "auth/invalid-email") {
+          throw new Error("Formato de email inválido");
+        } else if (error.code === "auth/weak-password") {
+          throw new Error("La contraseña es muy débil");
+        }
+        throw error;
+      }
+
+      const firebaseUser = userCredential.user;
+
+      // Verificar si el usuario ya existe para no sobrescribir createdAt y campaignIds
+      let userExists = false;
+      let existingCampaignIds: string[] = [];
+      const userDocRef = doc(db, "users", firebaseUser.uid);
+      try {
+        const existingUserDoc = await getDoc(userDocRef);
+        userExists = existingUserDoc.exists();
+        if (userExists) {
+          const existingData = existingUserDoc.data();
+          if (existingData) {
+            existingCampaignIds = existingData.campaignIds || [];
+            if (
+              existingData.campaignId &&
+              !existingCampaignIds.includes(existingData.campaignId)
+            ) {
+              existingCampaignIds.push(existingData.campaignId);
+            }
+          }
+        }
+      } catch (checkError: any) {
+        userExists = false;
+      }
+
+      // Determinar el rol
+      const userRole: UserRole = credentials.campaignId
+        ? "MULTIPLIER"
+        : "ADMIN";
+
+      const userData: any = {
+        id: firebaseUser.uid,
+        email: credentials.email,
+        phoneNumber: credentials.phoneNumber || undefined,
+        name: `${credentials.firstName} ${credentials.lastName}`,
+        firstName: credentials.firstName,
+        lastName: credentials.lastName,
+        documentNumber: credentials.documentNumber,
+        gender: credentials.gender || null,
+        profession: credentials.profession || null,
+        country: credentials.country,
+        department: credentials.department,
+        city: credentials.city,
+        address: credentials.address,
+        neighborhood: credentials.neighborhood,
+        latitude: credentials.latitude || null,
+        longitude: credentials.longitude || null,
+        areaType: credentials.areaType || null,
+        fromCapitalCity: credentials.fromCapitalCity ?? null,
+        role: userRole,
+        updatedAt: serverTimestamp(),
+        pendingAuth: false,
+      };
+
+      if (credentials.leaderId) {
+        userData.leaderId = credentials.leaderId;
+      }
+      if (credentials.campaignId) {
+        if (!existingCampaignIds.includes(credentials.campaignId)) {
+          existingCampaignIds.push(credentials.campaignId);
+        }
+        userData.campaignIds = existingCampaignIds;
+      } else {
+        userData.campaignIds =
+          existingCampaignIds.length > 0 ? existingCampaignIds : [];
+      }
+
+      if (!userExists) {
+        userData.createdAt = serverTimestamp();
+      }
+
+      const isNewCampaign =
+        credentials.campaignId &&
+        !existingCampaignIds.includes(credentials.campaignId);
+
+      await setDoc(userDocRef, userData, { merge: true });
+
+      // Incrementar contadores si es necesario
+      if (isNewCampaign && credentials.campaignId) {
+        try {
+          const campaignDocRef = doc(db, "campaigns", credentials.campaignId);
+          await updateDoc(campaignDocRef, {
+            participants: increment(1),
+            updatedAt: serverTimestamp(),
+          });
+        } catch (campaignError: any) {
+          console.error(
+            `Error al incrementar participants de la campaña:`,
+            campaignError.message
+          );
+        }
+      }
+
+      if (credentials.leaderId) {
+        try {
+          const leaderDocRef = doc(db, "users", credentials.leaderId);
+          await updateDoc(leaderDocRef, {
+            participants: increment(1),
+            updatedAt: serverTimestamp(),
+          });
+        } catch (leaderError: any) {
+          console.error(
+            `Error al incrementar participants del multiplicador:`,
+            leaderError.message
+          );
+        }
+      }
+
+      const user: User = {
+        id: firebaseUser.uid,
+        email: credentials.email,
+        phoneNumber: credentials.phoneNumber || undefined,
+        name: `${credentials.firstName} ${credentials.lastName}`,
+        documentNumber: credentials.documentNumber,
+        gender: credentials.gender,
+        profession: credentials.profession,
+        country: credentials.country,
+        department: credentials.department,
+        city: credentials.city,
+        neighborhood: credentials.neighborhood,
+        latitude: credentials.latitude,
+        longitude: credentials.longitude,
+        areaType: credentials.areaType,
+        fromCapitalCity: credentials.fromCapitalCity,
+        role: userRole,
+        campaignIds: userData.campaignIds || [],
+        createdAt: new Date(),
+      };
+
+      if (credentials.leaderId) {
+        user.leaderId = credentials.leaderId;
+      }
+
+      const idToken = await firebaseUser.getIdToken();
+
+      return {
+        user,
+        tokens: {
+          accessToken: idToken,
+        },
+      };
+    } catch (error: any) {
+      console.error("Error registering with email/password:", error.message);
+      throw new Error(
+        error.message || "Error al registrarse. Por favor, intenta nuevamente."
+      );
+    }
+  }
+
+  async linkAuthProvider(
+    providerId: string,
+    credential: any
+  ): Promise<void> {
+    try {
+      if (!auth || !auth.currentUser) {
+        throw new Error("Usuario no autenticado");
+      }
+
+      const currentUser = auth.currentUser;
+
+      if (providerId === "google.com") {
+        const googleCredential = credential as OAuthCredential;
+        await linkWithCredential(currentUser, googleCredential);
+      } else if (providerId === "password") {
+        const emailCredential = EmailAuthProvider.credential(
+          credential.email,
+          credential.password
+        );
+        await linkWithCredential(currentUser, emailCredential);
+      } else {
+        throw new Error(`Proveedor de autenticación no soportado: ${providerId}`);
+      }
+    } catch (error: any) {
+      console.error("Error linking auth provider:", error.message);
+      if (error.code === "auth/credential-already-in-use") {
+        throw new Error("Esta credencial ya está asociada con otra cuenta");
+      } else if (error.code === "auth/email-already-in-use") {
+        throw new Error("Este email ya está asociado con otra cuenta");
+      }
+      throw new Error(
+        error.message || "Error al vincular método de autenticación"
       );
     }
   }

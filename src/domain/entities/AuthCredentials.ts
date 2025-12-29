@@ -2,6 +2,15 @@ export interface LoginCredentials {
   phoneNumber: string;
 }
 
+export interface EmailPasswordCredentials {
+  email: string;
+  password: string;
+}
+
+export interface GoogleSignInCredentials {
+  // No necesita campos adicionales, Google maneja todo
+}
+
 export interface OtpVerification {
   phoneNumber: string;
   otpCode: string;
@@ -20,7 +29,9 @@ export interface RegisterCredentials {
   firstName: string;
   lastName: string;
   documentNumber: string; // Cédula
-  phoneNumber: string; // WhatsApp
+  phoneNumber?: string; // WhatsApp (opcional para email/Google)
+  email?: string; // Email (opcional para teléfono)
+  password?: string; // Contraseña (solo para email/password)
   gender?: Gender; // Sexo del usuario
   profession?: string; // Profesión del usuario
 
