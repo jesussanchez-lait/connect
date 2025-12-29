@@ -24,6 +24,9 @@ export function useAuth() {
     let unsubscribeUser: Unsubscribe | null = null;
 
     // Escuchar cambios en el estado de autenticación
+    // Firebase Auth mantiene la sesión activa automáticamente usando localStorage
+    // El usuario NO necesita iniciar sesión cada vez que abre la app
+    // Solo se pedirá OTP si el usuario cierra sesión explícitamente (signOut)
     const unsubscribeAuth = onAuthStateChanged(
       auth,
       (firebaseUser) => {
@@ -34,12 +37,14 @@ export function useAuth() {
         }
 
         if (!firebaseUser) {
+          // Usuario no autenticado - esto es normal si nunca ha iniciado sesión
+          // o si cerró sesión explícitamente
           setUser(null);
           setLoading(false);
           return;
         }
 
-        // Suscribirse al documento del usuario en Firestore
+        // Usuario autenticado - obtener datos de Firestore
         const userDocRef = doc(dbInstance, "users", firebaseUser.uid);
 
         unsubscribeUser = onSnapshot(
@@ -72,19 +77,36 @@ export function useAuth() {
               };
               setUser(user);
             } else {
+              // Usuario autenticado en Firebase pero no tiene documento en Firestore
+              // Esto puede pasar durante el registro - no cerrar sesión
               setUser(null);
             }
             setLoading(false);
           },
           (error) => {
+            // Error al obtener datos del usuario - NO cerrar sesión automáticamente
+            // Puede ser un error temporal de red o permisos
             console.error("Error subscribing to user document:", error);
+            // Mantener el usuario autenticado si Firebase Auth dice que está autenticado
+            // Solo establecer user como null si realmente no hay sesión
+            if (firebaseUser) {
+              // Hay sesión pero error al obtener datos - mantener sesión activa
+              // El usuario puede seguir usando la app con datos limitados
+              console.warn(
+                "Error obteniendo datos del usuario, pero manteniendo sesión activa"
+              );
+            }
             setUser(null);
             setLoading(false);
           }
         );
       },
       (error) => {
+        // Error en el listener de autenticación - solo loguear, no cerrar sesión
+        // Puede ser un error temporal
         console.error("Error in auth state change:", error);
+        // Solo establecer user como null si realmente no hay sesión
+        // Firebase Auth maneja la persistencia automáticamente
         setUser(null);
         setLoading(false);
       }

@@ -89,10 +89,11 @@ npm run dev
 
 ### Authentication
 
-- **Login**: Sign in with email and password
-- **Register**: Create a new account
+- **Login**: Sign in with phone number and OTP verification
+- **Register**: Create a new account with complete profile
 - **Logout**: Sign out from the application
 - **Protected Routes**: Dashboard requires authentication
+- **Session Persistence**: Firebase Auth maintains active session automatically using localStorage. Users don't need to login every time they open the app. See [SESSION_PERSISTENCE.md](./SESSION_PERSISTENCE.md) for details.
 
 ### Dashboard Features
 
@@ -129,6 +130,10 @@ El sistema incluye credenciales de prueba para cada tipo de rol. Ver [CREDENTIAL
 - **Multiplicador**: Teléfono `3000000005`, OTP `000005`
 - **Coordinador**: Teléfono `3000000003`, OTP `000003`
 - **Seguidor**: Teléfono `3000000006`, OTP `000006`
+
+### Persistencia de Sesión
+
+Firebase Auth mantiene la sesión activa automáticamente. El usuario NO necesita iniciar sesión cada vez que abre la app. Ver [SESSION_PERSISTENCE.md](./SESSION_PERSISTENCE.md) para más detalles sobre cómo funciona y mejores prácticas.
 
 ### Sistema de Mocking
 

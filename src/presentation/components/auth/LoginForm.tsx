@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { sendOtpUseCase, verifyOtpUseCase } from "@/src/shared/di/container";
 import {
   LoginCredentials,
   OtpVerification,
 } from "@/src/domain/entities/AuthCredentials";
+import { useAuth } from "@/src/presentation/hooks/useAuth";
 
 // Función para formatear número de teléfono al formato (xxx)-xxx-xxxx
 function formatPhoneNumber(value: string): string {
@@ -35,6 +36,7 @@ function normalizePhoneNumber(value: string): string {
 
 export function LoginForm() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneNumberDisplay, setPhoneNumberDisplay] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -42,6 +44,15 @@ export function LoginForm() {
   const [devOtpCode, setDevOtpCode] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Si el usuario ya está autenticado, redirigir al dashboard
+  // Firebase Auth mantiene la sesión activa automáticamente
+  // No deberíamos pedir OTP si el usuario ya tiene sesión activa
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, authLoading, router]);
 
   const handleSendOtp = async (e: FormEvent) => {
     e.preventDefault();
@@ -111,6 +122,21 @@ export function LoginForm() {
     setPhoneNumberDisplay(formatted);
     setPhoneNumber(normalized);
   };
+
+  // Mostrar loading mientras verificamos si el usuario ya está autenticado
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Si el usuario ya está autenticado, no mostrar el formulario
+  // (será redirigido por el useEffect)
+  if (isAuthenticated) {
+    return null;
+  }
 
   if (otpSent) {
     return (

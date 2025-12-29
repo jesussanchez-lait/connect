@@ -1,7 +1,12 @@
 // Firebase configuration and initialization
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { getAnalytics, Analytics } from "firebase/analytics";
-import { getAuth, Auth } from "firebase/auth";
+import {
+  getAuth,
+  Auth,
+  setPersistence,
+  browserLocalPersistence,
+} from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
 
 // Default Firebase configuration (fallback values for connect-tierra project)
@@ -101,11 +106,23 @@ if (typeof window !== "undefined") {
     analytics = getAnalytics(app);
     auth = getAuth(app);
     db = getFirestore(app);
+
+    // Configurar persistencia de sesión explícitamente
+    // Firebase Auth mantiene la sesión activa automáticamente usando localStorage
+    // Esto permite que el usuario permanezca autenticado incluso después de cerrar la app
+    setPersistence(auth, browserLocalPersistence).catch((error) => {
+      console.error("Error setting auth persistence:", error);
+    });
   } else {
     app = getApps()[0];
     analytics = getAnalytics(app);
     auth = getAuth(app);
     db = getFirestore(app);
+
+    // Asegurar persistencia también en apps existentes
+    setPersistence(auth, browserLocalPersistence).catch((error) => {
+      console.error("Error setting auth persistence:", error);
+    });
   }
 } else {
   // Server-side: create app without analytics
