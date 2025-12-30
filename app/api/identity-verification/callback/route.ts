@@ -11,20 +11,20 @@ import {
 } from "firebase/firestore";
 
 /**
- * Callback de Didit según documentación: https://docs.didit.me/reference/web-app
- * Didit redirige al callback con query parameters:
- * - verificationSessionId: ID único de la sesión de verificación
- * - status: "Approved" | "Declined" | "In Review"
+ * Callback de Didit según documentación: https://docs.didit.me/reference/api-full-flow
+ * Didit redirige al usuario aquí después de completar la verificación
+ * Query parameters: session_id y status
  */
 export async function GET(request: NextRequest) {
   try {
+    // Manejar redirect después de completar verificación
     const searchParams = request.nextUrl.searchParams;
-    const verificationSessionId = searchParams.get("verificationSessionId");
+    const sessionId = searchParams.get("session_id") || searchParams.get("verificationSessionId");
     const status = searchParams.get("status");
 
-    if (!verificationSessionId) {
+    if (!sessionId) {
       return NextResponse.json(
-        { message: "verificationSessionId es requerido" },
+        { message: "session_id es requerido" },
         { status: 400 }
       );
     }
@@ -43,17 +43,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Buscar usuario por verificationSessionId (almacenado como identityVerificationWorkflowId)
+    // Buscar usuario por session_id (almacenado como identityVerificationWorkflowId)
     const usersRef = collection(db, "users");
     const q = query(
       usersRef,
-      where("identityVerificationWorkflowId", "==", verificationSessionId)
+      where("identityVerificationWorkflowId", "==", sessionId)
     );
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
       console.warn(
-        `[IdentityVerification] No se encontró usuario con verificationSessionId: ${verificationSessionId}`
+        `[IdentityVerification] No se encontró usuario con session_id: ${sessionId}`
       );
       // Redirigir a dashboard con mensaje de error
       const redirectUrl = new URL("/dashboard", request.nextUrl.origin);
@@ -122,10 +122,5 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Mantener POST para compatibilidad con webhooks (si Didit los usa)
-export async function POST(request: NextRequest) {
-  // Si Didit envía webhooks, procesarlos aquí
-  // Por ahora, redirigir a GET handler
-  return GET(request);
-}
+// No se manejan webhooks - solo redirects GET
 
