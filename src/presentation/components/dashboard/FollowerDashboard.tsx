@@ -203,7 +203,7 @@ export function FollowerDashboard({ user: propUser }: FollowerDashboardProps = {
 
           {/* Botón para Volverse Multiplicador */}
           <div className="mb-6">
-            <BecomeMultiplierFlow />
+            <BecomeMultiplierFlow user={user} />
           </div>
 
           {/* Información Personal */}

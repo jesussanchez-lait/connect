@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
@@ -13,7 +13,7 @@ import {
   registerWithEmailPasswordUseCase,
 } from "@/src/shared/di/container";
 import { GenderSelector } from "@/src/presentation/components/ui/GenderSelector";
-import { Gender } from "@/src/domain/entities/User";
+import { Gender, User } from "@/src/domain/entities/User";
 import {
   EmailPasswordCredentials,
   OtpVerification,
@@ -24,11 +24,14 @@ import { useColombiaData } from "@/src/presentation/hooks/useColombiaData";
 
 interface BecomeMultiplierFlowProps {
   onSuccess?: () => void;
+  user?: User | null;
 }
 
-export function BecomeMultiplierFlow({ onSuccess }: BecomeMultiplierFlowProps) {
+export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultiplierFlowProps) {
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { user: authUser, refreshUser } = useAuth();
+  // Usar el usuario de la prop si está disponible, sino usar el de auth
+  const user = propUser || authUser;
   const { selectedCampaign } = useCampaign();
   const { departments, cities, loadCitiesByDepartment } = useColombiaData();
 
@@ -67,6 +70,20 @@ export function BecomeMultiplierFlow({ onSuccess }: BecomeMultiplierFlowProps) {
   const [cityId, setCityId] = useState("");
   const [address, setAddress] = useState(user?.address || "");
   const [neighborhood, setNeighborhood] = useState(user?.neighborhood || "");
+
+  // Actualizar estados cuando cambie el usuario
+  useEffect(() => {
+    if (user) {
+      setPhoneNumber(user.phoneNumber || "");
+      setFirstName(user.name?.split(" ")[0] || "");
+      setLastName(user.name?.split(" ").slice(1).join(" ") || "");
+      setDocumentNumber(user.documentNumber || "");
+      setGender((user.gender as Gender) || "");
+      setProfession(user.profession || "");
+      setAddress(user.address || "");
+      setNeighborhood(user.neighborhood || "");
+    }
+  }, [user]);
 
   const handleBecomeMultiplier = () => {
     setShowModal(true);
