@@ -130,12 +130,19 @@ export function RegisterForm({
   // Detectar si es registro de seguidor (viene de QR)
   const isFollowerRegistration = !isAdmin && !!campaignId && !!leaderId;
 
+  // Determinar si es MULTIPLIER (campaignId sin leaderId)
+  const isMultiplierRegistration = !isAdmin && !!campaignId && !leaderId;
+
+  // Determinar si necesita autenticación: solo ADMIN y MULTIPLIER
+  const needsAuthentication = isAdmin || isMultiplierRegistration;
+
   // Use case para registro de seguidor
   const registerFollowerUseCase = new RegisterFollowerUseCase(authRepository);
 
-  const steps = isFollowerRegistration
-    ? ["Datos Personales", "Datos Territoriales"]
-    : ["Datos Personales", "Verificación de Teléfono", "Datos Territoriales"];
+  // Ajustar pasos según si necesita autenticación
+  const steps = needsAuthentication
+    ? ["Datos Personales", "Verificación de Teléfono", "Datos Territoriales"]
+    : ["Datos Personales", "Datos Territoriales"];
 
   // Cargar ciudades cuando se selecciona un departamento
   useEffect(() => {
@@ -146,9 +153,10 @@ export function RegisterForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departmentId]);
 
-  // Inicializar Google Places Autocomplete solo cuando estemos en el paso 3
+  // Inicializar Google Places Autocomplete solo cuando estemos en el paso de datos territoriales
   useEffect(() => {
-    if (currentStep !== 3 || !googleMapsApiKey) {
+    const territorialStep = needsAuthentication ? 3 : 2;
+    if (currentStep !== territorialStep || !googleMapsApiKey) {
       return;
     }
 
@@ -494,27 +502,22 @@ export function RegisterForm({
   // Avanzar al siguiente paso
   const handleConfirmUserData = async () => {
     if (currentStep === 1 && validateStep1()) {
-      if (isFollowerRegistration) {
-        // Si es seguidor, saltar directamente a datos territoriales
-        setCurrentStep(2);
-      } else {
-        // Si es multiplicador, ir a selección de método de autenticación
+      if (needsAuthentication) {
+        // Si necesita autenticación (ADMIN o MULTIPLIER), ir a selección de método
         setCurrentStep(2);
         // No enviar OTP automáticamente, esperar a que el usuario seleccione el método
+      } else {
+        // Si NO necesita autenticación, saltar directamente a datos territoriales
+        // En background se creará usuario anónimo
+        setCurrentStep(2);
       }
     }
   };
 
   // Volver al paso anterior
   const handlePreviousStep = () => {
-    if (isFollowerRegistration) {
-      // Para seguidores: solo hay 2 pasos
-      if (currentStep === 2) {
-        setCurrentStep(1);
-        setError("");
-      }
-    } else {
-      // Para multiplicadores: hay 3 pasos
+    if (needsAuthentication) {
+      // Para ADMIN y MULTIPLIER: hay 3 pasos
       if (currentStep === 2) {
         setCurrentStep(1);
         setOtpSent(false);
@@ -526,6 +529,12 @@ export function RegisterForm({
         setConfirmPassword("");
       } else if (currentStep === 3) {
         setCurrentStep(2);
+        setError("");
+      }
+    } else {
+      // Para otros roles: solo hay 2 pasos
+      if (currentStep === 2) {
+        setCurrentStep(1);
         setError("");
       }
     }
@@ -703,10 +712,12 @@ export function RegisterForm({
         fromCapitalCity,
       };
 
-      // Si es registro de seguidor (viene de QR)
-      if (isFollowerRegistration) {
-        // Incluir datos de campaña y multiplicador
-        credentials.campaignId = campaignId;
+      // Si NO necesita autenticación (FOLLOWER u otros roles), usar autenticación anónima
+      if (!needsAuthentication) {
+        // Incluir datos de campaña y multiplicador si existen
+        if (campaignId) {
+          credentials.campaignId = campaignId;
+        }
         if (leaderId) {
           credentials.leaderId = leaderId;
         }
@@ -714,7 +725,7 @@ export function RegisterForm({
           credentials.leaderName = leaderName;
         }
 
-        // Registrar como seguidor con autenticación anónima
+        // Registrar con autenticación anónima (usando registerFollowerUseCase que ya maneja esto)
         try {
           await registerFollowerUseCase.execute(credentials);
         } catch (registerError: any) {
@@ -728,7 +739,7 @@ export function RegisterForm({
         return;
       }
 
-      // Si es registro de multiplicador (flujo normal)
+      // Si es registro que necesita autenticación (ADMIN o MULTIPLIER)
       // Si el usuario se registró con email/password, incluir esos datos
       if (authMethod === "credentials" && email && password) {
         credentials.email = email.trim();
@@ -738,7 +749,9 @@ export function RegisterForm({
       // Solo incluir datos de campaña/multiplicador si no es admin
       // leaderId es opcional: un multiplicador puede ser el primero del árbol
       if (!isAdmin) {
-        credentials.campaignId = campaignId;
+        if (campaignId) {
+          credentials.campaignId = campaignId;
+        }
         if (leaderId) {
           credentials.leaderId = leaderId;
         }
@@ -813,7 +826,7 @@ export function RegisterForm({
         </div>
       )}
 
-      {isFollowerRegistration && leaderName && (
+      {!needsAuthentication && leaderName && (
         <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
           <p className="text-sm font-medium">
             Te estás registrando como{" "}
@@ -822,7 +835,7 @@ export function RegisterForm({
           </p>
         </div>
       )}
-      {!isAdmin && !isFollowerRegistration && leaderName && (
+      {isMultiplierRegistration && leaderName && (
         <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
           <p className="text-sm font-medium">
             Te estás registrando bajo el Multiplicador{" "}
@@ -830,7 +843,7 @@ export function RegisterForm({
           </p>
         </div>
       )}
-      {!isAdmin && !leaderName && campaignId && (
+      {isMultiplierRegistration && !leaderName && campaignId && (
         <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
           <p className="text-sm font-medium">
             Estás creando tu cuenta como{" "}
@@ -987,8 +1000,8 @@ export function RegisterForm({
           </div>
         )}
 
-        {/* PASO 2: MÉTODO DE REGISTRO (solo para multiplicadores) o DATOS TERRITORIALES (para seguidores) */}
-        {currentStep === 2 && !isFollowerRegistration && (
+        {/* PASO 2: MÉTODO DE REGISTRO (solo para ADMIN y MULTIPLIER) o DATOS TERRITORIALES (para otros roles) */}
+        {currentStep === 2 && needsAuthentication && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Paso 2: Método de Registro
@@ -1253,12 +1266,12 @@ export function RegisterForm({
           </div>
         )}
 
-        {/* PASO 2 (seguidores) o PASO 3 (multiplicadores): DATOS TERRITORIALES */}
-        {((isFollowerRegistration && currentStep === 2) ||
-          (!isFollowerRegistration && currentStep === 3)) && (
+        {/* PASO 2 (sin autenticación) o PASO 3 (con autenticación): DATOS TERRITORIALES */}
+        {((!needsAuthentication && currentStep === 2) ||
+          (needsAuthentication && currentStep === 3)) && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {isFollowerRegistration
+              {!needsAuthentication
                 ? "Paso 2: Datos Territoriales"
                 : "Paso 3: Datos Territoriales"}
             </h3>
