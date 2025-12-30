@@ -18,8 +18,8 @@ export interface StartVerificationRequest {
 }
 
 export interface StartVerificationResponse {
-  workflowId: string;
-  verificationUrl?: string;
+  verificationSessionId: string;
+  verification_url: string;
   status: "pending" | "in_progress";
 }
 
@@ -45,8 +45,8 @@ export class IdentityVerificationClient {
       workflowId: process.env.NEXT_PUBLIC_DIDIT_WORKFLOW_ID || "",
     };
 
-    // Base URL de Didit API (ajustar según documentación real)
-    this.baseUrl = process.env.NEXT_PUBLIC_DIDIT_API_URL || "https://api.didit.io/v1";
+    // Base URL de Didit API v2
+    this.baseUrl = process.env.NEXT_PUBLIC_DIDIT_API_URL || "https://api.didit.me/v2";
   }
 
   /**
@@ -61,25 +61,26 @@ export class IdentityVerificationClient {
         request.callbackUrl ||
         `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/api/identity-verification/callback`;
 
-      // Preparar payload para Didit API
+      // Preparar payload para Didit API v2 - Create Verification Session
+      // Según documentación: https://docs.didit.me/reference/web-app
       const payload = {
-        appId: this.config.appId,
-        workflowId: this.config.workflowId,
-        userId: request.userId,
+        workflow_id: this.config.workflowId,
+        callback: callbackUrl,
         metadata: {
-          documentNumber: request.documentNumber,
+          user_id: request.userId,
+          document_number: request.documentNumber,
           email: request.email,
-          phoneNumber: request.phoneNumber,
+          phone_number: request.phoneNumber,
         },
-        callbackUrl,
       };
 
-      // Llamar a la API de Didit
-      const response = await fetch(`${this.baseUrl}/workflows/start`, {
+      // Llamar a la API de Didit - Create Verification Session
+      const response = await fetch(`${this.baseUrl}/verification-sessions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": this.config.apiKey,
+          "Authorization": `Bearer ${this.config.apiKey}`,
+          "X-App-Id": this.config.appId,
         },
         body: JSON.stringify(payload),
       });
@@ -93,9 +94,10 @@ export class IdentityVerificationClient {
 
       const data = await response.json();
 
+      // La API de Didit devuelve verification_url (con guión bajo) según documentación
       return {
-        workflowId: data.workflowId || data.id,
-        verificationUrl: data.verificationUrl || data.url,
+        verificationSessionId: data.id || data.verificationSessionId || data.session_id,
+        verification_url: data.verification_url || data.verificationUrl || data.url,
         status: "pending",
       };
     } catch (error: any) {
@@ -107,15 +109,16 @@ export class IdentityVerificationClient {
   }
 
   /**
-   * Verifica el estado de un workflow de validación
+   * Verifica el estado de una sesión de verificación
    */
-  async checkStatus(workflowId: string): Promise<VerificationStatus> {
+  async checkStatus(verificationSessionId: string): Promise<VerificationStatus> {
     try {
-      const response = await fetch(`${this.baseUrl}/workflows/${workflowId}/status`, {
+      const response = await fetch(`${this.baseUrl}/verification-sessions/${verificationSessionId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": this.config.apiKey,
+          "Authorization": `Bearer ${this.config.apiKey}`,
+          "X-App-Id": this.config.appId,
         },
       });
 
@@ -129,7 +132,7 @@ export class IdentityVerificationClient {
       const data = await response.json();
 
       return {
-        workflowId,
+        workflowId: verificationSessionId, // Mantener compatibilidad
         status: this.mapDiditStatus(data.status),
         result: data.result,
         error: data.error,
@@ -144,6 +147,7 @@ export class IdentityVerificationClient {
 
   /**
    * Mapea el estado de Didit a nuestro formato interno
+   * Según documentación: status puede ser "Approved", "Declined", "In Review"
    */
   private mapDiditStatus(
     diditStatus: string
@@ -153,14 +157,19 @@ export class IdentityVerificationClient {
         pending: "pending",
         "in-progress": "in_progress",
         "in_progress": "in_progress",
+        "in review": "in_progress",
+        "in_review": "in_progress",
         verified: "verified",
         approved: "verified",
+        "Approved": "verified",
         failed: "failed",
         rejected: "failed",
+        declined: "failed",
+        "Declined": "failed",
         expired: "expired",
       };
 
-    return statusMap[diditStatus.toLowerCase()] || "pending";
+    return statusMap[diditStatus] || statusMap[diditStatus.toLowerCase()] || "pending";
   }
 
   /**

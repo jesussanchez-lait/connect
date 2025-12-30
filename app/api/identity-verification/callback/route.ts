@@ -10,25 +10,28 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-interface DiditCallbackPayload {
-  workflowId: string;
-  status: "pending" | "in_progress" | "verified" | "failed" | "expired";
-  userId?: string;
-  result?: {
-    verified: boolean;
-    score?: number;
-    details?: Record<string, unknown>;
-  };
-  error?: string;
-}
-
-export async function POST(request: NextRequest) {
+/**
+ * Callback de Didit según documentación: https://docs.didit.me/reference/web-app
+ * Didit redirige al callback con query parameters:
+ * - verificationSessionId: ID único de la sesión de verificación
+ * - status: "Approved" | "Declined" | "In Review"
+ */
+export async function GET(request: NextRequest) {
   try {
-    const body: DiditCallbackPayload = await request.json();
+    const searchParams = request.nextUrl.searchParams;
+    const verificationSessionId = searchParams.get("verificationSessionId");
+    const status = searchParams.get("status");
 
-    if (!body.workflowId) {
+    if (!verificationSessionId) {
       return NextResponse.json(
-        { message: "workflowId es requerido" },
+        { message: "verificationSessionId es requerido" },
+        { status: 400 }
+      );
+    }
+
+    if (!status) {
+      return NextResponse.json(
+        { message: "status es requerido" },
         { status: 400 }
       );
     }
@@ -40,37 +43,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Buscar usuario por workflowId
+    // Buscar usuario por verificationSessionId (almacenado como identityVerificationWorkflowId)
     const usersRef = collection(db, "users");
     const q = query(
       usersRef,
-      where("identityVerificationWorkflowId", "==", body.workflowId)
+      where("identityVerificationWorkflowId", "==", verificationSessionId)
     );
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
       console.warn(
-        `[IdentityVerification] No se encontró usuario con workflowId: ${body.workflowId}`
+        `[IdentityVerification] No se encontró usuario con verificationSessionId: ${verificationSessionId}`
       );
-      return NextResponse.json(
-        { message: "Usuario no encontrado" },
-        { status: 404 }
-      );
+      // Redirigir a dashboard con mensaje de error
+      const redirectUrl = new URL("/dashboard", request.nextUrl.origin);
+      redirectUrl.searchParams.set("verification", "error");
+      return NextResponse.redirect(redirectUrl);
     }
 
     const userDoc = querySnapshot.docs[0];
     const userData = userDoc.data();
     const userId = userDoc.id;
 
-    // Mapear estado de Didit a nuestro formato
+    // Mapear estado de Didit a nuestro formato interno
+    // Didit devuelve: "Approved", "Declined", "In Review"
     let verificationStatus: "pending" | "verified" | "failed" | "blocked" =
       "pending";
-    if (body.status === "verified") {
+    if (status === "Approved") {
       verificationStatus = "verified";
-    } else if (body.status === "failed") {
+    } else if (status === "Declined") {
       verificationStatus = "failed";
-    } else if (body.status === "expired") {
-      verificationStatus = "failed";
+    } else if (status === "In Review") {
+      verificationStatus = "pending";
     }
 
     // Obtener intentos actuales
@@ -104,18 +108,24 @@ export async function POST(request: NextRequest) {
       `[IdentityVerification] Usuario ${userId} actualizado: ${verificationStatus}, intentos: ${newAttempts}`
     );
 
-    return NextResponse.json({
-      success: true,
-      message: "Estado de validación actualizado",
-      userId,
-      status: verificationStatus,
-    });
+    // Redirigir al dashboard con parámetro de éxito
+    const redirectUrl = new URL("/dashboard", request.nextUrl.origin);
+    redirectUrl.searchParams.set("verification", verificationStatus === "verified" ? "success" : "failed");
+    
+    return NextResponse.redirect(redirectUrl);
   } catch (error: any) {
     console.error("[IdentityVerification] Error en callback:", error);
-    return NextResponse.json(
-      { message: "Error al procesar callback", error: error.message },
-      { status: 500 }
-    );
+    // Redirigir a dashboard con mensaje de error
+    const redirectUrl = new URL("/dashboard", request.nextUrl.origin);
+    redirectUrl.searchParams.set("verification", "error");
+    return NextResponse.redirect(redirectUrl);
   }
+}
+
+// Mantener POST para compatibilidad con webhooks (si Didit los usa)
+export async function POST(request: NextRequest) {
+  // Si Didit envía webhooks, procesarlos aquí
+  // Por ahora, redirigir a GET handler
+  return GET(request);
 }
 

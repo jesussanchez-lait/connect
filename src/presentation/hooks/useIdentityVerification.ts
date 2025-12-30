@@ -2,11 +2,16 @@ import { useState, useEffect } from "react";
 import { useAuth } from "./useAuth";
 import { verifyIdentityUseCase } from "@/src/shared/di/container";
 import { authRepository } from "@/src/shared/di/container";
-import { IdentityVerificationClient, IdentityVerificationConfig } from "@/src/infrastructure/api/IdentityVerificationClient";
+import {
+  IdentityVerificationClient,
+  IdentityVerificationConfig,
+} from "@/src/infrastructure/api/IdentityVerificationClient";
 import { db } from "@/src/infrastructure/firebase";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
-export function useIdentityVerification(customConfig?: IdentityVerificationConfig) {
+export function useIdentityVerification(
+  customConfig?: IdentityVerificationConfig
+) {
   const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,8 +23,13 @@ export function useIdentityVerification(customConfig?: IdentityVerificationConfi
     }
 
     // Verificar intentos previos
-    if (user.identityVerificationAttempts && user.identityVerificationAttempts >= 3) {
-      setError("Has alcanzado el límite de intentos. Tu cuenta ha sido bloqueada.");
+    if (
+      user.identityVerificationAttempts &&
+      user.identityVerificationAttempts >= 3
+    ) {
+      setError(
+        "Has alcanzado el límite de intentos. Tu cuenta ha sido bloqueada."
+      );
       return;
     }
 
@@ -41,7 +51,9 @@ export function useIdentityVerification(customConfig?: IdentityVerificationConfi
         const client = new IdentityVerificationClient(customConfig);
 
         if (!client.validateConfig()) {
-          throw new Error("Configuración de validación de identidad incompleta");
+          throw new Error(
+            "Configuración de validación de identidad incompleta"
+          );
         }
 
         // Obtener datos del usuario
@@ -54,7 +66,7 @@ export function useIdentityVerification(customConfig?: IdentityVerificationConfi
 
         const userData = userDoc.data();
 
-        // Iniciar workflow de validación con configuración personalizada
+        // Iniciar sesión de verificación con configuración personalizada
         const verification = await client.startVerification({
           userId: user.id,
           documentNumber: userData.documentNumber,
@@ -62,16 +74,22 @@ export function useIdentityVerification(customConfig?: IdentityVerificationConfi
           phoneNumber: userData.phoneNumber,
         });
 
-        // Si hay una URL de verificación, abrirla en una nueva ventana
-        if (verification.verificationUrl) {
-          window.open(verification.verificationUrl, "_blank", "width=800,height=600");
+        // Si hay una URL de verificación, redirigir según documentación de Didit
+        // Usar window.location.assign() para redirect button según docs.didit.me
+        if (verification.verification_url) {
+          // Opción 1: Redirect button (recomendado por Didit para cross-device flows)
+          window.location.assign(verification.verification_url);
+
+          // Opción 2: Si se prefiere nueva ventana (comentado)
+          // window.open(verification.verification_url, "_blank", "width=800,height=600");
         }
 
-        // Actualizar usuario con workflow ID
+        // Actualizar usuario con verificationSessionId
         await updateDoc(userDocRef, {
-          identityVerificationWorkflowId: verification.workflowId,
+          identityVerificationWorkflowId: verification.verificationSessionId,
           identityVerificationStatus: "pending",
-          identityVerificationAttempts: (userData.identityVerificationAttempts || 0) + 1,
+          identityVerificationAttempts:
+            (userData.identityVerificationAttempts || 0) + 1,
           updatedAt: serverTimestamp(),
         });
 
@@ -79,15 +97,15 @@ export function useIdentityVerification(customConfig?: IdentityVerificationConfi
         await refreshUser();
 
         return {
-          workflowId: verification.workflowId,
+          workflowId: verification.verificationSessionId, // Mantener compatibilidad
         };
       } else {
         // Usar el caso de uso estándar
         const result = await verifyIdentityUseCase.execute(user.id);
-        
+
         // Refrescar usuario para obtener el workflowId actualizado
         await refreshUser();
-        
+
         return result;
       }
     } catch (err: any) {
@@ -104,7 +122,9 @@ export function useIdentityVerification(customConfig?: IdentityVerificationConfi
     }
 
     try {
-      const status = await authRepository.checkIdentityVerificationStatus(workflowId);
+      const status = await authRepository.checkIdentityVerificationStatus(
+        workflowId
+      );
       await refreshUser();
       return status;
     } catch (err: any) {
@@ -127,4 +147,3 @@ export function useIdentityVerification(customConfig?: IdentityVerificationConfi
     workflowId: user?.identityVerificationWorkflowId,
   };
 }
-
