@@ -35,6 +35,7 @@ import {
   getDocs,
   collection,
   increment,
+  deleteDoc,
 } from "firebase/firestore";
 import { RecaptchaVerifier } from "firebase/auth";
 
@@ -276,6 +277,66 @@ function formatPhoneNumberForFirebase(phoneNumber: string): string {
 }
 
 export class FirebaseAuthRepository implements IAuthRepository {
+  /**
+   * Elimina un usuario anónimo (FOLLOWER sin autenticación) si existe
+   * @param userId ID del usuario a eliminar
+   * @returns true si se eliminó, false si no era necesario
+   */
+  private async deleteAnonymousUserIfExists(userId: string): Promise<boolean> {
+    try {
+      if (!db) {
+        return false;
+      }
+
+      const userDocRef = doc(db, "users", userId);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        return false;
+      }
+
+      const userData = userDoc.data();
+
+      // Verificar si es un usuario anónimo (FOLLOWER sin email ni preferredAuthMethod)
+      const isAnonymous =
+        userData.role === "FOLLOWER" &&
+        !userData.email &&
+        !userData.preferredAuthMethod;
+
+      if (isAnonymous) {
+        console.log(
+          `[FirebaseAuthRepository] Eliminando usuario anónimo con cédula duplicada: ${userId}`
+        );
+
+        // Eliminar el documento de Firestore
+        await deleteDoc(userDocRef);
+
+        // Intentar eliminar el usuario de Firebase Auth (si es posible)
+        try {
+          const firebaseUser = auth.currentUser;
+          if (firebaseUser && firebaseUser.uid === userId) {
+            await firebaseUser.delete();
+          }
+        } catch (authError: any) {
+          // Si no podemos eliminar de Auth (porque no estamos autenticados como ese usuario),
+          // está bien, ya eliminamos el documento de Firestore
+          console.warn(
+            `[FirebaseAuthRepository] No se pudo eliminar usuario de Auth: ${authError.message}`
+          );
+        }
+
+        return true;
+      }
+
+      return false;
+    } catch (error: any) {
+      console.error(
+        `[FirebaseAuthRepository] Error al eliminar usuario anónimo: ${error.message}`
+      );
+      return false;
+    }
+  }
+
   async sendOtp(credentials: LoginCredentials): Promise<OtpResponse> {
     try {
       if (!auth) {
@@ -615,9 +676,18 @@ export class FirebaseAuthRepository implements IAuthRepository {
             // Verificar que no sea el mismo usuario
             const existingUser = querySnapshot.docs[0];
             if (existingUser.id !== firebaseUser.uid) {
-              throw new Error(
-                "Ya existe un usuario registrado con este número de cédula"
+              // Intentar eliminar el usuario anónimo si existe
+              const deleted = await this.deleteAnonymousUserIfExists(
+                existingUser.id
               );
+
+              if (!deleted) {
+                // Si no se pudo eliminar (no era anónimo), lanzar error
+                throw new Error(
+                  "Ya existe un usuario registrado con este número de cédula"
+                );
+              }
+              // Si se eliminó el usuario anónimo, continuar con el registro
             }
           }
         } catch (validationError: any) {
@@ -1231,9 +1301,18 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
           if (!querySnapshot.empty) {
             const existingUser = querySnapshot.docs[0];
-            throw new Error(
-              "Ya existe un usuario registrado con este número de cédula"
+            // Intentar eliminar el usuario anónimo si existe
+            const deleted = await this.deleteAnonymousUserIfExists(
+              existingUser.id
             );
+
+            if (!deleted) {
+              // Si no se pudo eliminar (no era anónimo), lanzar error
+              throw new Error(
+                "Ya existe un usuario registrado con este número de cédula"
+              );
+            }
+            // Si se eliminó el usuario anónimo, continuar con el registro
           }
         } catch (validationError: any) {
           if (validationError.message.includes("Ya existe")) {
@@ -1588,9 +1667,19 @@ export class FirebaseAuthRepository implements IAuthRepository {
           const querySnapshot = await getDocs(q);
 
           if (!querySnapshot.empty) {
-            throw new Error(
-              "Ya existe un usuario registrado con este número de cédula"
+            const existingUser = querySnapshot.docs[0];
+            // Si el usuario existente es anónimo, eliminarlo para permitir el nuevo registro
+            const deleted = await this.deleteAnonymousUserIfExists(
+              existingUser.id
             );
+
+            if (!deleted) {
+              // Si no se pudo eliminar (no era anónimo), lanzar error
+              throw new Error(
+                "Ya existe un usuario registrado con este número de cédula"
+              );
+            }
+            // Si se eliminó el usuario anónimo, continuar con el registro
           }
         } catch (validationError: any) {
           if (validationError.message.includes("Ya existe")) {

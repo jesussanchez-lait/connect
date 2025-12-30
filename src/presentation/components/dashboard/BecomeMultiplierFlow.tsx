@@ -27,7 +27,10 @@ interface BecomeMultiplierFlowProps {
   user?: User | null;
 }
 
-export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultiplierFlowProps) {
+export function BecomeMultiplierFlow({
+  onSuccess,
+  user: propUser,
+}: BecomeMultiplierFlowProps) {
   const router = useRouter();
   const { user: authUser, refreshUser } = useAuth();
   // Usar el usuario de la prop si está disponible, sino usar el de auth
@@ -156,7 +159,9 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
         setError(response.message || "Error al enviar código OTP");
       }
     } catch (err: any) {
-      setError(err instanceof Error ? err.message : "Error al enviar código OTP");
+      setError(
+        err instanceof Error ? err.message : "Error al enviar código OTP"
+      );
     } finally {
       setLoading(false);
     }
@@ -173,10 +178,10 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
         otpCode,
       };
 
-      await verifyOtpUseCase.execute(verification);
+      const authResult = await verifyOtpUseCase.execute(verification);
 
-      // Actualizar rol a multiplicador
-      await upgradeToMultiplierUseCase.execute(user!.id, "otp");
+      // Actualizar rol a multiplicador usando el ID del nuevo usuario autenticado
+      await upgradeToMultiplierUseCase.execute(authResult.user.id, "otp");
 
       await refreshUser();
       router.push("/dashboard");
@@ -211,10 +216,15 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
         password,
       };
 
-      await signInWithEmailPasswordUseCase.execute(credentials);
+      const authResult = await signInWithEmailPasswordUseCase.execute(
+        credentials
+      );
 
-      // Actualizar rol a multiplicador
-      await upgradeToMultiplierUseCase.execute(user!.id, "credentials");
+      // Actualizar rol a multiplicador usando el ID del usuario autenticado
+      await upgradeToMultiplierUseCase.execute(
+        authResult.user.id,
+        "credentials"
+      );
 
       await refreshUser();
       router.push("/dashboard");
@@ -236,10 +246,10 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
     setLoading(true);
 
     try {
-      await signInWithGoogleUseCase.execute();
+      const authResult = await signInWithGoogleUseCase.execute();
 
-      // Actualizar rol a multiplicador
-      await upgradeToMultiplierUseCase.execute(user!.id, "google");
+      // Actualizar rol a multiplicador usando el ID del nuevo usuario autenticado
+      await upgradeToMultiplierUseCase.execute(authResult.user.id, "google");
 
       await refreshUser();
       router.push("/dashboard");
@@ -339,10 +349,15 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
       }
 
       // Registrar con email/password
-      await registerWithEmailPasswordUseCase.execute(credentials);
+      const authResult = await registerWithEmailPasswordUseCase.execute(
+        credentials
+      );
 
-      // Actualizar rol a multiplicador
-      await upgradeToMultiplierUseCase.execute(user!.id, "credentials");
+      // Actualizar rol a multiplicador usando el ID del nuevo usuario autenticado
+      await upgradeToMultiplierUseCase.execute(
+        authResult.user.id,
+        "credentials"
+      );
 
       await refreshUser();
       router.push("/dashboard");
@@ -436,9 +451,7 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
                       <span className="text-2xl">📱</span>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900">
-                        Código OTP por SMS
-                      </h4>
+                      <h4 className="font-semibold ">Código OTP por SMS</h4>
                       <p className="text-sm text-gray-600">
                         Recibirás un código de verificación en tu teléfono
                       </p>
@@ -457,9 +470,7 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
                       <span className="text-2xl">✉️</span>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900">
-                        Email y Contraseña
-                      </h4>
+                      <h4 className="font-semibold ">Email y Contraseña</h4>
                       <p className="text-sm text-gray-600">
                         {user.email
                           ? "Inicia sesión con tu email"
@@ -480,9 +491,7 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
                       <span className="text-2xl">🔴</span>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900">
-                        Continuar con Google
-                      </h4>
+                      <h4 className="font-semibold ">Continuar con Google</h4>
                       <p className="text-sm text-gray-600">
                         Usa tu cuenta de Google para autenticarte
                       </p>
@@ -526,7 +535,7 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
                         onChange={(e) =>
                           setPhoneNumber(e.target.value.replace(/\D/g, ""))
                         }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
                         placeholder="3001234567"
                         maxLength={10}
                       />
@@ -560,7 +569,9 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
                         type="text"
                         value={otpCode}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          const value = e.target.value
+                            .replace(/\D/g, "")
+                            .slice(0, 6);
                           setOtpCode(value);
                         }}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-center text-2xl font-mono tracking-widest"
@@ -662,7 +673,10 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
               <div className="space-y-4">
                 {loading && (
                   <div className="text-center">
-                    <LoaderWithText text="Autenticando con Google..." color="blue" />
+                    <LoaderWithText
+                      text="Autenticando con Google..."
+                      color="blue"
+                    />
                   </div>
                 )}
                 <button
@@ -901,4 +915,3 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
     </>
   );
 }
-
