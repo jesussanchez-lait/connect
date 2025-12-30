@@ -82,8 +82,30 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
       setProfession(user.profession || "");
       setAddress(user.address || "");
       setNeighborhood(user.neighborhood || "");
+
+      // Si el usuario ya tiene departamento y ciudad, inicializar los IDs
+      if (user.department && user.city && departments.length > 0) {
+        const foundDepartment = departments.find(
+          (d) => d.name === user.department
+        );
+        if (foundDepartment) {
+          setDepartmentId(foundDepartment.id.toString());
+          // Cargar ciudades del departamento para poder encontrar la ciudad
+          loadCitiesByDepartment(foundDepartment.id);
+        }
+      }
     }
-  }, [user]);
+  }, [user, departments, loadCitiesByDepartment]);
+
+  // Cuando se carguen las ciudades, buscar y establecer el cityId si el usuario ya tiene ciudad
+  useEffect(() => {
+    if (user?.city && cities.length > 0 && !cityId) {
+      const foundCity = cities.find((c) => c.name === user.city);
+      if (foundCity) {
+        setCityId(foundCity.id.toString());
+      }
+    }
+  }, [cities, user, cityId]);
 
   const handleBecomeMultiplier = () => {
     setShowModal(true);
@@ -102,6 +124,12 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
       handleSendOtp();
     } else if (method === "google") {
       handleGoogleSignIn();
+    } else if (method === "credentials") {
+      // Si el usuario no tiene email y tampoco tiene departamento y ciudad,
+      // mostrar el formulario completo automáticamente
+      if (!user?.email && (!user?.department || !user?.city)) {
+        setShowFullRegistration(true);
+      }
     }
     // Para credentials, solo mostrar los campos
   };
@@ -264,15 +292,30 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
         return;
       }
 
-      const selectedDepartment = departments.find(
-        (d) => d.id.toString() === departmentId
-      );
-      const selectedCity = cities.find((c) => c.id.toString() === cityId);
+      // Si el usuario ya tiene departamento y ciudad, usarlos
+      // Si no, validar que se hayan seleccionado
+      let finalDepartment: string;
+      let finalCity: string;
 
-      if (!selectedDepartment || !selectedCity) {
-        setError("Debes seleccionar departamento y ciudad");
-        setLoading(false);
-        return;
+      if (user?.department && user?.city) {
+        // Usar los datos existentes del usuario
+        finalDepartment = user.department;
+        finalCity = user.city;
+      } else {
+        // Validar que se hayan seleccionado departamento y ciudad
+        const selectedDepartment = departments.find(
+          (d) => d.id.toString() === departmentId
+        );
+        const selectedCity = cities.find((c) => c.id.toString() === cityId);
+
+        if (!selectedDepartment || !selectedCity) {
+          setError("Debes seleccionar departamento y ciudad");
+          setLoading(false);
+          return;
+        }
+
+        finalDepartment = selectedDepartment.name;
+        finalCity = selectedCity.name;
       }
 
       const credentials: RegisterCredentials = {
@@ -285,10 +328,10 @@ export function BecomeMultiplierFlow({ onSuccess, user: propUser }: BecomeMultip
         gender: gender || undefined,
         profession: profession.trim() || undefined,
         country: "Colombia",
-        department: selectedDepartment.name,
-        city: selectedCity.name,
-        address: address,
-        neighborhood: neighborhood,
+        department: finalDepartment,
+        city: finalCity,
+        address: address || user?.address || "",
+        neighborhood: neighborhood || user?.neighborhood || "",
       };
 
       if (selectedCampaign) {
