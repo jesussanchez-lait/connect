@@ -17,6 +17,10 @@ import { useAuth } from "@/src/presentation/hooks/useAuth";
 
 type AuthMethod = "phone" | "email" | "google";
 
+interface LoginFormProps {
+  preferredAuthMethod?: "otp" | "credentials" | "google";
+}
+
 // Función para formatear número de teléfono al formato (xxx)-xxx-xxxx
 function formatPhoneNumber(value: string): string {
   // Remover todos los caracteres no numéricos
@@ -42,10 +46,19 @@ function normalizePhoneNumber(value: string): string {
   return value.replace(/\D/g, "");
 }
 
-export function LoginForm() {
+export function LoginForm({ preferredAuthMethod }: LoginFormProps = {}) {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const [authMethod, setAuthMethod] = useState<AuthMethod>("phone");
+  
+  // Mapear método preferido a AuthMethod
+  const getInitialAuthMethod = (): AuthMethod => {
+    if (preferredAuthMethod === "otp") return "phone";
+    if (preferredAuthMethod === "credentials") return "email";
+    if (preferredAuthMethod === "google") return "google";
+    return "phone"; // Por defecto
+  };
+  
+  const [authMethod, setAuthMethod] = useState<AuthMethod>(getInitialAuthMethod());
   
   // Estados para teléfono/OTP
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -279,41 +292,92 @@ export function LoginForm() {
 
       {/* Selector de método de autenticación */}
       <div className="mb-6">
-        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-          <button
-            type="button"
-            onClick={() => handleMethodChange("phone")}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-              authMethod === "phone"
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Teléfono
-          </button>
-          <button
-            type="button"
-            onClick={() => handleMethodChange("email")}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-              authMethod === "email"
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Email
-          </button>
-          <button
-            type="button"
-            onClick={() => handleMethodChange("google")}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-              authMethod === "google"
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Google
-          </button>
-        </div>
+        {preferredAuthMethod ? (
+          // Si hay método preferido, mostrarlo destacado y los otros como opciones secundarias
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm text-gray-600 mb-2">Método recomendado:</p>
+              <button
+                type="button"
+                onClick={() => handleMethodChange(getInitialAuthMethod())}
+                className="w-full py-3 px-4 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                {preferredAuthMethod === "otp" && "📱 Continuar con Teléfono"}
+                {preferredAuthMethod === "credentials" && "✉️ Continuar con Email"}
+                {preferredAuthMethod === "google" && "🔴 Continuar con Google"}
+              </button>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-2">Otros métodos:</p>
+              <div className="flex space-x-2">
+                {preferredAuthMethod !== "otp" && (
+                  <button
+                    type="button"
+                    onClick={() => handleMethodChange("phone")}
+                    className="flex-1 py-2 px-3 text-xs font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                  >
+                    Teléfono
+                  </button>
+                )}
+                {preferredAuthMethod !== "credentials" && (
+                  <button
+                    type="button"
+                    onClick={() => handleMethodChange("email")}
+                    className="flex-1 py-2 px-3 text-xs font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                  >
+                    Email
+                  </button>
+                )}
+                {preferredAuthMethod !== "google" && (
+                  <button
+                    type="button"
+                    onClick={() => handleMethodChange("google")}
+                    className="flex-1 py-2 px-3 text-xs font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                  >
+                    Google
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          // Si no hay método preferido, mostrar los tres métodos igualmente
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+            <button
+              type="button"
+              onClick={() => handleMethodChange("phone")}
+              className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                authMethod === "phone"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Teléfono
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMethodChange("email")}
+              className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                authMethod === "email"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Email
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMethodChange("google")}
+              className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                authMethod === "google"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Google
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (

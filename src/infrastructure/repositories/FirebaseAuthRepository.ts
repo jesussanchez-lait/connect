@@ -22,6 +22,7 @@ import {
   EmailAuthProvider,
   OAuthCredential,
   User as FirebaseUser,
+  signInAnonymously,
 } from "firebase/auth";
 import {
   doc,
@@ -1451,6 +1452,349 @@ export class FirebaseAuthRepository implements IAuthRepository {
     } catch (error) {
       console.error("Error refreshing token:", error);
       throw new Error("Error al renovar el token");
+    }
+  }
+
+  async registerFollower(credentials: RegisterCredentials): Promise<AuthUser> {
+    try {
+      if (!auth || !db) {
+        throw new Error("Firebase no está inicializado");
+      }
+
+      // Verificar si el documento de identidad ya existe
+      if (credentials.documentNumber) {
+        try {
+          const usersRef = collection(db, "users");
+          const q = query(
+            usersRef,
+            where("documentNumber", "==", credentials.documentNumber)
+          );
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            throw new Error(
+              "Ya existe un usuario registrado con este número de cédula"
+            );
+          }
+        } catch (validationError: any) {
+          if (validationError.message.includes("Ya existe")) {
+            throw validationError;
+          }
+        }
+      }
+
+      // Crear usuario anónimo en Firebase Auth (obtiene UID final)
+      let firebaseUser: FirebaseUser;
+      try {
+        const userCredential = await signInAnonymously(auth);
+        firebaseUser = userCredential.user;
+      } catch (error: any) {
+        console.error("Error creating anonymous user:", error);
+        throw new Error("Error al crear cuenta. Por favor, intenta nuevamente.");
+      }
+
+      // Calcular fromCapitalCity y areaType
+      const selectedDepartment = credentials.department;
+      const selectedCity = credentials.city;
+      const fromCapitalCity = credentials.fromCapitalCity ?? false;
+      const areaType = credentials.areaType || "RURAL";
+
+      // Determinar el rol
+      const userRole: UserRole = "FOLLOWER";
+
+      // Crear documento en Firestore con el UID como ID
+      const userDocRef = doc(db, "users", firebaseUser.uid);
+      const userData: any = {
+        id: firebaseUser.uid,
+        phoneNumber: credentials.phoneNumber || undefined,
+        name: `${credentials.firstName} ${credentials.lastName}`,
+        firstName: credentials.firstName,
+        lastName: credentials.lastName,
+        documentNumber: credentials.documentNumber,
+        gender: credentials.gender || null,
+        profession: credentials.profession || null,
+        country: credentials.country,
+        department: credentials.department,
+        city: credentials.city,
+        address: credentials.address,
+        neighborhood: credentials.neighborhood,
+        latitude: credentials.latitude || null,
+        longitude: credentials.longitude || null,
+        areaType,
+        fromCapitalCity,
+        role: userRole,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        pendingAuth: true, // Seguidor con autenticación anónima
+      };
+
+      // Solo incluir datos de campaña/multiplicador si existen
+      if (credentials.leaderId) {
+        userData.leaderId = credentials.leaderId;
+      }
+      if (credentials.leaderName) {
+        userData.leaderName = credentials.leaderName;
+      }
+      if (credentials.campaignId) {
+        userData.campaignIds = [credentials.campaignId];
+      } else {
+        userData.campaignIds = [];
+      }
+
+      await setDoc(userDocRef, userData);
+
+      // Incrementar contador del multiplicador si existe
+      if (credentials.leaderId) {
+        try {
+          const leaderDocRef = doc(db, "users", credentials.leaderId);
+          await updateDoc(leaderDocRef, {
+            participants: increment(1),
+            updatedAt: serverTimestamp(),
+          });
+        } catch (leaderError: any) {
+          console.error(
+            `Error al incrementar participants del multiplicador:`,
+            leaderError.message
+          );
+        }
+      }
+
+      // Incrementar contador de la campaña si existe
+      if (credentials.campaignId) {
+        try {
+          const campaignDocRef = doc(db, "campaigns", credentials.campaignId);
+          await updateDoc(campaignDocRef, {
+            participants: increment(1),
+            updatedAt: serverTimestamp(),
+          });
+        } catch (campaignError: any) {
+          console.error(
+            `Error al incrementar participants de la campaña:`,
+            campaignError.message
+          );
+        }
+      }
+
+      // Obtener token de acceso
+      const idToken = await firebaseUser.getIdToken();
+
+      const user: User = {
+        id: firebaseUser.uid,
+        phoneNumber: credentials.phoneNumber || undefined,
+        name: `${credentials.firstName} ${credentials.lastName}`,
+        documentNumber: credentials.documentNumber,
+        gender: credentials.gender,
+        profession: credentials.profession,
+        country: credentials.country,
+        department: credentials.department,
+        city: credentials.city,
+        address: credentials.address,
+        neighborhood: credentials.neighborhood,
+        latitude: credentials.latitude,
+        longitude: credentials.longitude,
+        areaType,
+        fromCapitalCity,
+        role: userRole,
+        campaignIds: credentials.campaignId ? [credentials.campaignId] : [],
+        createdAt: new Date(),
+      };
+
+      if (credentials.leaderId) {
+        user.leaderId = credentials.leaderId;
+      }
+      if (credentials.leaderName) {
+        user.leaderName = credentials.leaderName;
+      }
+
+      return {
+        user,
+        tokens: {
+          accessToken: idToken,
+        },
+      };
+    } catch (error: any) {
+      console.error("Error registering follower:", error.message);
+      throw new Error(
+        error.message || "Error al registrar seguidor. Por favor, intenta nuevamente."
+      );
+    }
+  }
+
+  async getUserByDocumentNumber(documentNumber: string): Promise<User | null> {
+    try {
+      if (!db) {
+        throw new Error("Firestore no está inicializado");
+      }
+
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("documentNumber", "==", documentNumber));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        return null;
+      }
+
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+
+      const user: User = {
+        id: userDoc.id,
+        email: userData.email,
+        phoneNumber: userData.phoneNumber,
+        name: userData.name || "",
+        role: userData.role as UserRole | undefined,
+        documentNumber: userData.documentNumber,
+        gender: userData.gender,
+        profession: userData.profession,
+        country: userData.country,
+        department: userData.department,
+        city: userData.city,
+        address: userData.address,
+        neighborhood: userData.neighborhood,
+        latitude: userData.latitude,
+        longitude: userData.longitude,
+        areaType: userData.areaType,
+        fromCapitalCity: userData.fromCapitalCity,
+        leaderId: userData.leaderId,
+        leaderName: userData.leaderName,
+        campaignIds: userData.campaignIds || [],
+        participants: userData.participants,
+        createdAt: userData.createdAt?.toDate() || new Date(),
+        preferredAuthMethod: userData.preferredAuthMethod,
+        identityVerificationStatus: userData.identityVerificationStatus,
+        identityVerificationAttempts: userData.identityVerificationAttempts,
+        identityVerificationWorkflowId: userData.identityVerificationWorkflowId,
+        isBlocked: userData.isBlocked,
+      };
+
+      return user;
+    } catch (error: any) {
+      console.error("Error getting user by document number:", error);
+      throw new Error(
+        error.message || "Error al buscar usuario por número de cédula"
+      );
+    }
+  }
+
+  async upgradeFollowerToMultiplier(
+    userId: string,
+    preferredAuthMethod?: string
+  ): Promise<void> {
+    try {
+      if (!db) {
+        throw new Error("Firestore no está inicializado");
+      }
+
+      const userDocRef = doc(db, "users", userId);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        throw new Error("Usuario no encontrado");
+      }
+
+      const updateData: any = {
+        role: "MULTIPLIER" as UserRole,
+        pendingAuth: false,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (preferredAuthMethod) {
+        updateData.preferredAuthMethod = preferredAuthMethod;
+      }
+
+      await updateDoc(userDocRef, updateData);
+    } catch (error: any) {
+      console.error("Error upgrading follower to multiplier:", error);
+      throw new Error(
+        error.message || "Error al actualizar rol a multiplicador"
+      );
+    }
+  }
+
+  async verifyIdentity(userId: string): Promise<{ workflowId: string }> {
+    try {
+      if (!db) {
+        throw new Error("Firestore no está inicializado");
+      }
+
+      // Importar el cliente de validación de identidad
+      const { IdentityVerificationClient } = await import(
+        "@/src/infrastructure/api/IdentityVerificationClient"
+      );
+
+      const client = new IdentityVerificationClient();
+
+      if (!client.validateConfig()) {
+        throw new Error("Configuración de validación de identidad incompleta");
+      }
+
+      // Obtener datos del usuario
+      const userDocRef = doc(db, "users", userId);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        throw new Error("Usuario no encontrado");
+      }
+
+      const userData = userDoc.data();
+
+      // Iniciar workflow de validación
+      const verification = await client.startVerification({
+        userId,
+        documentNumber: userData.documentNumber,
+        email: userData.email,
+        phoneNumber: userData.phoneNumber,
+      });
+
+      // Actualizar usuario con workflow ID
+      await updateDoc(userDocRef, {
+        identityVerificationWorkflowId: verification.workflowId,
+        identityVerificationStatus: "pending",
+        identityVerificationAttempts: (userData.identityVerificationAttempts || 0) + 1,
+        updatedAt: serverTimestamp(),
+      });
+
+      return {
+        workflowId: verification.workflowId,
+      };
+    } catch (error: any) {
+      console.error("Error verifying identity:", error);
+      throw new Error(
+        error.message || "Error al iniciar validación de identidad"
+      );
+    }
+  }
+
+  async checkIdentityVerificationStatus(
+    workflowId: string
+  ): Promise<"pending" | "verified" | "failed"> {
+    try {
+      // Importar el cliente de validación de identidad
+      const { IdentityVerificationClient } = await import(
+        "@/src/infrastructure/api/IdentityVerificationClient"
+      );
+
+      const client = new IdentityVerificationClient();
+
+      if (!client.validateConfig()) {
+        throw new Error("Configuración de validación de identidad incompleta");
+      }
+
+      const status = await client.checkStatus(workflowId);
+
+      // Mapear estado a formato simplificado
+      if (status.status === "verified") {
+        return "verified";
+      } else if (status.status === "failed") {
+        return "failed";
+      } else {
+        return "pending";
+      }
+    } catch (error: any) {
+      console.error("Error checking identity verification status:", error);
+      throw new Error(
+        error.message || "Error al verificar estado de validación de identidad"
+      );
     }
   }
 }

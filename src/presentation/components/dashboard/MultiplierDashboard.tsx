@@ -10,6 +10,7 @@ import { TeamMap } from "./TeamMap";
 import { CampaignSelector } from "./CampaignSelector";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { useTeam } from "@/src/presentation/hooks/useTeam";
+import { IdentityVerificationBanner } from "./IdentityVerificationBanner";
 
 function DownloadCampaignProposalButton() {
   const [downloading, setDownloading] = useState(false);
@@ -269,6 +270,7 @@ export function MultiplierDashboard() {
 
   return (
     <>
+      <IdentityVerificationBanner />
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           <div className="flex justify-between items-center h-16 gap-2">

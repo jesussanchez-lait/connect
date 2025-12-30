@@ -7,7 +7,7 @@ import {
   EmailPasswordCredentials,
   GoogleSignInCredentials,
 } from "../entities/AuthCredentials";
-import { AuthUser } from "../entities/User";
+import { AuthUser, User } from "../entities/User";
 
 export interface IAuthRepository {
   sendOtp(credentials: LoginCredentials): Promise<OtpResponse>;
@@ -21,4 +21,10 @@ export interface IAuthRepository {
   logout(): Promise<void>;
   getCurrentUser(): Promise<AuthUser["user"] | null>;
   refreshToken(refreshToken: string): Promise<AuthUser["tokens"]>;
+  // Nuevos métodos para seguidores y validación de identidad
+  registerFollower(credentials: RegisterCredentials): Promise<AuthUser>;
+  getUserByDocumentNumber(documentNumber: string): Promise<User | null>;
+  upgradeFollowerToMultiplier(userId: string, preferredAuthMethod?: string): Promise<void>;
+  verifyIdentity(userId: string): Promise<{ workflowId: string }>;
+  checkIdentityVerificationStatus(workflowId: string): Promise<"pending" | "verified" | "failed">;
 }

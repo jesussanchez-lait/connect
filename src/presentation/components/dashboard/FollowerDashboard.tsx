@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { MyLeader } from "./MyLeader";
 import { CampaignSelector } from "./CampaignSelector";
-import { MultiplierRequestForm } from "./MultiplierRequestForm";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
+import { BecomeMultiplierFlow } from "./BecomeMultiplierFlow";
+import { IdentityVerificationBanner } from "./IdentityVerificationBanner";
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -115,10 +116,11 @@ function UserMenu() {
 
 export function FollowerDashboard() {
   const { user } = useAuth();
-  const { selectedCampaign } = useCampaign();
+  const { selectedCampaign, campaigns } = useCampaign();
 
   return (
     <>
+      <IdentityVerificationBanner />
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           <div className="flex justify-between items-center h-16 gap-2">
@@ -180,12 +182,47 @@ export function FollowerDashboard() {
             </div>
           )}
 
-          {/* Solicitud de Multiplicador */}
-          {selectedCampaign && (
-            <div className="mb-6">
-              <MultiplierRequestForm />
+          {/* Información de Campañas */}
+          {user?.campaignIds && user.campaignIds.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Mis Campañas
+              </h3>
+              <div className="space-y-2">
+                {user.campaignIds.map((campaignId) => {
+                  const campaign = campaigns.find((c) => c.id === campaignId);
+                  if (!campaign) return null;
+                  return (
+                    <div
+                      key={campaignId}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {campaign.name}
+                        </p>
+                        {campaign.description && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {campaign.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-700">
+                          {campaign.participants} participantes
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
+
+          {/* Botón para Volverse Multiplicador */}
+          <div className="mb-6">
+            <BecomeMultiplierFlow />
+          </div>
 
           {/* Información Personal */}
           <div className="bg-white rounded-lg shadow p-6">

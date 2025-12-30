@@ -9,6 +9,9 @@ import { GetCurrentUserUseCase } from "@/src/application/use-cases/auth/GetCurre
 import { SignInWithEmailPasswordUseCase } from "@/src/application/use-cases/auth/SignInWithEmailPasswordUseCase";
 import { SignInWithGoogleUseCase } from "@/src/application/use-cases/auth/SignInWithGoogleUseCase";
 import { RegisterWithEmailPasswordUseCase } from "@/src/application/use-cases/auth/RegisterWithEmailPasswordUseCase";
+import { RegisterFollowerUseCase } from "@/src/application/use-cases/auth/RegisterFollowerUseCase";
+import { UpgradeToMultiplierUseCase } from "@/src/application/use-cases/auth/UpgradeToMultiplierUseCase";
+import { VerifyIdentityUseCase } from "@/src/application/use-cases/auth/VerifyIdentityUseCase";
 
 // Infrastructure instances
 const authRepository: IAuthRepository = new FirebaseAuthRepository();
@@ -30,6 +33,13 @@ export const signInWithGoogleUseCase = new SignInWithGoogleUseCase(
 );
 export const registerWithEmailPasswordUseCase =
   new RegisterWithEmailPasswordUseCase(authRepository);
+export const registerFollowerUseCase = new RegisterFollowerUseCase(
+  authRepository
+);
+export const upgradeToMultiplierUseCase = new UpgradeToMultiplierUseCase(
+  authRepository
+);
+export const verifyIdentityUseCase = new VerifyIdentityUseCase(authRepository);
 
 // Export repositories for direct access if needed
 export { authRepository };

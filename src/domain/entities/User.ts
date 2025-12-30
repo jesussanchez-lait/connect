@@ -32,6 +32,12 @@ export interface User {
   campaignIds?: string[]; // Lista de IDs de campañas asociadas al usuario
   participants?: number; // Cantidad de personas registradas bajo este multiplicador
   createdAt: Date;
+  // Campos de autenticación y validación
+  preferredAuthMethod?: "otp" | "credentials" | "google"; // Método de autenticación preferido
+  identityVerificationStatus?: "pending" | "verified" | "failed" | "blocked"; // Estado de validación de identidad (opcional)
+  identityVerificationAttempts?: number; // Intentos de validación (máximo 3)
+  identityVerificationWorkflowId?: string; // ID del workflow de validación (Didit internamente)
+  isBlocked?: boolean; // Si el usuario está bloqueado por fallos en validación
 }
 
 export interface AuthTokens {
