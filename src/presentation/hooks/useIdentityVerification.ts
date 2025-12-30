@@ -2,12 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "./useAuth";
 import { verifyIdentityUseCase } from "@/src/shared/di/container";
 import { authRepository } from "@/src/shared/di/container";
-import {
-  IdentityVerificationClient,
-  IdentityVerificationConfig,
-} from "@/src/infrastructure/api/IdentityVerificationClient";
-import { db } from "@/src/infrastructure/firebase";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { IdentityVerificationConfig } from "@/src/infrastructure/api/IdentityVerificationClient";
 
 export function useIdentityVerification(
   customConfig?: IdentityVerificationConfig
@@ -42,37 +37,45 @@ export function useIdentityVerification(
     setError(null);
 
     try {
-      // Si hay configuración personalizada, usar el cliente directamente
+      // Si hay configuración personalizada, usar endpoint del servidor para evitar CORS
       if (customConfig) {
-        if (typeof window === "undefined" || !db) {
-          throw new Error("Firestore no está inicializado");
+        if (typeof window === "undefined") {
+          throw new Error("Este hook solo funciona en el cliente");
         }
 
-        const client = new IdentityVerificationClient(customConfig);
-
-        if (!client.validateConfig()) {
-          throw new Error(
-            "Configuración de validación de identidad incompleta"
-          );
-        }
-
-        // Obtener datos del usuario
-        const userDocRef = doc(db, "users", user.id);
-        const userDoc = await getDoc(userDocRef);
-
-        if (!userDoc.exists()) {
-          throw new Error("Usuario no encontrado");
-        }
-
-        const userData = userDoc.data();
-
-        // Iniciar sesión de verificación con configuración personalizada
-        const verification = await client.startVerification({
-          userId: user.id,
-          documentNumber: userData.documentNumber,
-          email: userData.email,
-          phoneNumber: userData.phoneNumber,
+        // Llamar a nuestro endpoint API que hace la llamada a Didit desde el servidor
+        const response = await fetch("/api/identity-verification/start", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            appId: customConfig.appId,
+            apiKey: customConfig.apiKey,
+            workflowId: customConfig.workflowId,
+          }),
         });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({
+            message: "Error al iniciar validación de identidad",
+          }));
+
+          console.error("[Identity Verification Error]:", {
+            status: response.status,
+            error: errorData,
+          });
+
+          // Mostrar mensaje más descriptivo al usuario
+          const errorMessage = errorData.details?.message
+            ? `${errorData.message}: ${errorData.details.message}`
+            : errorData.message || "Error al iniciar validación de identidad";
+
+          throw new Error(errorMessage);
+        }
+
+        const verification = await response.json();
 
         // Si hay una URL de verificación, redirigir según documentación de Didit
         // Usar window.location.assign() para redirect button según docs.didit.me
@@ -83,15 +86,6 @@ export function useIdentityVerification(
           // Opción 2: Si se prefiere nueva ventana (comentado)
           // window.open(verification.verification_url, "_blank", "width=800,height=600");
         }
-
-        // Actualizar usuario con verificationSessionId
-        await updateDoc(userDocRef, {
-          identityVerificationWorkflowId: verification.verificationSessionId,
-          identityVerificationStatus: "pending",
-          identityVerificationAttempts:
-            (userData.identityVerificationAttempts || 0) + 1,
-          updatedAt: serverTimestamp(),
-        });
 
         // Refrescar usuario para obtener el workflowId actualizado
         await refreshUser();

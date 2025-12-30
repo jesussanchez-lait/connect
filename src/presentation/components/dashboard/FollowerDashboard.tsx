@@ -122,7 +122,9 @@ interface FollowerDashboardProps {
   user?: User | null;
 }
 
-export function FollowerDashboard({ user: propUser }: FollowerDashboardProps = {}) {
+export function FollowerDashboard({
+  user: propUser,
+}: FollowerDashboardProps = {}) {
   const { user: authUser } = useAuth();
   // Usar el usuario de la prop si está disponible, sino usar el de auth
   const user = propUser || authUser;
