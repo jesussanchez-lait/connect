@@ -35,7 +35,26 @@ export function TeamTreeCanvas() {
     );
   }, [users, currentUser?.id]);
 
-  // Construir árbol jerárquico de multiplicadores
+  // Filtrar seguidores (FOLLOWER) que están bajo multiplicadores
+  const followers = useMemo(() => {
+    return users.filter((user) => user.role === "FOLLOWER");
+  }, [users]);
+
+  // Crear mapa de seguidores por leaderId para acceso rápido
+  const followersByLeaderId = useMemo(() => {
+    const map = new Map<string, User[]>();
+    followers.forEach((follower) => {
+      if (follower.leaderId) {
+        if (!map.has(follower.leaderId)) {
+          map.set(follower.leaderId, []);
+        }
+        map.get(follower.leaderId)!.push(follower);
+      }
+    });
+    return map;
+  }, [followers]);
+
+  // Construir árbol jerárquico de multiplicadores con sus seguidores
   const buildMultiplierTree = useMemo(() => {
     if (multipliers.length === 0) return [];
 
@@ -43,7 +62,7 @@ export function TeamTreeCanvas() {
     const multiplierMap = new Map<string, User>();
     multipliers.forEach((m) => multiplierMap.set(m.id, m));
 
-    // Crear mapa de hijos por leaderId
+    // Crear mapa de hijos multiplicadores por leaderId
     const childrenMap = new Map<string, User[]>();
     multipliers.forEach((multiplier) => {
       if (multiplier.leaderId) {
@@ -74,6 +93,20 @@ export function TeamTreeCanvas() {
 
     return rootMultipliers.map((root) => buildNode(root, 0));
   }, [multipliers]);
+
+  // Crear una key única para forzar la actualización de ReactFlow cuando cambien los datos
+  const flowKey = useMemo(() => {
+    const usersKey = users
+      .map(
+        (u) =>
+          `${u.id}:${u.participants || 0}:${u.role || ""}:${u.leaderId || ""}`
+      )
+      .join("|");
+    const campaignsKey = selectedCampaigns
+      .map((c) => `${c.id}:${c.participants}`)
+      .join("|");
+    return `${usersKey}-${campaignsKey}`;
+  }, [users, selectedCampaigns]);
 
   // Construir nodos y edges para React Flow con layout jerárquico
   const { nodes, edges } = useMemo(() => {
@@ -125,9 +158,23 @@ export function TeamTreeCanvas() {
     const startX = 350; // Posición X inicial para multiplicadores
 
     // Función para calcular el número de hojas (nodos terminales) de un subárbol
+    // Incluye tanto multiplicadores hijos como seguidores
     const countLeaves = (node: MultiplierNode): number => {
-      if (node.children.length === 0) return 1;
-      return node.children.reduce((sum, child) => sum + countLeaves(child), 0);
+      const multiplierFollowers =
+        followersByLeaderId.get(node.multiplier.id) || [];
+      const followersCount = multiplierFollowers.length;
+
+      if (node.children.length === 0) {
+        // Si no tiene hijos multiplicadores, contar 1 (el multiplicador mismo) + sus seguidores
+        return Math.max(1, 1 + followersCount * 0.5); // Los seguidores ocupan menos espacio
+      }
+
+      // Sumar hijos multiplicadores + seguidores de este multiplicador
+      const childrenLeaves = node.children.reduce(
+        (sum, child) => sum + countLeaves(child),
+        0
+      );
+      return childrenLeaves + followersCount * 0.5;
     };
 
     // Función recursiva para posicionar nodos (retorna la posición Y final)
@@ -167,6 +214,11 @@ export function TeamTreeCanvas() {
         }
       }
 
+      // Obtener seguidores de este multiplicador
+      const multiplierFollowers =
+        followersByLeaderId.get(node.multiplier.id) || [];
+      const totalFollowers = multiplierFollowers.length;
+
       // Dividir nombre en nombre y apellido
       const nameParts = node.multiplier.name.split(" ");
       const firstName = nameParts[0] || "";
@@ -191,12 +243,19 @@ export function TeamTreeCanvas() {
               <div className="text-sm text-indigo-600 mt-2 font-medium">
                 {node.multiplier.participants || 0} participantes
               </div>
-              {node.children.length > 0 && (
-                <div className="text-xs text-gray-500 mt-1">
-                  {node.children.length} multiplicador
-                  {node.children.length > 1 ? "es" : ""}
-                </div>
-              )}
+              <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                {node.children.length > 0 && (
+                  <div>
+                    {node.children.length} multiplicador
+                    {node.children.length > 1 ? "es" : ""}
+                  </div>
+                )}
+                {totalFollowers > 0 && (
+                  <div className="text-green-600">
+                    {totalFollowers} seguidor{totalFollowers > 1 ? "es" : ""}
+                  </div>
+                )}
+              </div>
             </div>
           ),
         },
@@ -215,6 +274,99 @@ export function TeamTreeCanvas() {
       flowNodes.push(multiplierNode);
       nodePositions.set(nodeId, { x, y: currentY });
 
+      // Agregar nodos de seguidores debajo del multiplicador
+      if (totalFollowers > 0) {
+        const followerStartY = currentY + verticalSpacing * 0.3;
+        let followerY = followerStartY;
+
+        multiplierFollowers.forEach((follower, index) => {
+          const followerNodeId = `follower-${follower.id}`;
+          const followerNameParts = follower.name.split(" ");
+          const followerFirstName = followerNameParts[0] || "";
+          const followerLastName = followerNameParts.slice(1).join(" ") || "";
+
+          const followerNode: Node = {
+            id: followerNodeId,
+            type: "default",
+            position: { x: x + horizontalSpacing, y: followerY },
+            data: {
+              label: (
+                <div className="text-center px-3 py-2">
+                  <div className="font-medium text-sm text-gray-700">
+                    {followerFirstName}
+                  </div>
+                  {followerLastName && (
+                    <div className="font-medium text-sm text-gray-700">
+                      {followerLastName}
+                    </div>
+                  )}
+                  <div className="text-xs text-green-600 mt-1 font-medium">
+                    Seguidor
+                  </div>
+                </div>
+              ),
+            },
+            style: {
+              background: "#f0fdf4",
+              border: "2px solid #22c55e",
+              borderRadius: "6px",
+              padding: "6px",
+              minWidth: "150px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+            },
+            sourcePosition: Position.Right,
+            targetPosition: Position.Left,
+          };
+
+          flowNodes.push(followerNode);
+          nodePositions.set(followerNodeId, {
+            x: x + horizontalSpacing,
+            y: followerY,
+          });
+
+          // Crear edge desde multiplicador a seguidor
+          const followerEdge: Edge = {
+            id: `edge-${nodeId}-${followerNodeId}`,
+            source: nodeId,
+            target: followerNodeId,
+            type: "smoothstep",
+            style: {
+              stroke: "#22c55e",
+              strokeWidth: 1.5,
+              strokeDasharray: "5,5",
+            },
+            animated: false,
+          };
+          flowEdges.push(followerEdge);
+
+          followerY += verticalSpacing * 0.6;
+        });
+
+        // Ajustar la posición Y del multiplicador si tiene seguidores
+        // para centrarlo mejor sobre sus hijos (multiplicadores + seguidores)
+        if (node.children.length > 0 || totalFollowers > 0) {
+          const allChildrenY = [
+            ...(node.children.length > 0
+              ? node.children.map((child) => {
+                  const childId = `multiplier-${child.multiplier.id}`;
+                  return nodePositions.get(childId)?.y || currentY;
+                })
+              : []),
+            ...multiplierFollowers.map(
+              (_, index) => followerStartY + index * verticalSpacing * 0.6
+            ),
+          ];
+          if (allChildrenY.length > 0) {
+            const minY = Math.min(...allChildrenY);
+            const maxY = Math.max(...allChildrenY);
+            const newY = (minY + maxY) / 2;
+            multiplierNode.position.y = newY;
+            nodePositions.set(nodeId, { x, y: newY });
+            currentY = newY;
+          }
+        }
+      }
+
       // Crear edge desde el padre (si no es null)
       if (parentId) {
         const edge: Edge = {
@@ -232,13 +384,30 @@ export function TeamTreeCanvas() {
       }
 
       // Retornar la posición Y final (usado para posicionar el siguiente hermano)
-      if (node.children.length > 0) {
-        // Si tiene hijos, retornar la posición del último hijo + spacing
-        const lastChildId = `multiplier-${
-          node.children[node.children.length - 1].multiplier.id
-        }`;
-        const lastChildY = nodePositions.get(lastChildId)?.y || currentY;
-        return lastChildY + verticalSpacing;
+      // Considerar tanto hijos multiplicadores como seguidores
+      if (node.children.length > 0 || totalFollowers > 0) {
+        let maxY = currentY;
+
+        // Si tiene hijos multiplicadores, obtener la posición del último
+        if (node.children.length > 0) {
+          const lastChildId = `multiplier-${
+            node.children[node.children.length - 1].multiplier.id
+          }`;
+          const lastChildY = nodePositions.get(lastChildId)?.y || currentY;
+          maxY = Math.max(maxY, lastChildY);
+        }
+
+        // Si tiene seguidores, obtener la posición del último seguidor
+        if (totalFollowers > 0) {
+          const lastFollowerId = `follower-${
+            multiplierFollowers[multiplierFollowers.length - 1].id
+          }`;
+          const lastFollowerY =
+            nodePositions.get(lastFollowerId)?.y || currentY;
+          maxY = Math.max(maxY, lastFollowerY);
+        }
+
+        return maxY + verticalSpacing;
       }
       return currentY + verticalSpacing;
     };
@@ -272,7 +441,12 @@ export function TeamTreeCanvas() {
     });
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [selectedCampaigns, multipliers, buildMultiplierTree]);
+  }, [
+    selectedCampaigns,
+    multipliers,
+    buildMultiplierTree,
+    followersByLeaderId,
+  ]);
 
   if (selectedCampaigns.length === 0) {
     return (
@@ -314,7 +488,7 @@ export function TeamTreeCanvas() {
   }
 
   return (
-    <div className="h-[600px] w-full overflow-hidden">
+    <div key={flowKey} className="h-[600px] w-full overflow-hidden">
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
