@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
+import { CampaignBrochureService } from "@/src/infrastructure/storage/CampaignBrochureService";
 
 export function CampaignBrochureDropdown() {
   const { selectedCampaign } = useCampaign();
@@ -42,22 +43,10 @@ export function CampaignBrochureDropdown() {
 
       setLoading(true);
       try {
-        const token = localStorage.getItem("accessToken");
-        const response = await fetch(
-          `/api/dashboard/campaign-brochure?campaignId=${selectedCampaign.id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const url = await CampaignBrochureService.getBrochureURL(
+          selectedCampaign.id
         );
-
-        if (response.ok) {
-          const data = await response.json();
-          setBrochureUrl(data.url);
-        } else {
-          setBrochureUrl(null);
-        }
+        setBrochureUrl(url);
       } catch (error) {
         console.error("Error fetching brochure:", error);
         setBrochureUrl(null);

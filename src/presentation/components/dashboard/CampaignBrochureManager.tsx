@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
+import { CampaignBrochureService } from "@/src/infrastructure/storage/CampaignBrochureService";
 
 export function CampaignBrochureManager() {
   const { selectedCampaigns } = useCampaign();
@@ -26,22 +27,10 @@ export function CampaignBrochureManager() {
       if (selectedCampaigns.length === 1) {
         setChecking(true);
         try {
-          const token = localStorage.getItem("accessToken");
-          const response = await fetch(
-            `/api/dashboard/campaign-brochure?campaignId=${selectedCampaigns[0].id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+          const url = await CampaignBrochureService.getBrochureURL(
+            selectedCampaigns[0].id
           );
-
-          if (response.ok) {
-            const data = await response.json();
-            setBrochureUrl(data.url);
-          } else {
-            setBrochureUrl(null);
-          }
+          setBrochureUrl(url);
         } catch (error) {
           console.error("Error checking brochure:", error);
           setBrochureUrl(null);
@@ -77,26 +66,11 @@ export function CampaignBrochureManager() {
 
     setUploading(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("campaignId", selectedCampaigns[0].id);
-
-      const response = await fetch("/api/dashboard/campaign-brochure", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Error al subir el PDF");
-      }
-
-      const data = await response.json();
-      setBrochureUrl(data.url);
+      const downloadURL = await CampaignBrochureService.uploadBrochure(
+        selectedCampaigns[0].id,
+        file
+      );
+      setBrochureUrl(downloadURL);
       alert("PDF subido exitosamente");
     } catch (error: any) {
       console.error("Error uploading brochure:", error);
@@ -130,22 +104,7 @@ export function CampaignBrochureManager() {
 
     setDeleting(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const response = await fetch(
-        `/api/dashboard/campaign-brochure?campaignId=${selectedCampaigns[0].id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Error al eliminar el PDF");
-      }
-
+      await CampaignBrochureService.deleteBrochure(selectedCampaigns[0].id);
       setBrochureUrl(null);
       alert("PDF eliminado exitosamente");
     } catch (error: any) {
