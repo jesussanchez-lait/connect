@@ -7,6 +7,8 @@ import {
   sendOtpUseCase,
   verifyOtpUseCase,
   createPartialUserUseCase,
+  registerWithEmailPasswordUseCase,
+  signInWithGoogleUseCase,
 } from "@/src/shared/di/container";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import {
@@ -112,6 +114,16 @@ export function RegisterForm({
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [phoneVerified, setPhoneVerified] = useState(false);
+
+  // Método de registro seleccionado
+  const [authMethod, setAuthMethod] = useState<
+    "otp" | "credentials" | "google" | null
+  >(null);
+
+  // Campos para registro con credenciales
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const steps = [
     "Datos Personales",
@@ -469,7 +481,7 @@ export function RegisterForm({
   const handleConfirmUserData = async () => {
     if (currentStep === 1 && validateStep1()) {
       setCurrentStep(2);
-      await handleSendOtp();
+      // No enviar OTP automáticamente, esperar a que el usuario seleccione el método
     }
   };
 
@@ -480,9 +492,133 @@ export function RegisterForm({
       setOtpSent(false);
       setOtpCode("");
       setError("");
+      setAuthMethod(null);
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
     } else if (currentStep === 3) {
       setCurrentStep(2);
       setError("");
+    }
+  };
+
+  // Seleccionar método de autenticación
+  const handleSelectAuthMethod = (method: "otp" | "credentials" | "google") => {
+    setAuthMethod(method);
+    setError("");
+
+    if (method === "otp") {
+      handleSendOtp();
+    } else if (method === "google") {
+      handleGoogleSignIn();
+    }
+    // Para credentials, solo mostrar los campos
+  };
+
+  // Manejar registro con Google
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setLoading(true);
+
+    try {
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+
+      // Primero crear el usuario parcial con los datos del paso 1
+      // Necesitamos hacer esto antes de autenticar con Google
+      // Pero Google no nos da el ID hasta después, así que usaremos un ID temporal
+      const tempId = `temp-${Date.now()}`;
+
+      await handlePreRegisterUser({ id: tempId });
+
+      // Autenticar con Google
+      const authResult = await signInWithGoogleUseCase.execute();
+
+      // Actualizar el usuario parcial con el ID real de Firebase
+      await handlePreRegisterUser({ id: authResult.user.id });
+
+      setPhoneVerified(true);
+      setCurrentStep(3);
+    } catch (err: any) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Error al autenticar con Google. Intenta nuevamente."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Manejar registro con credenciales (email/password)
+  const handleRegisterWithCredentials = async () => {
+    setError("");
+
+    // Validaciones
+    if (!email.trim()) {
+      setError("El email es requerido");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError("Formato de email inválido");
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+
+      // Crear cuenta de Firebase con email/password usando datos mínimos
+      // Los datos territoriales se completarán en el paso 3
+      const credentials: RegisterCredentials = {
+        firstName,
+        lastName,
+        documentNumber: documentNumber.replace(/\D/g, ""),
+        phoneNumber: normalizedPhone,
+        email: email.trim(),
+        password,
+        gender: gender || undefined,
+        profession: profession.trim() || undefined,
+        country: "Colombia", // Valor temporal, se actualizará en paso 3
+        department: "", // Se completará en paso 3
+        city: "", // Se completará en paso 3
+        address: "", // Se completará en paso 3
+        neighborhood: "", // Se completará en paso 3
+      };
+
+      // Solo incluir datos de campaña/multiplicador si no es admin
+      if (!isAdmin) {
+        credentials.campaignId = campaignId;
+        if (leaderId) {
+          credentials.leaderId = leaderId;
+        }
+        if (leaderName) {
+          credentials.leaderName = leaderName;
+        }
+      }
+
+      // Registrar con email/password (esto creará la cuenta de Firebase y el usuario en Firestore)
+      // El usuario se creará con datos mínimos y se actualizará en el paso 3
+      await registerWithEmailPasswordUseCase.execute(credentials);
+
+      setPhoneVerified(true);
+      setCurrentStep(3);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : "Error al registrarse");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -547,6 +683,12 @@ export function RegisterForm({
         fromCapitalCity,
       };
 
+      // Si el usuario se registró con email/password, incluir esos datos
+      if (authMethod === "credentials" && email && password) {
+        credentials.email = email.trim();
+        credentials.password = password;
+      }
+
       // Solo incluir datos de campaña/multiplicador si no es admin
       // leaderId es opcional: un multiplicador puede ser el primero del árbol
       if (!isAdmin) {
@@ -559,6 +701,8 @@ export function RegisterForm({
         }
       }
 
+      // Para todos los métodos, usar registerUseCase que actualizará el usuario existente
+      // o creará uno nuevo si no existe (aunque en este punto siempre debería existir)
       try {
         await registerUseCase.execute(credentials);
       } catch (registerError: any) {
@@ -739,7 +883,7 @@ export function RegisterForm({
                   placeholder="(123)-456-7890"
                 />
                 <p className="mt-2 text-sm text-gray-500">
-                  Te enviaremos un código de verificación por SMS
+                  Usado para verificación y comunicación
                 </p>
               </div>
 
@@ -788,69 +932,269 @@ export function RegisterForm({
           </div>
         )}
 
-        {/* PASO 2: VERIFICACIÓN DE TELÉFONO */}
+        {/* PASO 2: MÉTODO DE REGISTRO */}
         {currentStep === 2 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Paso 2: Verificación de Teléfono
+              Paso 2: Método de Registro
             </h3>
 
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
-                <p className="text-sm">
-                  Hemos enviado un código de verificación al número: <br />
-                  <span className="font-bold">{phoneNumberDisplay}</span>
+            {!authMethod ? (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600 mb-4">
+                  Selecciona cómo deseas registrarte:
                 </p>
-              </div>
 
-              <div>
-                <label
-                  htmlFor="otp"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Código OTP (6 dígitos) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="otp"
-                  type="text"
-                  value={otpCode}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "").slice(0, 6);
-                    setOtpCode(value);
-                  }}
-                  required
-                  maxLength={6}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl font-mono tracking-widest text-gray-900 placeholder:text-gray-400"
-                  placeholder="000000"
-                  autoFocus
-                />
-                <p className="mt-2 text-sm text-gray-500">
-                  Ingresa el código de 6 dígitos que recibiste por SMS
-                </p>
-              </div>
-
-              <div className="flex gap-4">
+                {/* Opción OTP */}
                 <button
                   type="button"
-                  onClick={handlePreviousStep}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                  onClick={() => handleSelectAuthMethod("otp")}
+                  disabled={loading}
+                  className="w-full p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
                 >
-                  ← Volver
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">📱</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900">
+                        Código OTP por SMS
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        Recibirás un código de verificación en tu teléfono
+                      </p>
+                    </div>
+                  </div>
                 </button>
+
+                {/* Opción Credenciales */}
                 <button
                   type="button"
-                  onClick={handleVerifyOtp}
-                  disabled={loading || otpCode.length !== 6}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  onClick={() => handleSelectAuthMethod("credentials")}
+                  disabled={loading}
+                  className="w-full p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
                 >
-                  {loading ? (
-                    <LoaderWithText text="Verificando..." color="white" />
-                  ) : (
-                    "Verificar Código"
-                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">✉️</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900">
+                        Email y Contraseña
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        Crea una cuenta con tu email y una contraseña
+                      </p>
+                    </div>
+                  </div>
                 </button>
+
+                {/* Opción Google */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectAuthMethod("google")}
+                  disabled={loading}
+                  className="w-full p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">🔴</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900">
+                        Continuar con Google
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        Usa tu cuenta de Google para registrarte rápidamente
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={handlePreviousStep}
+                    className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                  >
+                    ← Volver
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : authMethod === "otp" ? (
+              /* Flujo OTP */
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
+                  <p className="text-sm">
+                    Hemos enviado un código de verificación al número: <br />
+                    <span className="font-bold">{phoneNumberDisplay}</span>
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="otp"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Código OTP (6 dígitos){" "}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="otp"
+                    type="text"
+                    value={otpCode}
+                    onChange={(e) => {
+                      const value = e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 6);
+                      setOtpCode(value);
+                    }}
+                    required
+                    maxLength={6}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl font-mono tracking-widest text-gray-900 placeholder:text-gray-400"
+                    placeholder="000000"
+                    autoFocus
+                  />
+                  <p className="mt-2 text-sm text-gray-500">
+                    Ingresa el código de 6 dígitos que recibiste por SMS
+                  </p>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMethod(null);
+                      setOtpSent(false);
+                      setOtpCode("");
+                      setError("");
+                    }}
+                    className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                  >
+                    ← Cambiar método
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleVerifyOtp}
+                    disabled={loading || otpCode.length !== 6}
+                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {loading ? (
+                      <LoaderWithText text="Verificando..." color="white" />
+                    ) : (
+                      "Verificar Código"
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : authMethod === "credentials" ? (
+              /* Flujo Credenciales */
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                    placeholder="tu@email.com"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Contraseña <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    La contraseña debe tener al menos 6 caracteres
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="confirmPassword"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Confirmar Contraseña <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                    placeholder="Repite tu contraseña"
+                  />
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMethod(null);
+                      setEmail("");
+                      setPassword("");
+                      setConfirmPassword("");
+                      setError("");
+                    }}
+                    className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                  >
+                    ← Cambiar método
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRegisterWithCredentials}
+                    disabled={loading}
+                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {loading ? (
+                      <LoaderWithText text="Registrando..." color="white" />
+                    ) : (
+                      "Continuar"
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : authMethod === "google" ? (
+              /* Flujo Google - se maneja automáticamente */
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
+                  <p className="text-sm">
+                    {loading
+                      ? "Autenticando con Google..."
+                      : "Se abrirá una ventana para autenticarte con Google"}
+                  </p>
+                </div>
+                {loading && (
+                  <div className="flex justify-center">
+                    <LoaderWithText text="Procesando..." color="blue" />
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         )}
 

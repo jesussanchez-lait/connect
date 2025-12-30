@@ -27,7 +27,7 @@ Firebase Auth está configurado para usar `browserLocalPersistence`, lo que sign
 
 ```typescript
 // src/infrastructure/firebase/config.ts
-setPersistence(auth, browserLocalPersistence)
+setPersistence(auth, browserLocalPersistence);
 ```
 
 Esto asegura que Firebase Auth use `localStorage` para guardar la sesión.
@@ -41,7 +41,7 @@ El hook `useAuth` escucha cambios en el estado de autenticación usando `onAuthS
 onAuthStateChanged(auth, (firebaseUser) => {
   // Si firebaseUser existe, el usuario está autenticado
   // Firebase Auth maneja la persistencia automáticamente
-})
+});
 ```
 
 #### Prevención de OTP Innecesario
@@ -82,12 +82,14 @@ Si necesitas reautenticación por seguridad (ej. para operaciones sensibles como
 Usar biometría del dispositivo (huella/FaceID) para "desbloquear" la app localmente, en lugar de pedir OTP a Firebase cada vez.
 
 **Ventajas:**
+
 - ✅ No consume límites de OTP de Firebase
 - ✅ Más rápido para el usuario
 - ✅ Funciona offline
 - ✅ Mejor experiencia de usuario
 
 **Implementación sugerida:**
+
 - Usar `WebAuthn` API para autenticación biométrica
 - Guardar un flag local que indica que la app está "desbloqueada"
 - El flag expira después de X minutos de inactividad
@@ -130,5 +132,3 @@ await reauthenticateWithPhoneNumber(auth.currentUser, phoneAuthCredential);
 - [Firebase Auth Persistence](https://firebase.google.com/docs/auth/web/auth-state-persistence)
 - [Firebase Auth State Changes](https://firebase.google.com/docs/auth/web/manage-users#get_the_currently_signed-in_user)
 - [WebAuthn API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API)
-
-
