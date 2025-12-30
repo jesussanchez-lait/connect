@@ -14,6 +14,16 @@ export function useCampaignUsers(selectedCampaigns: Campaign[]) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Crear una dependencia que cambie cuando se actualicen los datos de las campañas
+  const campaignsDependency = useMemo(() => {
+    return selectedCampaigns
+      .map(
+        (c) =>
+          `${c.id}:${c.participants}:${c.updatedAt?.getTime() || c.createdAt.getTime()}`
+      )
+      .join("|");
+  }, [selectedCampaigns]);
+
   useEffect(() => {
     const fetchUsers = async () => {
       if (!db || selectedCampaigns.length === 0) {
@@ -84,7 +94,7 @@ export function useCampaignUsers(selectedCampaigns: Campaign[]) {
     };
 
     fetchUsers();
-  }, [selectedCampaigns.map((c) => c.id).join(",")]);
+  }, [campaignsDependency]);
 
   return { users, loading, error };
 }

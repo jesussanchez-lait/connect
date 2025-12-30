@@ -143,35 +143,6 @@ export function FollowerDashboard() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Información de solo lectura para Seguidores */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start">
-              <svg
-                className="w-5 h-5 text-blue-600 mt-0.5 mr-3"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div>
-                <h3 className="text-sm font-medium text-blue-800">
-                  Vista de Solo Lectura
-                </h3>
-                <p className="text-sm text-blue-700 mt-1">
-                  Como seguidor, puedes ver tu información y la de tu
-                  multiplicador, pero no tienes capacidad de reclutar nuevos
-                  miembros.
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Selector de Campaña */}
           <div className="mb-6">
             <CampaignSelector />
