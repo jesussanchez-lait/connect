@@ -275,7 +275,7 @@ export function LoginForm() {
   return (
     <>
       {/* Contenedor invisible para reCAPTCHA de Firebase */}
-      <div id="recaptcha-container" className="hidden"></div>
+      <div id="recaptcha-container" className="sr-only"></div>
 
       {/* Selector de método de autenticación */}
       <div className="mb-6">

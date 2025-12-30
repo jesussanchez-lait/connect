@@ -609,7 +609,7 @@ export function RegisterForm({
   return (
     <div className="space-y-4">
       {/* Contenedor invisible para reCAPTCHA de Firebase */}
-      <div id="recaptcha-container" className="hidden"></div>
+      <div id="recaptcha-container" className="sr-only"></div>
       {/* Stepper */}
       <Stepper
         currentStep={currentStep}

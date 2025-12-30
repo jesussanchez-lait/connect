@@ -94,11 +94,19 @@ async function initializeRecaptcha(): Promise<RecaptchaVerifier> {
     recaptchaVerifier = null;
   }
 
-  // Verificar que el contenedor existe
+  // Verificar que el contenedor existe y está disponible
   const container = document.getElementById("recaptcha-container");
   if (!container) {
     throw new Error(
       "Contenedor de reCAPTCHA no encontrado. Asegúrate de tener un elemento con id 'recaptcha-container' en el DOM."
+    );
+  }
+
+  // Verificar que el contenedor no esté oculto con display: none
+  const containerStyle = window.getComputedStyle(container);
+  if (containerStyle.display === "none") {
+    console.warn(
+      "⚠️ El contenedor de reCAPTCHA está oculto con display: none. Esto puede causar problemas. Usa 'sr-only' o 'invisible' en lugar de 'hidden'."
     );
   }
 
@@ -112,19 +120,32 @@ async function initializeRecaptcha(): Promise<RecaptchaVerifier> {
   // Esperar un momento adicional para asegurar que el DOM está completamente cargado
   await new Promise((resolve) => setTimeout(resolve, 200));
 
+  // Validar que Firebase Auth esté correctamente configurado
+  if (!auth.app.options.projectId) {
+    throw new Error(
+      "Firebase Auth no está correctamente configurado. El projectId es requerido."
+    );
+  }
+
   try {
     // Configuración de reCAPTCHA para Firebase Phone Authentication
     // IMPORTANTE: Firebase Phone Authentication usa reCAPTCHA v3 invisible internamente
     // El RecaptchaVerifier de Firebase maneja la integración con reCAPTCHA v3
     // El site key (6LdtfCIsAAAAAGKD9vHbGG-HBRmYTbEp17_S9xhC) debe estar vinculado
     // al proyecto en Firebase Console > Authentication > Settings
+    console.log("🔐 Inicializando reCAPTCHA verifier...", {
+      projectId: auth.app.options.projectId,
+      authDomain: auth.app.options.authDomain,
+      containerExists: !!container,
+    });
+
     recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
       size: "invisible",
       callback: () => {
-        // reCAPTCHA resuelto
+        console.log("✅ reCAPTCHA resuelto correctamente");
       },
       "expired-callback": () => {
-        // reCAPTCHA expirado
+        console.warn("⚠️ reCAPTCHA expirado");
         recaptchaVerifier = null;
       },
     });
@@ -149,20 +170,35 @@ async function initializeRecaptcha(): Promise<RecaptchaVerifier> {
 
     // Proporcionar mensaje de error más útil
     if (error.code === "auth/invalid-app-credential") {
+      const currentDomain = typeof window !== "undefined" ? window.location.hostname : "unknown";
+      const currentOrigin = typeof window !== "undefined" ? window.location.origin : "unknown";
+      
+      console.error("❌ Error de credenciales de Firebase:", {
+        code: error.code,
+        message: error.message,
+        currentDomain,
+        currentOrigin,
+        projectId: auth?.app?.options?.projectId,
+        authDomain: auth?.app?.options?.authDomain,
+      });
+
       throw new Error(
         "Error de credenciales de aplicación Firebase. Por favor verifica:\n\n" +
           "1. Que el dominio esté autorizado en Firebase Console:\n" +
-          "   - Ve a Authentication > Settings > Authorized domains\n" +
-          "   - Asegúrate de que 'localhost' esté en la lista\n\n" +
+          `   - Ve a Authentication > Settings > Authorized domains\n` +
+          `   - Asegúrate de que '${currentDomain}' esté en la lista\n` +
+          `   - Para desarrollo local, 'localhost' DEBE estar en la lista\n\n` +
           "2. Que reCAPTCHA esté correctamente configurado:\n" +
           "   - Ve a Authentication > Sign-in method > Phone\n" +
           "   - Verifica que Phone Authentication esté habilitado\n" +
           "   - Confirma que reCAPTCHA esté activo\n\n" +
           "3. Que las credenciales de la aplicación sean válidas:\n" +
           "   - Ve a Project Settings > General\n" +
-          "   - Verifica que las credenciales web sean correctas\n\n" +
-          "Error técnico: " +
-          error.message
+          "   - Verifica que las credenciales web sean correctas\n" +
+          `   - Project ID actual: ${auth?.app?.options?.projectId || "no configurado"}\n` +
+          `   - Auth Domain actual: ${auth?.app?.options?.authDomain || "no configurado"}\n\n` +
+          "4. Limpia la caché del navegador y recarga la página\n\n" +
+          `Error técnico: ${error.message}`
       );
     }
 
@@ -275,13 +311,30 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
         // Proporcionar mensaje de error más específico
         if (signInError.code === "auth/invalid-app-credential") {
+          const currentDomain = typeof window !== "undefined" ? window.location.hostname : "unknown";
+          
+          console.error("❌ Error de credenciales al enviar OTP:", {
+            code: signInError.code,
+            message: signInError.message,
+            currentDomain,
+            projectId: auth?.app?.options?.projectId,
+          });
+
           throw new Error(
-            "Error de credenciales de aplicación Firebase. Por favor verifica:\n" +
-              "1. Que el dominio esté autorizado en Firebase Console > Authentication > Settings > Authorized domains\n" +
-              "2. Que reCAPTCHA esté correctamente configurado en Firebase Console\n" +
-              "3. Que las credenciales de la aplicación sean válidas\n\n" +
-              "Error técnico: " +
-              signInError.message
+            "Error de credenciales de aplicación Firebase. Por favor verifica:\n\n" +
+              "1. Que el dominio esté autorizado en Firebase Console:\n" +
+              `   - Ve a Authentication > Settings > Authorized domains\n` +
+              `   - Asegúrate de que '${currentDomain}' esté en la lista\n` +
+              `   - Para desarrollo local, 'localhost' DEBE estar en la lista\n\n` +
+              "2. Que reCAPTCHA esté correctamente configurado:\n" +
+              "   - Ve a Authentication > Sign-in method > Phone\n" +
+              "   - Verifica que Phone Authentication esté habilitado\n" +
+              "   - Confirma que reCAPTCHA esté activo\n\n" +
+              "3. Que las credenciales de la aplicación sean válidas:\n" +
+              "   - Ve a Project Settings > General\n" +
+              "   - Verifica que las credenciales web sean correctas\n\n" +
+              "4. Limpia la caché del navegador y recarga la página\n\n" +
+              `Error técnico: ${signInError.message}`
           );
         }
 
