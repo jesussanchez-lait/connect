@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { useToast } from "@/src/presentation/contexts/ToastContext";
 
 interface MultiplierRequest {
   id: string;
@@ -25,6 +26,7 @@ export function MultiplierRequestsList() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const apiClient = new ApiClient();
+  const { showError } = useToast();
 
   const fetchRequests = async () => {
     if (!selectedCampaign) {
@@ -60,7 +62,7 @@ export function MultiplierRequestsList() {
       );
       await fetchRequests(); // Refrescar lista
     } catch (error: any) {
-      alert(error.message || "Error al aprobar solicitud");
+      showError(error.message || "Error al aprobar solicitud");
     } finally {
       setProcessingId(null);
     }
@@ -79,7 +81,7 @@ export function MultiplierRequestsList() {
       );
       await fetchRequests(); // Refrescar lista
     } catch (error: any) {
-      alert(error.message || "Error al rechazar solicitud");
+      showError(error.message || "Error al rechazar solicitud");
     } finally {
       setProcessingId(null);
     }

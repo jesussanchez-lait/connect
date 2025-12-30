@@ -171,9 +171,11 @@ async function initializeRecaptcha(): Promise<RecaptchaVerifier> {
 
     // Proporcionar mensaje de error más útil
     if (error.code === "auth/invalid-app-credential") {
-      const currentDomain = typeof window !== "undefined" ? window.location.hostname : "unknown";
-      const currentOrigin = typeof window !== "undefined" ? window.location.origin : "unknown";
-      
+      const currentDomain =
+        typeof window !== "undefined" ? window.location.hostname : "unknown";
+      const currentOrigin =
+        typeof window !== "undefined" ? window.location.origin : "unknown";
+
       console.error("❌ Error de credenciales de Firebase:", {
         code: error.code,
         message: error.message,
@@ -196,8 +198,12 @@ async function initializeRecaptcha(): Promise<RecaptchaVerifier> {
           "3. Que las credenciales de la aplicación sean válidas:\n" +
           "   - Ve a Project Settings > General\n" +
           "   - Verifica que las credenciales web sean correctas\n" +
-          `   - Project ID actual: ${auth?.app?.options?.projectId || "no configurado"}\n` +
-          `   - Auth Domain actual: ${auth?.app?.options?.authDomain || "no configurado"}\n\n` +
+          `   - Project ID actual: ${
+            auth?.app?.options?.projectId || "no configurado"
+          }\n` +
+          `   - Auth Domain actual: ${
+            auth?.app?.options?.authDomain || "no configurado"
+          }\n\n` +
           "4. Limpia la caché del navegador y recarga la página\n\n" +
           `Error técnico: ${error.message}`
       );
@@ -312,8 +318,11 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
         // Proporcionar mensaje de error más específico
         if (signInError.code === "auth/invalid-app-credential") {
-          const currentDomain = typeof window !== "undefined" ? window.location.hostname : "unknown";
-          
+          const currentDomain =
+            typeof window !== "undefined"
+              ? window.location.hostname
+              : "unknown";
+
           console.error("❌ Error de credenciales al enviar OTP:", {
             code: signInError.code,
             message: signInError.message,
@@ -684,7 +693,10 @@ export class FirebaseAuthRepository implements IAuthRepository {
       if (credentials.latitude !== undefined && credentials.latitude !== null) {
         userData.latitude = credentials.latitude;
       }
-      if (credentials.longitude !== undefined && credentials.longitude !== null) {
+      if (
+        credentials.longitude !== undefined &&
+        credentials.longitude !== null
+      ) {
         userData.longitude = credentials.longitude;
       }
       if (credentials.areaType) {
@@ -699,6 +711,25 @@ export class FirebaseAuthRepository implements IAuthRepository {
       if (credentials.leaderId) {
         userData.leaderId = credentials.leaderId;
       }
+
+      // IMPORTANTE: Verificar si es una nueva campaña ANTES de modificar existingCampaignIds
+      const isNewCampaign =
+        credentials.campaignId &&
+        !existingCampaignIds.includes(credentials.campaignId);
+
+      // Log para debugging
+      if (credentials.campaignId) {
+        console.log(
+          `🔍 [register] Verificando campaña ${credentials.campaignId}:`,
+          {
+            userExists,
+            existingCampaignIds,
+            isNewCampaign,
+            userRole,
+          }
+        );
+      }
+
       if (credentials.campaignId) {
         // Agregar la campaña a la lista de campañas del usuario
         // Si no está ya incluida, agregarla
@@ -717,14 +748,11 @@ export class FirebaseAuthRepository implements IAuthRepository {
         userData.createdAt = serverTimestamp();
       }
 
-      // Verificar si es una nueva campaña para este usuario
-      const isNewCampaign =
-        credentials.campaignId &&
-        !existingCampaignIds.includes(credentials.campaignId);
-
       await setDoc(userDocRef, userData, { merge: true });
 
       // Incrementar el contador de participants de la campaña si es una nueva campaña
+      // IMPORTANTE: Esto asegura que cada vez que un multiplicador se registra en una campaña nueva, se cuenta
+      // Solo incrementamos si es una nueva campaña para evitar duplicados
       if (isNewCampaign && credentials.campaignId) {
         try {
           const campaignDocRef = doc(db!, "campaigns", credentials.campaignId);
@@ -733,16 +761,20 @@ export class FirebaseAuthRepository implements IAuthRepository {
             updatedAt: serverTimestamp(),
           });
           console.log(
-            `✅ Contador de participants incrementado para campaña ${credentials.campaignId}`
+            `✅ [register] Contador de participants incrementado para campaña ${credentials.campaignId}. Rol: ${userRole} (Nuevo miembro)`
           );
         } catch (campaignError: any) {
           // No fallar el registro si hay error al actualizar la campaña
           // Solo loguear el error
           console.error(
-            `⚠️ Error al incrementar participants de la campaña ${credentials.campaignId}:`,
+            `⚠️ [register] Error al incrementar participants de la campaña ${credentials.campaignId}:`,
             campaignError.message
           );
         }
+      } else if (credentials.campaignId && !isNewCampaign) {
+        console.log(
+          `ℹ️ [register] Usuario ya está en la campaña ${credentials.campaignId}, no se incrementa el contador (evita duplicados)`
+        );
       }
 
       // Incrementar el contador de participants del multiplicador (líder) si existe
@@ -828,7 +860,8 @@ export class FirebaseAuthRepository implements IAuthRepository {
       const userData = userDoc.data();
       user = {
         id: firebaseUser.uid,
-        phoneNumber: firebaseUser.phoneNumber || userData.phoneNumber || undefined,
+        phoneNumber:
+          firebaseUser.phoneNumber || userData.phoneNumber || undefined,
         email: firebaseUser.email || userData.email || undefined,
         name: userData.name || firebaseUser.displayName || "",
         role: userData.role as UserRole | undefined,
@@ -981,7 +1014,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
           throw new Error("Formato de email inválido");
         } else if (error.code === "auth/user-disabled") {
           throw new Error("Esta cuenta ha sido deshabilitada");
-        } else if (error.code === "auth/account-exists-with-different-credential") {
+        } else if (
+          error.code === "auth/account-exists-with-different-credential"
+        ) {
           throw new Error(
             "Ya existe una cuenta con este email usando otro método de autenticación"
           );
@@ -1033,7 +1068,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
           throw new Error(
             "Ventana emergente bloqueada. Por favor, permite ventanas emergentes para este sitio."
           );
-        } else if (error.code === "auth/account-exists-with-different-credential") {
+        } else if (
+          error.code === "auth/account-exists-with-different-credential"
+        ) {
           // Intentar vincular cuentas automáticamente
           const email = error.customData?.email;
           if (email) {
@@ -1069,7 +1106,8 @@ export class FirebaseAuthRepository implements IAuthRepository {
         // Intentar vincular la cuenta de Google a la cuenta existente
         try {
           // Obtener la credencial de Google
-          const credential = GoogleAuthProvider.credentialFromResult(userCredential);
+          const credential =
+            GoogleAuthProvider.credentialFromResult(userCredential);
           if (!credential) {
             throw new Error("No se pudo obtener la credencial de Google");
           }
@@ -1129,7 +1167,8 @@ export class FirebaseAuthRepository implements IAuthRepository {
     } catch (error: any) {
       console.error("Error signing in with Google:", error.message);
       throw new Error(
-        error.message || "Error al iniciar sesión con Google. Intenta nuevamente."
+        error.message ||
+          "Error al iniciar sesión con Google. Intenta nuevamente."
       );
     }
   }
@@ -1357,10 +1396,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
     }
   }
 
-  async linkAuthProvider(
-    providerId: string,
-    credential: any
-  ): Promise<void> {
+  async linkAuthProvider(providerId: string, credential: any): Promise<void> {
     try {
       if (!auth || !auth.currentUser) {
         throw new Error("Usuario no autenticado");
@@ -1378,7 +1414,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
         );
         await linkWithCredential(currentUser, emailCredential);
       } else {
-        throw new Error(`Proveedor de autenticación no soportado: ${providerId}`);
+        throw new Error(
+          `Proveedor de autenticación no soportado: ${providerId}`
+        );
       }
     } catch (error: any) {
       console.error("Error linking auth provider:", error.message);
@@ -1535,7 +1573,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
         firebaseUser = userCredential.user;
       } catch (error: any) {
         console.error("Error creating anonymous user:", error);
-        throw new Error("Error al crear cuenta. Por favor, intenta nuevamente.");
+        throw new Error(
+          "Error al crear cuenta. Por favor, intenta nuevamente."
+        );
       }
 
       // Calcular fromCapitalCity y areaType
@@ -1581,7 +1621,10 @@ export class FirebaseAuthRepository implements IAuthRepository {
       if (credentials.latitude !== undefined && credentials.latitude !== null) {
         userData.latitude = credentials.latitude;
       }
-      if (credentials.longitude !== undefined && credentials.longitude !== null) {
+      if (
+        credentials.longitude !== undefined &&
+        credentials.longitude !== null
+      ) {
         userData.longitude = credentials.longitude;
       }
 
@@ -1608,15 +1651,20 @@ export class FirebaseAuthRepository implements IAuthRepository {
             participants: increment(1),
             updatedAt: serverTimestamp(),
           });
+          console.log(
+            `✅ [registerFollower] Contador de participants incrementado para multiplicador ${credentials.leaderId}`
+          );
         } catch (leaderError: any) {
           console.error(
-            `Error al incrementar participants del multiplicador:`,
+            `⚠️ [registerFollower] Error al incrementar participants del multiplicador ${credentials.leaderId}:`,
             leaderError.message
           );
         }
       }
 
       // Incrementar contador de la campaña si existe
+      // IMPORTANTE: Siempre incrementamos cuando se registra un seguidor en una campaña
+      // Los seguidores siempre son nuevos usuarios (autenticación anónima), por lo que siempre incrementamos
       if (credentials.campaignId) {
         try {
           const campaignDocRef = doc(db, "campaigns", credentials.campaignId);
@@ -1624,9 +1672,14 @@ export class FirebaseAuthRepository implements IAuthRepository {
             participants: increment(1),
             updatedAt: serverTimestamp(),
           });
+          console.log(
+            `✅ [registerFollower] Contador de participants incrementado para campaña ${credentials.campaignId} (Nuevo seguidor)`
+          );
         } catch (campaignError: any) {
+          // No fallar el registro si hay error al actualizar la campaña
+          // Solo loguear el error
           console.error(
-            `Error al incrementar participants de la campaña:`,
+            `⚠️ [registerFollower] Error al incrementar participants de la campaña ${credentials.campaignId}:`,
             campaignError.message
           );
         }
@@ -1672,7 +1725,8 @@ export class FirebaseAuthRepository implements IAuthRepository {
     } catch (error: any) {
       console.error("Error registering follower:", error.message);
       throw new Error(
-        error.message || "Error al registrar seguidor. Por favor, intenta nuevamente."
+        error.message ||
+          "Error al registrar seguidor. Por favor, intenta nuevamente."
       );
     }
   }
@@ -1807,7 +1861,8 @@ export class FirebaseAuthRepository implements IAuthRepository {
       await updateDoc(userDocRef, {
         identityVerificationWorkflowId: verification.workflowId,
         identityVerificationStatus: "pending",
-        identityVerificationAttempts: (userData.identityVerificationAttempts || 0) + 1,
+        identityVerificationAttempts:
+          (userData.identityVerificationAttempts || 0) + 1,
         updatedAt: serverTimestamp(),
       });
 

@@ -27,6 +27,7 @@ import {
 } from "@/src/presentation/contexts/DashboardConfigContext";
 import { Campaign } from "@/src/domain/entities/Campaign";
 import { CampaignBrochureManager } from "./CampaignBrochureManager";
+import { useToast } from "@/src/presentation/contexts/ToastContext";
 
 function CampaignRegistrationLink({
   campaign,
@@ -35,6 +36,7 @@ function CampaignRegistrationLink({
   campaign: Campaign;
   showCampaignName?: boolean;
 }) {
+  const { showSuccess, showError } = useToast();
   const baseUrl =
     typeof window !== "undefined"
       ? window.location.origin
@@ -52,9 +54,9 @@ function CampaignRegistrationLink({
       textArea.select();
       try {
         document.execCommand("copy");
-        alert("Link copiado al portapapeles");
+        showSuccess("Link copiado al portapapeles");
       } catch (err) {
-        alert("No se pudo copiar el link. Por favor, cópialo manualmente.");
+        showError("No se pudo copiar el link. Por favor, cópialo manualmente.");
       }
       document.body.removeChild(textArea);
       return;
@@ -62,7 +64,7 @@ function CampaignRegistrationLink({
 
     navigator.clipboard.writeText(registrationUrl).then(
       () => {
-        alert("Link copiado al portapapeles");
+        showSuccess("Link copiado al portapapeles");
       },
       () => {
         // Fallback si falla la API
@@ -74,9 +76,11 @@ function CampaignRegistrationLink({
         textArea.select();
         try {
           document.execCommand("copy");
-          alert("Link copiado al portapapeles");
+          showSuccess("Link copiado al portapapeles");
         } catch (err) {
-          alert("No se pudo copiar el link. Por favor, cópialo manualmente.");
+          showError(
+            "No se pudo copiar el link. Por favor, cópialo manualmente."
+          );
         }
         document.body.removeChild(textArea);
       }
@@ -292,6 +296,7 @@ export function AdminDashboard() {
   const { users, loading: loadingUsers } = useCampaignUsers(selectedCampaigns);
   const { isWidgetVisible, config } = useDashboardConfig(); // Ahora viene del contexto compartido
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { showError, showWarning } = useToast();
 
   // Calcular widgets visibles para optimizar el layout - usar useMemo para reaccionar a cambios
   const visibleWidgets = useMemo(() => {
@@ -356,17 +361,17 @@ export function AdminDashboard() {
 
   const handleExportData = async () => {
     if (selectedCampaigns.length === 0) {
-      alert("Por favor selecciona al menos una campaña para exportar");
+      showWarning("Por favor selecciona al menos una campaña para exportar");
       return;
     }
 
     if (loadingUsers) {
-      alert("Por favor espera a que se carguen los datos");
+      showWarning("Por favor espera a que se carguen los datos");
       return;
     }
 
     if (users.length === 0) {
-      alert("No hay participantes en las campañas seleccionadas");
+      showWarning("No hay participantes en las campañas seleccionadas");
       return;
     }
 
@@ -376,7 +381,7 @@ export function AdminDashboard() {
     );
 
     if (multipliers.length === 0) {
-      alert("No hay multiplicadores en las campañas seleccionadas");
+      showWarning("No hay multiplicadores en las campañas seleccionadas");
       return;
     }
 
@@ -395,7 +400,7 @@ export function AdminDashboard() {
       downloadCSV(csvContent, filename);
     } catch (error) {
       console.error("Error al exportar datos:", error);
-      alert("Error al exportar los datos. Por favor intenta nuevamente.");
+      showError("Error al exportar los datos. Por favor intenta nuevamente.");
     }
   };
 

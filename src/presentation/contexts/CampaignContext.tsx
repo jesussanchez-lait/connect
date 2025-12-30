@@ -175,6 +175,9 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
         (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
+            const previousCampaign = campaignMap.get(campaignId);
+            const previousParticipants = previousCampaign?.participants || 0;
+            
             const campaign: Campaign = {
               id: docSnap.id,
               name: data.name,
@@ -186,16 +189,30 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
               createdAt: data.createdAt?.toDate() || new Date(),
               updatedAt: data.updatedAt?.toDate(),
             };
+            
+            // Log cuando cambia el número de participantes
+            if (previousCampaign && previousParticipants !== campaign.participants) {
+              console.log(
+                `📊 [CampaignContext] Campaña ${campaignId} - Participants actualizado: ${previousParticipants} → ${campaign.participants}`
+              );
+            }
+            
             campaignMap.set(campaign.id, campaign);
           } else {
             // Si el documento fue eliminado, removerlo del mapa
             campaignMap.delete(campaignId);
+            console.warn(
+              `⚠️ [CampaignContext] Campaña ${campaignId} fue eliminada de Firestore`
+            );
           }
 
           updateCampaigns();
         },
         (error) => {
-          console.error(`Error subscribing to campaign ${campaignId}:`, error);
+          console.error(
+            `❌ [CampaignContext] Error subscribing to campaign ${campaignId}:`,
+            error
+          );
         }
       );
 

@@ -5,6 +5,7 @@ import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { CampaignSelector } from "./CampaignSelector";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { ApiClient } from "@/src/infrastructure/api/ApiClient";
+import { useToast } from "@/src/presentation/contexts/ToastContext";
 
 interface FraudAlert {
   id: string;
@@ -146,6 +147,7 @@ export function CoordinatorDashboard() {
   const [loadingAlerts, setLoadingAlerts] = useState(true);
   const [loadingDivorces, setLoadingDivorces] = useState(true);
   const apiClient = new ApiClient();
+  const { showSuccess, showError } = useToast();
 
   useEffect(() => {
     fetchFraudAlerts();
@@ -182,10 +184,10 @@ export function CoordinatorDashboard() {
     try {
       await apiClient.post(`/dashboard/divorce-requests/${divorceId}`, {});
       fetchDivorceRequests();
-      alert("Divorcio aprobado exitosamente");
+      showSuccess("Divorcio aprobado exitosamente");
     } catch (error) {
       console.error("Error approving divorce:", error);
-      alert("Error al aprobar el divorcio");
+      showError("Error al aprobar el divorcio");
     }
   };
 
