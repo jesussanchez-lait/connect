@@ -41,6 +41,24 @@ Este error indica que Firebase no puede validar las credenciales de tu aplicaci�
 2. Activa el toggle **Enable**
 3. Haz clic en **Save**
 
+## Paso 2.5: Habilitar Autenticación Anónima ⚠️ REQUERIDO PARA SEGUIDORES
+
+**IMPORTANTE:** La autenticación anónima es necesaria para registrar seguidores (FOLLOWER) en el sistema.
+
+1. En Firebase Console, ve a **Authentication** > **Sign-in method**
+2. Busca **Anonymous** en la lista de proveedores
+3. **VERIFICA** que:
+   - ✅ Anonymous Authentication esté **Enabled** (Habilitado)
+   - ✅ El estado muestre "Anonymous sign-in is enabled"
+
+### Si Anonymous Authentication NO está habilitado:
+
+1. Haz clic en **Anonymous**
+2. Activa el toggle **Enable**
+3. Haz clic en **Save**
+
+**Nota:** Si ves el error `auth/admin-restricted-operation` al registrar un seguidor, significa que la autenticación anónima no está habilitada. Sigue los pasos anteriores para habilitarla.
+
 ## Paso 3: Verificar Credenciales de la Aplicación Web
 
 1. En Firebase Console, ve a **Project Settings** (⚙️ en el menú lateral)
@@ -156,6 +174,7 @@ Antes de probar, verifica que tengas:
 
 - [ ] `localhost` en dominios autorizados
 - [ ] Phone Authentication habilitado
+- [ ] **Anonymous Authentication habilitado** (requerido para registro de seguidores)
 - [ ] Credenciales correctas en config.ts
 - [ ] Contenedor de reCAPTCHA en los formularios
 - [ ] Caché del navegador limpiada

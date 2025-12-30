@@ -1555,8 +1555,26 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
   async registerFollower(credentials: RegisterCredentials): Promise<AuthUser> {
     try {
+      // Validar que Firebase esté inicializado
       if (!auth || !db) {
-        throw new Error("Firebase no está inicializado");
+        console.error("[registerFollower] Firebase no está inicializado", {
+          auth: !!auth,
+          db: !!db,
+        });
+        throw new Error(
+          "Error de configuración. Por favor, recarga la página e intenta nuevamente."
+        );
+      }
+
+      // Validar campos requeridos
+      if (!credentials.firstName || !credentials.lastName) {
+        throw new Error("El nombre completo es requerido");
+      }
+      if (!credentials.documentNumber) {
+        throw new Error("El número de documento es requerido");
+      }
+      if (!credentials.department || !credentials.city) {
+        throw new Error("El departamento y la ciudad son requeridos");
       }
 
       // Verificar si el documento de identidad ya existe
@@ -1578,19 +1596,55 @@ export class FirebaseAuthRepository implements IAuthRepository {
           if (validationError.message.includes("Ya existe")) {
             throw validationError;
           }
+          // Si es otro error de Firestore, loguearlo pero continuar
+          console.warn(
+            "[registerFollower] Error al verificar documento existente:",
+            validationError
+          );
         }
       }
 
       // Crear usuario anónimo en Firebase Auth (obtiene UID final)
       let firebaseUser: FirebaseUser;
       try {
+        console.log("[registerFollower] Creando usuario anónimo...");
         const userCredential = await signInAnonymously(auth);
         firebaseUser = userCredential.user;
-      } catch (error: any) {
-        console.error("Error creating anonymous user:", error);
-        throw new Error(
-          "Error al crear cuenta. Por favor, intenta nuevamente."
+        console.log(
+          "[registerFollower] Usuario anónimo creado:",
+          firebaseUser.uid
         );
+      } catch (error: any) {
+        console.error("[registerFollower] Error creating anonymous user:", {
+          code: error.code,
+          message: error.message,
+          stack: error.stack,
+        });
+
+        // Mensajes de error más específicos según el código de error de Firebase
+        if (error.code === "auth/operation-not-allowed") {
+          throw new Error(
+            "La autenticación anónima no está habilitada en Firebase. Contacta al administrador del sistema."
+          );
+        } else if (error.code === "auth/admin-restricted-operation") {
+          throw new Error(
+            "La autenticación anónima no está habilitada en Firebase Console. Por favor, contacta al administrador para habilitar la autenticación anónima en Firebase Authentication > Sign-in method > Anonymous."
+          );
+        } else if (error.code === "auth/network-request-failed") {
+          throw new Error(
+            "Error de conexión. Verifica tu conexión a internet e intenta nuevamente."
+          );
+        } else if (error.code === "auth/too-many-requests") {
+          throw new Error(
+            "Demasiados intentos. Por favor, espera unos minutos e intenta nuevamente."
+          );
+        } else {
+          throw new Error(
+            `Error al crear cuenta: ${
+              error.message || "Error desconocido"
+            }. Por favor, intenta nuevamente.`
+          );
+        }
       }
 
       // Calcular fromCapitalCity y areaType
@@ -1656,7 +1710,50 @@ export class FirebaseAuthRepository implements IAuthRepository {
         userData.campaignIds = [];
       }
 
-      await setDoc(userDocRef, userData);
+      try {
+        console.log("[registerFollower] Creando documento en Firestore...");
+        await setDoc(userDocRef, userData);
+        console.log(
+          "[registerFollower] Documento creado exitosamente:",
+          firebaseUser.uid
+        );
+      } catch (error: any) {
+        console.error(
+          "[registerFollower] Error al crear documento en Firestore:",
+          {
+            code: error.code,
+            message: error.message,
+            stack: error.stack,
+            userId: firebaseUser.uid,
+          }
+        );
+
+        // Si falla la creación del documento, intentar eliminar el usuario anónimo
+        try {
+          await firebaseUser.delete();
+        } catch (deleteError) {
+          console.error(
+            "[registerFollower] Error al eliminar usuario anónimo después de fallo:",
+            deleteError
+          );
+        }
+
+        if (error.code === "permission-denied") {
+          throw new Error(
+            "No tienes permisos para crear la cuenta. Contacta al administrador."
+          );
+        } else if (error.code === "unavailable") {
+          throw new Error(
+            "Servicio temporalmente no disponible. Por favor, intenta nuevamente en unos momentos."
+          );
+        } else {
+          throw new Error(
+            `Error al guardar los datos: ${
+              error.message || "Error desconocido"
+            }. Por favor, intenta nuevamente.`
+          );
+        }
+      }
 
       // Incrementar contador del multiplicador si existe
       if (credentials.leaderId) {
@@ -1701,7 +1798,23 @@ export class FirebaseAuthRepository implements IAuthRepository {
       }
 
       // Obtener token de acceso
-      const idToken = await firebaseUser.getIdToken();
+      let idToken: string;
+      try {
+        console.log("[registerFollower] Obteniendo token de acceso...");
+        idToken = await firebaseUser.getIdToken();
+        console.log("[registerFollower] Token obtenido exitosamente");
+      } catch (error: any) {
+        console.error("[registerFollower] Error al obtener token:", {
+          code: error.code,
+          message: error.message,
+          stack: error.stack,
+        });
+        throw new Error(
+          `Error al obtener token de acceso: ${
+            error.message || "Error desconocido"
+          }. Por favor, intenta nuevamente.`
+        );
+      }
 
       const user: User = {
         id: firebaseUser.uid,
@@ -1731,6 +1844,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         user.leaderName = credentials.leaderName;
       }
 
+      console.log("[registerFollower] Registro completado exitosamente");
       return {
         user,
         tokens: {
@@ -1738,11 +1852,26 @@ export class FirebaseAuthRepository implements IAuthRepository {
         },
       };
     } catch (error: any) {
-      console.error("Error registering follower:", error.message);
-      throw new Error(
+      // Si el error ya tiene un mensaje específico, usarlo
+      // Si no, proporcionar un mensaje genérico pero informativo
+      const errorMessage =
         error.message ||
-          "Error al registrar seguidor. Por favor, intenta nuevamente."
-      );
+        "Error al registrar seguidor. Por favor, intenta nuevamente.";
+
+      console.error("[registerFollower] Error completo:", {
+        message: errorMessage,
+        code: error.code,
+        stack: error.stack,
+        credentials: {
+          documentNumber: credentials.documentNumber,
+          firstName: credentials.firstName,
+          lastName: credentials.lastName,
+          hasCampaignId: !!credentials.campaignId,
+          hasLeaderId: !!credentials.leaderId,
+        },
+      });
+
+      throw new Error(errorMessage);
     }
   }
 
