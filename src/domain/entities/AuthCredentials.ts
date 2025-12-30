@@ -61,6 +61,8 @@ export interface PartialUserCredentials {
   lastName: string;
   documentNumber: string;
   phoneNumber: string;
+  gender?: Gender; // Sexo del usuario (opcional)
+  profession?: string; // Profesión del usuario (opcional)
 
   // Datos del multiplicador (opcionales para admin)
   leaderId?: string;

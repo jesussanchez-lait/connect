@@ -129,7 +129,7 @@ export function RegisterForm({
 
   // Detectar si es registro de seguidor (viene de QR)
   const isFollowerRegistration = !isAdmin && !!campaignId && !!leaderId;
-  
+
   // Use case para registro de seguidor
   const registerFollowerUseCase = new RegisterFollowerUseCase(authRepository);
 
@@ -404,6 +404,14 @@ export function RegisterForm({
         phoneNumber: normalizedPhone,
       };
 
+      // Incluir género y profesión si están disponibles
+      if (gender) {
+        partialUserData.gender = gender;
+      }
+      if (profession && profession.trim()) {
+        partialUserData.profession = profession.trim();
+      }
+
       // Solo incluir datos de campaña/multiplicador si no es admin
       // leaderId es opcional: un multiplicador puede ser el primero del árbol
       if (!isAdmin) {
@@ -542,19 +550,10 @@ export function RegisterForm({
     setLoading(true);
 
     try {
-      const normalizedPhone = normalizePhoneNumber(phoneNumber);
-
-      // Primero crear el usuario parcial con los datos del paso 1
-      // Necesitamos hacer esto antes de autenticar con Google
-      // Pero Google no nos da el ID hasta después, así que usaremos un ID temporal
-      const tempId = `temp-${Date.now()}`;
-
-      await handlePreRegisterUser({ id: tempId });
-
-      // Autenticar con Google
+      // Autenticar primero con Google para obtener el UID real
       const authResult = await signInWithGoogleUseCase.execute();
 
-      // Actualizar el usuario parcial con el ID real de Firebase
+      // Crear/actualizar el usuario en Firestore con el UID real y los datos del paso 1
       await handlePreRegisterUser({ id: authResult.user.id });
 
       setPhoneVerified(true);
@@ -817,7 +816,8 @@ export function RegisterForm({
       {isFollowerRegistration && leaderName && (
         <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
           <p className="text-sm font-medium">
-            Te estás registrando como <span className="font-bold">Seguidor</span> bajo el Multiplicador{" "}
+            Te estás registrando como{" "}
+            <span className="font-bold">Seguidor</span> bajo el Multiplicador{" "}
             <span className="font-bold">{leaderName}</span>
           </p>
         </div>
@@ -1254,10 +1254,13 @@ export function RegisterForm({
         )}
 
         {/* PASO 2 (seguidores) o PASO 3 (multiplicadores): DATOS TERRITORIALES */}
-        {((isFollowerRegistration && currentStep === 2) || (!isFollowerRegistration && currentStep === 3)) && (
+        {((isFollowerRegistration && currentStep === 2) ||
+          (!isFollowerRegistration && currentStep === 3)) && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {isFollowerRegistration ? "Paso 2: Datos Territoriales" : "Paso 3: Datos Territoriales"}
+              {isFollowerRegistration
+                ? "Paso 2: Datos Territoriales"
+                : "Paso 3: Datos Territoriales"}
             </h3>
 
             <div className="space-y-4">

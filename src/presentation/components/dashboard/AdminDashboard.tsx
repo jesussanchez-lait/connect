@@ -294,30 +294,6 @@ export function AdminDashboard() {
             </div>
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
               <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors text-sm font-medium ${
-                  sidebarOpen
-                    ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-                aria-label="Configurar Dashboard"
-              >
-                <svg
-                  className="w-4 h-4 flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                  />
-                </svg>
-                <span className="hidden sm:inline">Configurar</span>
-              </button>
-              <button
                 onClick={handleExportData}
                 disabled={loadingUsers || selectedCampaigns.length === 0}
                 className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"

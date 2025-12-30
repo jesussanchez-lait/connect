@@ -493,8 +493,8 @@ export class FirebaseAuthRepository implements IAuthRepository {
         throw new Error("Firestore no está inicializado");
       }
 
-      // Si hay usuario autenticado, usar su UID, si no, usar el teléfono como ID temporal
-      let userId = credentials.id;
+      // Usar el UID proporcionado (debe ser el UID real de Firebase Auth)
+      const userId = credentials.id;
 
       // Verificar si el documento de identidad ya existe
       await this.validateUserExists(credentials);
@@ -540,6 +540,14 @@ export class FirebaseAuthRepository implements IAuthRepository {
         updatedAt: serverTimestamp(),
         pendingAuth: true,
       };
+
+      // Incluir género y profesión si están disponibles
+      if (credentials.gender) {
+        userData.gender = credentials.gender;
+      }
+      if (credentials.profession) {
+        userData.profession = credentials.profession;
+      }
 
       // Solo incluir datos de campaña/multiplicador si existen
       // IMPORTANTE: Solo guardar leaderId, no leaderName (es solo para UI)
