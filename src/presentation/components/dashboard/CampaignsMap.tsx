@@ -4,6 +4,7 @@ import { useMemo, useRef, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { useCampaignUsers } from "@/src/presentation/hooks/useCampaignUsers";
+import { useAuth } from "@/src/presentation/hooks/useAuth";
 
 const mapContainerStyle = {
   width: "100%",
@@ -18,15 +19,19 @@ const defaultCenter = {
 export function CampaignsMap() {
   const { selectedCampaigns } = useCampaign();
   const { users, loading } = useCampaignUsers(selectedCampaigns);
+  const { user: currentUser } = useAuth();
   const mapRef = useRef<google.maps.Map | null>(null);
 
-  // Filter users: only MULTIPLIER role with valid coordinates
+  // Filter users: only MULTIPLIER role with valid coordinates, excluding admin
   const validUsers = useMemo(() => {
     return users.filter(
       (u) =>
-        u.role === "MULTIPLIER" && u.latitude != null && u.longitude != null
+        u.role === "MULTIPLIER" &&
+        u.latitude != null &&
+        u.longitude != null &&
+        u.id !== currentUser?.id
     ) as Array<(typeof users)[0] & { latitude: number; longitude: number }>;
-  }, [users]);
+  }, [users, currentUser?.id]);
 
   // Calculate bounding box for all multipliers
   const bounds = useMemo(() => {

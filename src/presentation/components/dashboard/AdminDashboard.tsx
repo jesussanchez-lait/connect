@@ -252,8 +252,10 @@ export function AdminDashboard() {
       return;
     }
 
-    // Filtrar solo multiplicadores
-    const multipliers = users.filter((user) => user.role === "MULTIPLIER");
+    // Filtrar solo multiplicadores y excluir al administrador actual
+    const multipliers = users.filter(
+      (u) => u.role === "MULTIPLIER" && u.id !== user?.id
+    );
 
     if (multipliers.length === 0) {
       alert("No hay multiplicadores en las campañas seleccionadas");

@@ -14,6 +14,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { useCampaignUsers } from "@/src/presentation/hooks/useCampaignUsers";
+import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { User } from "@/src/domain/entities/User";
 
 interface MultiplierNode {
@@ -25,11 +26,14 @@ interface MultiplierNode {
 export function TeamTreeCanvas() {
   const { selectedCampaigns } = useCampaign();
   const { users, loading } = useCampaignUsers(selectedCampaigns);
+  const { user: currentUser } = useAuth();
 
-  // Filtrar solo multiplicadores
+  // Filtrar solo multiplicadores, excluyendo al administrador actual
   const multipliers = useMemo(() => {
-    return users.filter((user) => user.role === "MULTIPLIER");
-  }, [users]);
+    return users.filter(
+      (user) => user.role === "MULTIPLIER" && user.id !== currentUser?.id
+    );
+  }, [users, currentUser?.id]);
 
   // Construir árbol jerárquico de multiplicadores
   const buildMultiplierTree = useMemo(() => {

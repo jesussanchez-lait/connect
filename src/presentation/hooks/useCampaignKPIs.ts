@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { Campaign } from "@/src/domain/entities/Campaign";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { useCampaignUsers } from "./useCampaignUsers";
-import { Gender } from "@/src/domain/entities/User";
+import { Gender, User } from "@/src/domain/entities/User";
+import { useAuth } from "./useAuth";
 
 export interface CampaignKPIs {
   // Métricas básicas
@@ -85,7 +86,17 @@ export interface CampaignKPIs {
  */
 export function useCampaignKPIs(): CampaignKPIs {
   const { selectedCampaigns } = useCampaign();
-  const { users } = useCampaignUsers(selectedCampaigns);
+  const { users: allUsers } = useCampaignUsers(selectedCampaigns);
+  const { user: currentUser } = useAuth();
+
+  // Filtrar al administrador actual de los usuarios para los cálculos
+  const users = useMemo(() => {
+    if (!currentUser?.id) {
+      return allUsers;
+    }
+    // Excluir solo al usuario actual (administrador) de los cálculos
+    return allUsers.filter((user) => user.id !== currentUser.id);
+  }, [allUsers, currentUser?.id]);
 
   const kpis = useMemo(() => {
     if (selectedCampaigns.length === 0) {
