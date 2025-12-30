@@ -9,6 +9,9 @@ import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { authRepository } from "@/src/shared/di/container";
 import { User } from "@/src/domain/entities/User";
 import { LoaderWithText } from "@/src/presentation/components/ui/Loader";
+import { CampaignProvider } from "@/src/presentation/contexts/CampaignContext";
+import { RoleProvider } from "@/src/presentation/contexts/RoleContext";
+import { DashboardConfigProvider } from "@/src/presentation/contexts/DashboardConfigContext";
 
 function DocumentPageContent() {
   const params = useParams();
@@ -28,7 +31,6 @@ function DocumentPageContent() {
         return;
       }
 
-      // Validar formato de cédula (solo números, 7-10 dígitos)
       const normalizedDoc = documentNumber.replace(/\D/g, "");
       if (normalizedDoc.length < 7 || normalizedDoc.length > 10) {
         setError("Número de cédula inválido");
@@ -69,32 +71,40 @@ function DocumentPageContent() {
   }
 
   if (error || !user) {
-    return (
-      <AuthGuard requireAuth={false}>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-md w-full space-y-8">
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              <p className="font-semibold">Error</p>
-              <p className="text-sm mt-1">{error || "Usuario no encontrado"}</p>
-            </div>
+    const errorContent = (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <p className="font-semibold">Error</p>
+            <p className="text-sm mt-1">{error || "Usuario no encontrado"}</p>
           </div>
         </div>
-      </AuthGuard>
+      </div>
     );
+    return <AuthGuard requireAuth={false}>{errorContent}</AuthGuard>;
   }
 
-  // Si el usuario es seguidor, mostrar vista directamente
   if (user.role === "FOLLOWER") {
     return (
       <AuthGuard requireAuth={false}>
-        <FollowerDashboard />
+        <RoleProvider>
+          <CampaignProvider>
+            <DashboardConfigProvider>
+              <FollowerDashboard />
+            </DashboardConfigProvider>
+          </CampaignProvider>
+        </RoleProvider>
       </AuthGuard>
     );
   }
 
-  // Si el usuario es multiplicador o admin, requiere login
-  if (user.role === "MULTIPLIER" || user.role === "ADMIN" || user.role === "COORDINATOR" || user.role === "LINK") {
-    // Si ya está autenticado y es el mismo usuario, redirigir al dashboard
+  const isMultiplierOrAdmin =
+    user.role === "MULTIPLIER" ||
+    user.role === "ADMIN" ||
+    user.role === "COORDINATOR" ||
+    user.role === "LINK";
+
+  if (isMultiplierOrAdmin) {
     if (isAuthenticated && currentUser?.id === user.id) {
       router.push("/dashboard");
       return (
@@ -104,41 +114,37 @@ function DocumentPageContent() {
       );
     }
 
-    // Mostrar página de login con método preferido
-    return (
-      <AuthGuard requireAuth={false}>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-md w-full space-y-8">
-            <div>
-              <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                Iniciar Sesión
-              </h2>
-              <p className="mt-2 text-center text-sm text-gray-600">
-                Accede a tu cuenta para continuar
-              </p>
-            </div>
-            <LoginForm preferredAuthMethod={user.preferredAuthMethod} />
-          </div>
-        </div>
-      </AuthGuard>
-    );
-  }
-
-  // Rol no reconocido
-  return (
-    <AuthGuard requireAuth={false}>
+    const loginContent = (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
-            <p className="font-semibold">Acceso no disponible</p>
-            <p className="text-sm mt-1">
-              Tu cuenta no tiene un rol válido. Por favor, contacta soporte.
+          <div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Iniciar Sesión
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Accede a tu cuenta para continuar
             </p>
           </div>
+          <LoginForm preferredAuthMethod={user.preferredAuthMethod} />
         </div>
-      </AuthGuard>
+      </div>
     );
+    return <AuthGuard requireAuth={false}>{loginContent}</AuthGuard>;
+  }
+
+  const unknownRoleContent = (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
+          <p className="font-semibold">Acceso no disponible</p>
+          <p className="text-sm mt-1">
+            Tu cuenta no tiene un rol válido. Por favor, contacta soporte.
+          </p>
+        </div>
+      </div>
+    </div>
   );
+  return <AuthGuard requireAuth={false}>{unknownRoleContent}</AuthGuard>;
 }
 
 export default function DocumentPage() {
@@ -154,4 +160,3 @@ export default function DocumentPage() {
     </Suspense>
   );
 }
-

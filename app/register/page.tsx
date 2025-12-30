@@ -7,29 +7,16 @@ import { RegisterForm } from "@/src/presentation/components/auth/RegisterForm";
 
 function RegisterContent() {
   const searchParams = useSearchParams();
-  const isAdmin = searchParams.get("admin") === "true";
+  const explicitAdmin = searchParams.get("admin") === "true";
   const leaderId = searchParams.get("leaderId") || "";
   const leaderName = searchParams.get("leaderName") || "";
   const campaignId = searchParams.get("campaignId") || "";
 
-  // Si es admin, no requiere parámetros de QR
-  // Si no es admin, solo requiere campaignId (puede ser el primer multiplicador del árbol)
-  if (!isAdmin && !campaignId) {
-    return (
-      <AuthGuard requireAuth={false}>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-md w-full space-y-8">
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              <p className="font-semibold">Error: Código QR inválido</p>
-              <p className="text-sm mt-1">
-                Por favor, escanea el código QR de la campaña para registrarte.
-              </p>
-            </div>
-          </div>
-        </div>
-      </AuthGuard>
-    );
-  }
+  // Si no hay QR válido (sin leaderId ni campaignId), se entiende que es un admin
+  // Si hay campaignId pero no leaderId, es un multiplicador (primer multiplicador del árbol)
+  // Si hay ambos campaignId y leaderId, es un seguidor
+  const hasValidQR = !!(campaignId && leaderId);
+  const isAdmin = explicitAdmin || (!campaignId && !leaderId);
 
   return (
     <AuthGuard requireAuth={false}>
@@ -45,9 +32,9 @@ function RegisterContent() {
           </div>
           <RegisterForm
             isAdmin={isAdmin}
-            leaderId={isAdmin ? undefined : leaderId}
-            leaderName={isAdmin ? undefined : leaderName}
-            campaignId={isAdmin ? undefined : campaignId}
+            leaderId={isAdmin ? undefined : leaderId || undefined}
+            leaderName={isAdmin ? undefined : leaderName || undefined}
+            campaignId={isAdmin ? undefined : campaignId || undefined}
           />
         </div>
       </div>

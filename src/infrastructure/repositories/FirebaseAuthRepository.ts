@@ -648,26 +648,43 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
       const userData: any = {
         id: firebaseUser.uid,
-        phoneNumber: firebaseUser.phoneNumber || credentials.phoneNumber,
         name: `${credentials.firstName} ${credentials.lastName}`,
         firstName: credentials.firstName,
         lastName: credentials.lastName,
         documentNumber: credentials.documentNumber,
-        gender: credentials.gender || null,
-        profession: credentials.profession || null,
         country: credentials.country,
         department: credentials.department,
         city: credentials.city,
         address: credentials.address,
         neighborhood: credentials.neighborhood,
-        latitude: credentials.latitude || null,
-        longitude: credentials.longitude || null,
-        areaType: credentials.areaType || null,
-        fromCapitalCity: credentials.fromCapitalCity ?? null,
         role: userRole,
         updatedAt: serverTimestamp(),
         pendingAuth: false, // Marcar como registro completo
       };
+
+      // Solo incluir campos opcionales si tienen valor (no undefined)
+      const phoneNumber = firebaseUser.phoneNumber || credentials.phoneNumber;
+      if (phoneNumber) {
+        userData.phoneNumber = phoneNumber;
+      }
+      if (credentials.gender) {
+        userData.gender = credentials.gender;
+      }
+      if (credentials.profession) {
+        userData.profession = credentials.profession;
+      }
+      if (credentials.latitude !== undefined && credentials.latitude !== null) {
+        userData.latitude = credentials.latitude;
+      }
+      if (credentials.longitude !== undefined && credentials.longitude !== null) {
+        userData.longitude = credentials.longitude;
+      }
+      if (credentials.areaType) {
+        userData.areaType = credentials.areaType;
+      }
+      if (credentials.fromCapitalCity !== undefined) {
+        userData.fromCapitalCity = credentials.fromCapitalCity;
+      }
 
       // Solo incluir datos de campaña/multiplicador si existen
       // IMPORTANTE: Solo guardar leaderId, no leaderName (es solo para UI)
@@ -843,11 +860,31 @@ export class FirebaseAuthRepository implements IAuthRepository {
         ...additionalData,
       };
 
-      await setDoc(userDocRef, {
-        ...newUser,
+      // Preparar datos para Firestore, eliminando campos undefined
+      const firestoreData: any = {
+        id: newUser.id,
+        name: newUser.name,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      // Solo incluir campos si tienen valor (no undefined)
+      if (newUser.phoneNumber !== undefined) {
+        firestoreData.phoneNumber = newUser.phoneNumber;
+      }
+      if (newUser.email !== undefined) {
+        firestoreData.email = newUser.email;
+      }
+      if (additionalData) {
+        Object.keys(additionalData).forEach((key) => {
+          const value = (additionalData as any)[key];
+          if (value !== undefined) {
+            firestoreData[key] = value;
+          }
+        });
+      }
+
+      await setDoc(userDocRef, firestoreData);
 
       user = newUser;
     }
@@ -1506,20 +1543,15 @@ export class FirebaseAuthRepository implements IAuthRepository {
       const userDocRef = doc(db, "users", firebaseUser.uid);
       const userData: any = {
         id: firebaseUser.uid,
-        phoneNumber: credentials.phoneNumber || undefined,
         name: `${credentials.firstName} ${credentials.lastName}`,
         firstName: credentials.firstName,
         lastName: credentials.lastName,
         documentNumber: credentials.documentNumber,
-        gender: credentials.gender || null,
-        profession: credentials.profession || null,
         country: credentials.country,
         department: credentials.department,
         city: credentials.city,
         address: credentials.address,
         neighborhood: credentials.neighborhood,
-        latitude: credentials.latitude || null,
-        longitude: credentials.longitude || null,
         areaType,
         fromCapitalCity,
         role: userRole,
@@ -1527,6 +1559,23 @@ export class FirebaseAuthRepository implements IAuthRepository {
         updatedAt: serverTimestamp(),
         pendingAuth: true, // Seguidor con autenticación anónima
       };
+
+      // Solo incluir campos opcionales si tienen valor (no undefined)
+      if (credentials.phoneNumber) {
+        userData.phoneNumber = credentials.phoneNumber;
+      }
+      if (credentials.gender) {
+        userData.gender = credentials.gender;
+      }
+      if (credentials.profession) {
+        userData.profession = credentials.profession;
+      }
+      if (credentials.latitude !== undefined && credentials.latitude !== null) {
+        userData.latitude = credentials.latitude;
+      }
+      if (credentials.longitude !== undefined && credentials.longitude !== null) {
+        userData.longitude = credentials.longitude;
+      }
 
       // Solo incluir datos de campaña/multiplicador si existen
       if (credentials.leaderId) {
