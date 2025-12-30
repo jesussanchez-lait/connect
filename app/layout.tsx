@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Script from "next/script";
 import { ServiceWorkerRegistration } from "@/src/presentation/components/ServiceWorkerRegistration";
+import { ClientProviders } from "@/src/presentation/components/layout/ClientProviders";
 
 export const metadata: Metadata = {
   title: "Connect - Sistema de Campañas",
@@ -58,8 +59,10 @@ export default function RootLayout({
         {/* Google Maps ahora se carga dinámicamente usando @googlemaps/js-api-loader */}
       </head>
       <body className="antialiased">
-        {children}
-        <ServiceWorkerRegistration />
+        <ClientProviders>
+          {children}
+          <ServiceWorkerRegistration />
+        </ClientProviders>
       </body>
     </html>
   );

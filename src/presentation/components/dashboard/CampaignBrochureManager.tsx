@@ -4,10 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { useCampaign } from "@/src/presentation/contexts/CampaignContext";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { CampaignBrochureService } from "@/src/infrastructure/storage/CampaignBrochureService";
+import { useToast } from "@/src/presentation/contexts/ToastContext";
 
 export function CampaignBrochureManager() {
   const { selectedCampaigns } = useCampaign();
   const { user } = useAuth();
+  const { showSuccess, showError, showWarning } = useToast();
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [brochureUrl, setBrochureUrl] = useState<string | null>(null);
@@ -50,17 +52,17 @@ export function CampaignBrochureManager() {
     if (!file) return;
 
     if (selectedCampaigns.length === 0) {
-      alert("Por favor selecciona una campaña primero");
+      showWarning("Por favor selecciona una campaña primero");
       return;
     }
 
     if (selectedCampaigns.length > 1) {
-      alert("Por favor selecciona solo una campaña para subir el PDF");
+      showWarning("Por favor selecciona solo una campaña para subir el PDF");
       return;
     }
 
     if (file.type !== "application/pdf") {
-      alert("El archivo debe ser un PDF");
+      showError("El archivo debe ser un PDF");
       return;
     }
 
@@ -71,10 +73,10 @@ export function CampaignBrochureManager() {
         file
       );
       setBrochureUrl(downloadURL);
-      alert("PDF subido exitosamente");
+      showSuccess("PDF subido exitosamente");
     } catch (error: any) {
       console.error("Error uploading brochure:", error);
-      alert(error.message || "Error al subir el PDF");
+      showError(error.message || "Error al subir el PDF");
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -85,12 +87,12 @@ export function CampaignBrochureManager() {
 
   const handleDelete = async () => {
     if (selectedCampaigns.length === 0) {
-      alert("Por favor selecciona una campaña primero");
+      showWarning("Por favor selecciona una campaña primero");
       return;
     }
 
     if (selectedCampaigns.length > 1) {
-      alert("Por favor selecciona solo una campaña para eliminar el PDF");
+      showWarning("Por favor selecciona solo una campaña para eliminar el PDF");
       return;
     }
 
@@ -106,10 +108,10 @@ export function CampaignBrochureManager() {
     try {
       await CampaignBrochureService.deleteBrochure(selectedCampaigns[0].id);
       setBrochureUrl(null);
-      alert("PDF eliminado exitosamente");
+      showSuccess("PDF eliminado exitosamente");
     } catch (error: any) {
       console.error("Error deleting brochure:", error);
-      alert(error.message || "Error al eliminar el PDF");
+      showError(error.message || "Error al eliminar el PDF");
     } finally {
       setDeleting(false);
     }
