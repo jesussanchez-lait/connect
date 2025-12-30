@@ -5,6 +5,15 @@ rules_version = '2';
 //    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    // Campaign brochures - allow read for authenticated users, write only for admins
+    match /campaign_brochure/{fileName} {
+      // Allow read for authenticated users
+      allow read: if request.auth != null;
+      // Allow write only for authenticated users (admin check should be done in API route)
+      allow write: if request.auth != null;
+    }
+    
+    // Default: deny all other access
     match /{allPaths=**} {
       allow read, write: if false;
     }

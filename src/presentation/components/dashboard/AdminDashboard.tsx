@@ -26,6 +26,7 @@ import {
   DASHBOARD_WIDGETS,
 } from "@/src/presentation/contexts/DashboardConfigContext";
 import { Campaign } from "@/src/domain/entities/Campaign";
+import { CampaignBrochureManager } from "./CampaignBrochureManager";
 
 function CampaignRegistrationLink({
   campaign,
@@ -505,6 +506,13 @@ export function AdminDashboard() {
               <div className="mb-3">
                 <CampaignSelector />
               </div>
+
+              {/* Gestor de PDF de Propuestas */}
+              {selectedCampaigns.length > 0 && (
+                <div className="mb-3">
+                  <CampaignBrochureManager />
+                </div>
+              )}
 
               {/* KPIs con Gráficas agrupadas por categorías */}
               {kpis.totalCampaigns > 0 && (

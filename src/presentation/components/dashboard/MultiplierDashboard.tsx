@@ -11,79 +11,7 @@ import { CampaignSelector } from "./CampaignSelector";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { useTeam } from "@/src/presentation/hooks/useTeam";
 import { IdentityVerificationBanner } from "./IdentityVerificationBanner";
-
-function DownloadCampaignProposalButton() {
-  const [downloading, setDownloading] = useState(false);
-  const { selectedCampaign } = useCampaign();
-
-  const handleDownload = async () => {
-    if (!selectedCampaign) {
-      alert("Por favor selecciona una campaña primero");
-      return;
-    }
-
-    setDownloading(true);
-    try {
-      const token = localStorage.getItem("accessToken");
-      const response = await fetch(
-        `/api/dashboard/campaign-proposal?campaignId=${selectedCampaign.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Error al descargar la propuesta");
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `propuesta-campana-${selectedCampaign.name.replace(
-        /\s+/g,
-        "-"
-      )}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error("Error downloading proposal:", error);
-      alert("Error al descargar la propuesta de campaña");
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleDownload}
-      disabled={downloading || !selectedCampaign}
-      className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-      aria-label={downloading ? "Descargando..." : "Descargar Propuesta"}
-    >
-      <svg
-        className="w-4 h-4 flex-shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-        />
-      </svg>
-      <span className="hidden sm:inline">
-        {downloading ? "Descargando..." : "Propuesta"}
-      </span>
-    </button>
-  );
-}
+import { CampaignBrochureDropdown } from "./CampaignBrochureDropdown";
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -283,7 +211,7 @@ export function MultiplierDashboard() {
               </span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
-              <DownloadCampaignProposalButton />
+              <CampaignBrochureDropdown />
               <UserMenu />
             </div>
           </div>

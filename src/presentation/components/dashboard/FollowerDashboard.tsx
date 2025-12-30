@@ -7,6 +7,7 @@ import { CampaignSelector } from "./CampaignSelector";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { BecomeMultiplierFlow } from "./BecomeMultiplierFlow";
 import { IdentityVerificationBanner } from "./IdentityVerificationBanner";
+import { CampaignBrochureDropdown } from "./CampaignBrochureDropdown";
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -133,6 +134,7 @@ export function FollowerDashboard() {
               </span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
+              <CampaignBrochureDropdown />
               <UserMenu />
             </div>
           </div>
