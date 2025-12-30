@@ -635,6 +635,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // Verificar si el usuario ya existe para no sobrescribir createdAt y campaignIds
       let userExists = false;
       let existingCampaignIds: string[] = [];
+      let wasPendingAuth = false; // Indica si el usuario estaba en registro parcial
       try {
         const existingUserDoc = await getDoc(userDocRef);
         userExists = existingUserDoc.exists();
@@ -650,6 +651,8 @@ export class FirebaseAuthRepository implements IAuthRepository {
             ) {
               existingCampaignIds.push(existingData.campaignId);
             }
+            // Verificar si el usuario estaba en registro parcial (pendingAuth: true)
+            wasPendingAuth = existingData.pendingAuth === true;
           }
         }
       } catch (checkError: any) {
@@ -712,10 +715,19 @@ export class FirebaseAuthRepository implements IAuthRepository {
         userData.leaderId = credentials.leaderId;
       }
 
-      // IMPORTANTE: Verificar si es una nueva campaña ANTES de modificar existingCampaignIds
-      const isNewCampaign =
-        credentials.campaignId &&
-        !existingCampaignIds.includes(credentials.campaignId);
+      // IMPORTANTE: Determinar si debemos incrementar el contador de la campaña
+      // Incrementamos si:
+      // 1. Hay un campaignId en las credenciales
+      // 2. Y (el usuario no existía antes O el usuario estaba en registro parcial - pendingAuth: true)
+      //
+      // NO incrementamos si:
+      // - El usuario ya estaba completamente registrado (pendingAuth: false) y ya tenía el campaignId
+      //   (esto evitaría duplicados si se llama register múltiples veces)
+      //
+      // Nota: Si wasPendingAuth es true, significa que createPartialUser ya agregó el campaignId
+      // a existingCampaignIds, así que sabemos que el usuario se está registrando en esta campaña
+      const shouldIncrementCampaignCounter =
+        credentials.campaignId && (!userExists || wasPendingAuth);
 
       // Log para debugging
       if (credentials.campaignId) {
@@ -723,8 +735,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
           `🔍 [register] Verificando campaña ${credentials.campaignId}:`,
           {
             userExists,
+            wasPendingAuth,
             existingCampaignIds,
-            isNewCampaign,
+            shouldIncrementCampaignCounter,
             userRole,
           }
         );
@@ -750,10 +763,12 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
       await setDoc(userDocRef, userData, { merge: true });
 
-      // Incrementar el contador de participants de la campaña si es una nueva campaña
-      // IMPORTANTE: Esto asegura que cada vez que un multiplicador se registra en una campaña nueva, se cuenta
-      // Solo incrementamos si es una nueva campaña para evitar duplicados
-      if (isNewCampaign && credentials.campaignId) {
+      // Incrementar el contador de participants de la campaña cuando se completa un registro nuevo
+      // IMPORTANTE: Incrementamos cuando:
+      // - El usuario estaba en registro parcial (pendingAuth: true) y ahora se completa el registro
+      // - O el usuario es completamente nuevo
+      // Esto asegura que cada vez que se completa el registro de un multiplicador o seguidor, se cuenta
+      if (shouldIncrementCampaignCounter && credentials.campaignId) {
         try {
           const campaignDocRef = doc(db!, "campaigns", credentials.campaignId);
           await updateDoc(campaignDocRef, {
@@ -761,7 +776,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
             updatedAt: serverTimestamp(),
           });
           console.log(
-            `✅ [register] Contador de participants incrementado para campaña ${credentials.campaignId}. Rol: ${userRole} (Nuevo miembro)`
+            `✅ [register] Contador de participants incrementado para campaña ${credentials.campaignId}. Rol: ${userRole} (Registro completado)`
           );
         } catch (campaignError: any) {
           // No fallar el registro si hay error al actualizar la campaña
@@ -771,9 +786,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
             campaignError.message
           );
         }
-      } else if (credentials.campaignId && !isNewCampaign) {
+      } else if (credentials.campaignId) {
         console.log(
-          `ℹ️ [register] Usuario ya está en la campaña ${credentials.campaignId}, no se incrementa el contador (evita duplicados)`
+          `ℹ️ [register] Usuario ya estaba completamente registrado en la campaña ${credentials.campaignId}, no se incrementa el contador (evita duplicados)`
         );
       }
 
