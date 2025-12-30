@@ -88,9 +88,9 @@ function DocumentPageContent() {
     return (
       <AuthGuard requireAuth={false}>
         <RoleProvider>
-          <CampaignProvider>
+          <CampaignProvider user={user}>
             <DashboardConfigProvider>
-              <FollowerDashboard />
+              <FollowerDashboard user={user} />
             </DashboardConfigProvider>
           </CampaignProvider>
         </RoleProvider>

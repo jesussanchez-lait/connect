@@ -8,9 +8,12 @@ import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { BecomeMultiplierFlow } from "./BecomeMultiplierFlow";
 import { IdentityVerificationBanner } from "./IdentityVerificationBanner";
 import { CampaignBrochureDropdown } from "./CampaignBrochureDropdown";
+import { User } from "@/src/domain/entities/User";
 
-function UserMenu() {
-  const { user, logout } = useAuth();
+function UserMenu({ user: propUser }: { user?: User | null }) {
+  const { user: authUser, logout } = useAuth();
+  // Usar el usuario de la prop si está disponible, sino usar el de auth
+  const user = propUser || authUser;
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -115,8 +118,14 @@ function UserMenu() {
   );
 }
 
-export function FollowerDashboard() {
-  const { user } = useAuth();
+interface FollowerDashboardProps {
+  user?: User | null;
+}
+
+export function FollowerDashboard({ user: propUser }: FollowerDashboardProps = {}) {
+  const { user: authUser } = useAuth();
+  // Usar el usuario de la prop si está disponible, sino usar el de auth
+  const user = propUser || authUser;
   const { selectedCampaign, campaigns } = useCampaign();
 
   return (
@@ -135,7 +144,7 @@ export function FollowerDashboard() {
             </div>
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
               <CampaignBrochureDropdown />
-              <UserMenu />
+              <UserMenu user={user} />
             </div>
           </div>
         </div>
@@ -151,7 +160,7 @@ export function FollowerDashboard() {
           {/* Información del Multiplicador */}
           {selectedCampaign && (
             <div className="mb-6">
-              <MyLeader />
+              <MyLeader user={user} />
             </div>
           )}
 

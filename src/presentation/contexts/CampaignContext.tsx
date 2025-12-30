@@ -12,6 +12,7 @@ import {
 } from "react";
 import { FirebaseDataSource } from "@/src/infrastructure/firebase/FirebaseDataSource";
 import { Campaign } from "@/src/domain/entities/Campaign";
+import { User } from "@/src/domain/entities/User";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/src/infrastructure/firebase";
@@ -32,8 +33,15 @@ const CampaignContext = createContext<CampaignContextType | undefined>(
   undefined
 );
 
-export function CampaignProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+interface CampaignProviderProps {
+  children: ReactNode;
+  user?: User | null;
+}
+
+export function CampaignProvider({ children, user: propUser }: CampaignProviderProps) {
+  const { user: authUser, loading: authLoading } = useAuth();
+  // Usar el usuario de la prop si está disponible, sino usar el de auth
+  const user = propUser || authUser;
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
     null

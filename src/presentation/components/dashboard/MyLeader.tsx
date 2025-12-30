@@ -19,11 +19,17 @@ interface Leader {
   participants: number; // Cantidad de personas registradas bajo este multiplicador
 }
 
-export function MyLeader() {
+interface MyLeaderProps {
+  user?: User | null;
+}
+
+export function MyLeader({ user: propUser }: MyLeaderProps = {}) {
   const [leader, setLeader] = useState<Leader | null>(null);
   const [loading, setLoading] = useState(true);
   const { selectedCampaign } = useCampaign();
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  // Usar el usuario de la prop si está disponible, sino usar el de auth
+  const user = propUser || authUser;
   const userDataSource = useMemo(
     () => new FirebaseDataSource<User>("users"),
     []
