@@ -254,7 +254,7 @@ export function MultiplierDashboard() {
   const [hasTeam, setHasTeam] = useState(false);
   const [checkingTeam, setCheckingTeam] = useState(true);
   const leaderContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // Verificar estado de verificación de identidad
   // El hook detectará customConfig y usará el endpoint del servidor
   // que lee las credenciales desde .env

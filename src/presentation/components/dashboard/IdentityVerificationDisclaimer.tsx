@@ -55,9 +55,7 @@ export function IdentityVerificationDisclaimer({
               ? "Tu cuenta está bloqueada por múltiples intentos fallidos. Por favor, contacta soporte."
               : "Para continuar como multiplicador, necesitas validar tu identidad. Este proceso es rápido y seguro."}
           </p>
-          {error && (
-            <p className="text-xs text-red-600 mb-3">{error}</p>
-          )}
+          {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
           <button
             onClick={startVerification}
             disabled={loading || isBlocked}
@@ -79,4 +77,3 @@ export function IdentityVerificationDisclaimer({
     </div>
   );
 }
-

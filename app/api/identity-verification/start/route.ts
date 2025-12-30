@@ -1,24 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/infrastructure/firebase";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { verifyTokenAndGetUserId } from "@/src/infrastructure/firebase/admin";
 
 /**
  * Endpoint para iniciar verificación de identidad con Didit
  * Se ejecuta en el servidor para evitar problemas de CORS
+ * Obtiene el userId desde el token de autenticación
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId } = body;
+    // Obtener token de autenticación desde el header
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { message: "No autorizado. Token de autenticación requerido." },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.substring(7);
+
+    // Verificar token y obtener userId
+    const userId = await verifyTokenAndGetUserId(token);
+
+    if (!userId) {
+      return NextResponse.json(
+        { message: "Token inválido o expirado" },
+        { status: 401 }
+      );
+    }
 
     // Leer credenciales desde variables de entorno (sin NEXT_PUBLIC_ para seguridad)
-    const appId = process.env.DIDIT_APP_ID || process.env.NEXT_PUBLIC_DIDIT_APP_ID;
-    const apiKey = process.env.DIDIT_API_KEY || process.env.NEXT_PUBLIC_DIDIT_API_KEY;
-    const workflowId = process.env.DIDIT_WORKFLOW_ID || process.env.NEXT_PUBLIC_DIDIT_WORKFLOW_ID;
+    const appId =
+      process.env.DIDIT_APP_ID || process.env.NEXT_PUBLIC_DIDIT_APP_ID;
+    const apiKey =
+      process.env.DIDIT_API_KEY || process.env.NEXT_PUBLIC_DIDIT_API_KEY;
+    const workflowId =
+      process.env.DIDIT_WORKFLOW_ID ||
+      process.env.NEXT_PUBLIC_DIDIT_WORKFLOW_ID;
 
-    // Validar parámetros requeridos
+    // Validar parámetros requeridos (userId ya se obtuvo del token)
     const missingParams = [];
-    if (!userId) missingParams.push("userId");
     if (!appId) missingParams.push("DIDIT_APP_ID");
     if (!apiKey) missingParams.push("DIDIT_API_KEY");
     if (!workflowId) missingParams.push("DIDIT_WORKFLOW_ID");
@@ -32,6 +55,17 @@ export async function POST(request: NextRequest) {
           hint: "Verifica que las variables de entorno DIDIT_APP_ID, DIDIT_API_KEY y DIDIT_WORKFLOW_ID estén configuradas",
         },
         { status: 400 }
+      );
+    }
+
+    // TypeScript type guard: después de la validación, sabemos que estos valores son strings
+    if (!appId || !apiKey || !workflowId) {
+      return NextResponse.json(
+        {
+          message:
+            "Error de configuración: credenciales de Didit no disponibles",
+        },
+        { status: 500 }
       );
     }
 
@@ -55,6 +89,11 @@ export async function POST(request: NextRequest) {
 
     const userData = userDoc.data();
 
+    // TypeScript type guard: después de la validación, sabemos que estos valores son strings
+    const verifiedApiKey: string = apiKey;
+    const verifiedAppId: string = appId;
+    const verifiedWorkflowId: string = workflowId;
+
     // Construir callback URL
     const callbackUrl = `${
       process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
@@ -62,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // Preparar payload para Didit API v2
     const payload = {
-      workflow_id: workflowId,
+      workflow_id: verifiedWorkflowId,
       callback: callbackUrl,
       metadata: {
         user_id: userId,
@@ -75,23 +114,24 @@ export async function POST(request: NextRequest) {
     console.log("[Didit Request]", {
       url: "https://api.didit.me/v2/verification-sessions",
       payload: { ...payload, metadata: { ...payload.metadata } }, // Log sin exponer datos sensibles
-      hasApiKey: !!apiKey,
-      apiKeyLength: apiKey?.length,
-      hasAppId: !!appId,
-      appIdLength: appId?.length,
+      hasApiKey: !!verifiedApiKey,
+      apiKeyLength: verifiedApiKey.length,
+      hasAppId: !!verifiedAppId,
+      appIdLength: verifiedAppId.length,
       callbackUrl,
     });
 
     // Llamar a la API de Didit desde el servidor
     // Didit puede usar diferentes formatos de autenticación
     // Según documentación, puede ser X-API-Key o Authorization Bearer
+
     let diditResponse;
     try {
       // Intentar primero con X-API-Key (formato más común en APIs REST)
-      const headers1 = {
+      const headers1: Record<string, string> = {
         "Content-Type": "application/json",
-        "X-API-Key": apiKey,
-        "X-App-Id": appId,
+        "X-API-Key": verifiedApiKey,
+        "X-App-Id": verifiedAppId,
       };
 
       console.log("[Didit Auth] Intentando con X-API-Key...");
@@ -109,10 +149,10 @@ export async function POST(request: NextRequest) {
         console.log(
           "[Didit Auth] 401 recibido, intentando con Authorization Bearer..."
         );
-        const headers2 = {
+        const headers2: Record<string, string> = {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-          "X-App-Id": appId,
+          Authorization: `Bearer ${verifiedApiKey}`,
+          "X-App-Id": verifiedAppId,
         };
 
         diditResponse = await fetch(
@@ -130,9 +170,9 @@ export async function POST(request: NextRequest) {
         console.log(
           "[Didit Auth] Intentando solo con X-API-Key (sin X-App-Id)..."
         );
-        const headers3 = {
+        const headers3: Record<string, string> = {
           "Content-Type": "application/json",
-          "X-API-Key": apiKey,
+          "X-API-Key": verifiedApiKey,
         };
 
         diditResponse = await fetch(

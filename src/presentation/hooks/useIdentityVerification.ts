@@ -45,17 +45,25 @@ export function useIdentityVerification(
         }
 
         // Llamar a nuestro endpoint API que hace la llamada a Didit desde el servidor
-        // El servidor leerá las credenciales desde .env automáticamente
+        // El servidor obtiene el userId desde el token de autenticación
+        // y lee las credenciales desde .env automáticamente
+
+        // Obtener token de Firebase Auth
+        const auth = (await import("@/src/infrastructure/firebase")).auth;
+        if (!auth || !auth.currentUser) {
+          throw new Error("Usuario no autenticado");
+        }
+
+        const token = await auth.currentUser.getIdToken();
+
         const response = await fetch("/api/identity-verification/start", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            userId: user.id,
-            // Ya no enviamos credenciales desde el cliente por seguridad
-            // El servidor las lee desde variables de entorno
-          }),
+          // Ya no enviamos userId ni credenciales desde el cliente
+          // El servidor obtiene userId del token y credenciales desde .env
         });
 
         if (!response.ok) {
