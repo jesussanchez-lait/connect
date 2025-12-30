@@ -16,12 +16,22 @@ export function useAuth() {
 
   useEffect(() => {
     if (!auth || !db) {
+      console.warn("Firebase auth or db not initialized");
       setLoading(false);
       return;
     }
 
     const dbInstance = db; // TypeScript guard
     let unsubscribeUser: Unsubscribe | null = null;
+    let isMounted = true;
+
+    // Timeout de seguridad para evitar que se quede en loading indefinidamente
+    const loadingTimeout = setTimeout(() => {
+      if (isMounted) {
+        console.warn("Auth loading timeout - forcing loading to false");
+        setLoading(false);
+      }
+    }, 10000); // 10 segundos máximo
 
     // Escuchar cambios en el estado de autenticación
     // Firebase Auth mantiene la sesión activa automáticamente usando localStorage
@@ -30,6 +40,11 @@ export function useAuth() {
     const unsubscribeAuth = onAuthStateChanged(
       auth,
       (firebaseUser) => {
+        if (!isMounted) return;
+
+        // Limpiar timeout ya que recibimos respuesta
+        clearTimeout(loadingTimeout);
+
         // Limpiar suscripción anterior si existe
         if (unsubscribeUser) {
           unsubscribeUser();
@@ -50,6 +65,8 @@ export function useAuth() {
         unsubscribeUser = onSnapshot(
           userDocRef,
           (docSnap) => {
+            if (!isMounted) return;
+
             if (docSnap.exists()) {
               const userData = docSnap.data();
               const user: User & {
@@ -87,6 +104,11 @@ export function useAuth() {
             setLoading(false);
           },
           (error) => {
+            if (!isMounted) return;
+
+            // Limpiar timeout ya que recibimos respuesta (aunque sea error)
+            clearTimeout(loadingTimeout);
+
             // Error al obtener datos del usuario - NO cerrar sesión automáticamente
             // Puede ser un error temporal de red o permisos
             console.error("Error subscribing to user document:", error);
@@ -105,6 +127,11 @@ export function useAuth() {
         );
       },
       (error) => {
+        if (!isMounted) return;
+
+        // Limpiar timeout ya que recibimos respuesta (aunque sea error)
+        clearTimeout(loadingTimeout);
+
         // Error en el listener de autenticación - solo loguear, no cerrar sesión
         // Puede ser un error temporal
         console.error("Error in auth state change:", error);
@@ -116,6 +143,8 @@ export function useAuth() {
     );
 
     return () => {
+      isMounted = false;
+      clearTimeout(loadingTimeout);
       unsubscribeAuth();
       if (unsubscribeUser) {
         unsubscribeUser();
