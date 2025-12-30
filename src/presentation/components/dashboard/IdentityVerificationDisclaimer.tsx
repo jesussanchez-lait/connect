@@ -2,13 +2,14 @@
 
 import { useIdentityVerification } from "@/src/presentation/hooks/useIdentityVerification";
 import { LoaderWithText } from "@/src/presentation/components/ui/Loader";
+import { IdentityVerificationConfig } from "@/src/infrastructure/api/IdentityVerificationClient";
 
 interface IdentityVerificationDisclaimerProps {
-  config?: Record<string, never>; // Opcional, las credenciales se leen del servidor
+  config?: IdentityVerificationConfig | Partial<IdentityVerificationConfig> | {}; // Opcional, las credenciales se leen del servidor
 }
 
 export function IdentityVerificationDisclaimer({
-  config = {},
+  config,
 }: IdentityVerificationDisclaimerProps) {
   const {
     isVerified,

@@ -313,9 +313,11 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
         // Intentar eliminar el usuario de Firebase Auth (si es posible)
         try {
-          const firebaseUser = auth.currentUser;
-          if (firebaseUser && firebaseUser.uid === userId) {
-            await firebaseUser.delete();
+          if (auth) {
+            const firebaseUser = auth.currentUser;
+            if (firebaseUser && firebaseUser.uid === userId) {
+              await firebaseUser.delete();
+            }
           }
         } catch (authError: any) {
           // Si no podemos eliminar de Auth (porque no estamos autenticados como ese usuario),
@@ -2090,9 +2092,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
         phoneNumber: userData.phoneNumber,
       });
 
-      // Actualizar usuario con workflow ID
+      // Actualizar usuario con workflow ID (usando verificationSessionId)
       await updateDoc(userDocRef, {
-        identityVerificationWorkflowId: verification.workflowId,
+        identityVerificationWorkflowId: verification.verificationSessionId,
         identityVerificationStatus: "pending",
         identityVerificationAttempts:
           (userData.identityVerificationAttempts || 0) + 1,
@@ -2100,7 +2102,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
       });
 
       return {
-        workflowId: verification.workflowId,
+        workflowId: verification.verificationSessionId,
       };
     } catch (error: any) {
       console.error("Error verifying identity:", error);

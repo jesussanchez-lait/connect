@@ -5,7 +5,7 @@ import { authRepository } from "@/src/shared/di/container";
 import { IdentityVerificationConfig } from "@/src/infrastructure/api/IdentityVerificationClient";
 
 export function useIdentityVerification(
-  customConfig?: IdentityVerificationConfig
+  customConfig?: IdentityVerificationConfig | Partial<IdentityVerificationConfig> | {}
 ) {
   const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
