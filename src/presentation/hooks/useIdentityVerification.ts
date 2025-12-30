@@ -37,13 +37,15 @@ export function useIdentityVerification(
     setError(null);
 
     try {
-      // Si hay configuración personalizada, usar endpoint del servidor para evitar CORS
-      if (customConfig) {
+      // Si hay configuración personalizada (incluso si está vacía), usar endpoint del servidor
+      // El servidor leerá las credenciales desde variables de entorno
+      if (customConfig !== undefined) {
         if (typeof window === "undefined") {
           throw new Error("Este hook solo funciona en el cliente");
         }
 
         // Llamar a nuestro endpoint API que hace la llamada a Didit desde el servidor
+        // El servidor leerá las credenciales desde .env automáticamente
         const response = await fetch("/api/identity-verification/start", {
           method: "POST",
           headers: {
@@ -51,9 +53,8 @@ export function useIdentityVerification(
           },
           body: JSON.stringify({
             userId: user.id,
-            appId: customConfig.appId,
-            apiKey: customConfig.apiKey,
-            workflowId: customConfig.workflowId,
+            // Ya no enviamos credenciales desde el cliente por seguridad
+            // El servidor las lee desde variables de entorno
           }),
         });
 

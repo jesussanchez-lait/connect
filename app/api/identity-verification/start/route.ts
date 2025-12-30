@@ -9,14 +9,19 @@ import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, appId, apiKey, workflowId } = body;
+    const { userId } = body;
+
+    // Leer credenciales desde variables de entorno (sin NEXT_PUBLIC_ para seguridad)
+    const appId = process.env.DIDIT_APP_ID || process.env.NEXT_PUBLIC_DIDIT_APP_ID;
+    const apiKey = process.env.DIDIT_API_KEY || process.env.NEXT_PUBLIC_DIDIT_API_KEY;
+    const workflowId = process.env.DIDIT_WORKFLOW_ID || process.env.NEXT_PUBLIC_DIDIT_WORKFLOW_ID;
 
     // Validar parámetros requeridos
     const missingParams = [];
     if (!userId) missingParams.push("userId");
-    if (!appId) missingParams.push("appId");
-    if (!apiKey) missingParams.push("apiKey");
-    if (!workflowId) missingParams.push("workflowId");
+    if (!appId) missingParams.push("DIDIT_APP_ID");
+    if (!apiKey) missingParams.push("DIDIT_API_KEY");
+    if (!workflowId) missingParams.push("DIDIT_WORKFLOW_ID");
 
     if (missingParams.length > 0) {
       console.error("[Missing Parameters]:", missingParams);
@@ -24,6 +29,7 @@ export async function POST(request: NextRequest) {
         {
           message: "Faltan parámetros requeridos",
           missingParams,
+          hint: "Verifica que las variables de entorno DIDIT_APP_ID, DIDIT_API_KEY y DIDIT_WORKFLOW_ID estén configuradas",
         },
         { status: 400 }
       );

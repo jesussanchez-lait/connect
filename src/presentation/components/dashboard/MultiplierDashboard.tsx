@@ -243,11 +243,9 @@ function CampaignRegistrationLink({
 }
 
 // Configuración de Didit para validación de identidad
-const DIDIT_CONFIG = {
-  appId: "f45f97dd-7a57-4146-8aa8-700ee76212d0",
-  apiKey: "Bs2R537z65IcGNpgAwabAVzIR3q1sb3GKBjFXSgIl1k",
-  workflowId: "106d53cc-e0c8-4743-9146-13f85d03796e",
-};
+// Las credenciales se leen desde variables de entorno en el servidor
+// Solo pasamos un objeto vacío para indicar que usamos configuración personalizada
+const DIDIT_CONFIG = {};
 
 export function MultiplierDashboard() {
   const { user } = useAuth();
@@ -258,6 +256,8 @@ export function MultiplierDashboard() {
   const leaderContainerRef = useRef<HTMLDivElement>(null);
   
   // Verificar estado de verificación de identidad
+  // El hook detectará customConfig y usará el endpoint del servidor
+  // que lee las credenciales desde .env
   const { isVerified } = useIdentityVerification(DIDIT_CONFIG);
 
   // Detectar si MyLeader está renderizando contenido

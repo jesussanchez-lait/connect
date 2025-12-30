@@ -1,15 +1,14 @@
 "use client";
 
 import { useIdentityVerification } from "@/src/presentation/hooks/useIdentityVerification";
-import { IdentityVerificationConfig } from "@/src/infrastructure/api/IdentityVerificationClient";
 import { LoaderWithText } from "@/src/presentation/components/ui/Loader";
 
 interface IdentityVerificationDisclaimerProps {
-  config: IdentityVerificationConfig;
+  config?: Record<string, never>; // Opcional, las credenciales se leen del servidor
 }
 
 export function IdentityVerificationDisclaimer({
-  config,
+  config = {},
 }: IdentityVerificationDisclaimerProps) {
   const {
     isVerified,
