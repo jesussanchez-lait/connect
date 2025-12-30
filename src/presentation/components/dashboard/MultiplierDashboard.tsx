@@ -11,9 +11,11 @@ import { CampaignSelector } from "./CampaignSelector";
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { useTeam } from "@/src/presentation/hooks/useTeam";
 import { IdentityVerificationBanner } from "./IdentityVerificationBanner";
+import { IdentityVerificationDisclaimer } from "./IdentityVerificationDisclaimer";
 import { CampaignBrochureDropdown } from "./CampaignBrochureDropdown";
 import { Campaign } from "@/src/domain/entities/Campaign";
 import { useToast } from "@/src/presentation/contexts/ToastContext";
+import { useIdentityVerification } from "@/src/presentation/hooks/useIdentityVerification";
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -240,6 +242,13 @@ function CampaignRegistrationLink({
   );
 }
 
+// Configuración de Didit para validación de identidad
+const DIDIT_CONFIG = {
+  appId: "f45f97dd-7a57-4146-8aa8-700ee76212d0",
+  apiKey: "Bs2R537z65IcGNpgAwabAVzIR3q1sb3GKBjFXSgIl1k",
+  workflowId: "106d53cc-e0c8-4743-9146-13f85d03796e",
+};
+
 export function MultiplierDashboard() {
   const { user } = useAuth();
   const { selectedCampaign } = useCampaign();
@@ -247,6 +256,9 @@ export function MultiplierDashboard() {
   const [hasTeam, setHasTeam] = useState(false);
   const [checkingTeam, setCheckingTeam] = useState(true);
   const leaderContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Verificar estado de verificación de identidad
+  const { isVerified } = useIdentityVerification(DIDIT_CONFIG);
 
   // Detectar si MyLeader está renderizando contenido
   useEffect(() => {
@@ -341,6 +353,11 @@ export function MultiplierDashboard() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
+          {/* Disclaimer de Validación de Identidad - Solo mostrar si no está verificado */}
+          {!isVerified && (
+            <IdentityVerificationDisclaimer config={DIDIT_CONFIG} />
+          )}
+
           {/* Selector de Campaña y Multiplicador */}
           <div
             className={`grid grid-cols-1 gap-4 mb-4 ${
